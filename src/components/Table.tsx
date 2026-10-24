@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { GameState, Card as CardType, Suit, TrickPlay } from '../types/kout';
-import { Card, SuitSvg } from './Card';
+import { Card, SuitSvg, JokerSvg } from './Card';
 import { Hand } from './Hand';
 import { Crown, MessageSquare, X, Hand as PassHand } from 'lucide-react';
 import { Button } from './ui/button';
@@ -11,13 +11,15 @@ import elder from '../assets/gameplay/elder-player.png.asset.json';
 import green from '../assets/gameplay/green-player.png.asset.json';
 import stone from '../assets/gameplay/stone-clean.png.asset.json';
 import { playReferenceAudio, stopReferenceAudio } from '../utils/referenceAudio';
+import { playCharacterVoice, subscribeCharacterVoice } from '../utils/characterAudio';
+import { CHARACTER_PHRASES, SPECIAL_LINES, RESULT_LINES, specialPlay, type SpecialPlay } from '../utils/gamePresentation';
 export interface TableProps {
  state?: GameState; mySeat?: number; onPlayCard?: (card: CardType) => void; onBid?: (bid: number) => void; onDeclareTrump?: (suit: Suit) => void;
  displayedTrick?: TrickPlay[]; winningTrickPlay?: TrickPlay | null; trickWinnerAnnouncement?: string | null;
  speechBubbles?: Record<number,string>; legalCardIds?: Set<string>; onSendSpeechBubble?: (message:string)=>void; headerControls?: React.ReactNode; className?: string;
 }
 const portraits = [elder.url, shemagh.url, elder.url, green.url, elder.url, shemagh.url];
-export const KUWAITI_PHRASES = ['كفو عليك يا شريكي!', 'العب يا معوّد!', 'وين الأكة؟!', 'الشايب نزل!', 'يا ساتر!', 'كوت بوستة!', 'طاف يا رجال', 'استكانة شاي'];
+export const KUWAITI_PHRASES = CHARACTER_PHRASES;
 export const MOCK_TABLE_STATE: GameState = {
   variant: 'BO6',
   hands: [
@@ -71,30 +73,77 @@ export const MOCK_TABLE_STATE: GameState = {
 
 export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat = 0, onPlayCard, displayedTrick, winningTrickPlay, trickWinnerAnnouncement, speechBubbles = {}, legalCardIds, onSendSpeechBubble, headerControls, className = '' }) => {
  const [chatOpen, setChatOpen] = useState(false);
- const [trumpSlam, setTrumpSlam] = useState<{ id: string; suit: Suit } | null>(null);
+ const [slam, setSlam] = useState<{ id: string; kind: SpecialPlay; suit?: Suit } | null>(null);
+ const [reactions, setReactions] = useState<Record<number, string>>({});
+ const [speakingSeat, setSpeakingSeat] = useState<number | null>(null);
  const reducedMotion = useReducedMotion();
  const previousSpeech = useRef<Record<number, string>>({});
  const seenPlays = useRef<Set<string>>(new Set());
+ const previousRound = useRef(state.roundNo);
+ const reactionTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+ const resultPlayed = useRef<string | null>(null);
+ const count = state.variant === 'BO6' ? 6 : 4;
+ const trick = displayedTrick ?? state.currentTrick;
+ const react = (seat: number, message: string) => {
+   setReactions(current => ({ ...current, [seat]: message }));
+   playCharacterVoice(message, seat);
+   const timer = setTimeout(() => {
+     setReactions(current => {
+       if (current[seat] !== message) return current;
+       const next = { ...current }; delete next[seat]; return next;
+     });
+     reactionTimers.current.delete(timer);
+   }, 3400);
+   reactionTimers.current.add(timer);
+ };
+ useEffect(() => subscribeCharacterVoice(setSpeakingSeat), []);
+ useEffect(() => () => { stopReferenceAudio(); reactionTimers.current.forEach(clearTimeout); }, []);
  useEffect(() => {
    for (const [seat, message] of Object.entries(speechBubbles)) {
-     if (message === 'طاف' && previousSpeech.current[Number(seat)] !== message) playReferenceAudio('pass');
+     if (previousSpeech.current[Number(seat)] !== message) playCharacterVoice(message, Number(seat));
    }
    previousSpeech.current = speechBubbles;
  }, [speechBubbles]);
- useEffect(() => () => stopReferenceAudio(), []);
- const count = state.variant === 'BO6' ? 6 : 4;
- const trick = displayedTrick ?? state.currentTrick;
  useEffect(() => {
+   if (previousRound.current !== state.roundNo || (state.phase === 'BID' && state.bids.length === 0)) {
+     seenPlays.current.clear(); previousRound.current = state.roundNo;
+     setReactions({}); setSlam(null); resultPlayed.current = null;
+   }
    for (const play of trick) {
      if (seenPlays.current.has(play.card.id)) continue;
      seenPlays.current.add(play.card.id);
-     if (state.trump && play.card.rank === 14 && play.card.suit === state.trump) {
-       setTrumpSlam({ id: play.card.id, suit: state.trump });
+     const kind = specialPlay(play.card, state.trump);
+     if (kind) {
+       setSlam({ id: play.card.id, kind, suit: play.card.suit });
        playReferenceAudio('trump');
-       setTimeout(() => setTrumpSlam(current => (current?.id === play.card.id ? null : current)), 1500);
+       react(play.seat, SPECIAL_LINES[kind]);
+       const timer = setTimeout(() => {
+         setSlam(current => current?.id === play.card.id ? null : current);
+         reactionTimers.current.delete(timer);
+       }, 1100);
+       reactionTimers.current.add(timer);
+     } else if (play.card.rank === 13 && play.seat !== mySeat) {
+       react(play.seat, CHARACTER_PHRASES[3]);
      }
    }
- }, [trick, state.trump]);
+ }, [trick, state.trump, state.roundNo, state.phase]);
+ useEffect(() => {
+   if (state.phase !== 'ROUND_END' && state.phase !== 'GAME_END') return;
+   const key = `${state.roundNo}-${state.phase}`;
+   if (resultPlayed.current === key) return;
+   resultPlayed.current = key;
+   const bidderTeam = (state.bidderSeat ?? 0) % 2;
+   const madeContract = state.tricksWon[bidderTeam] >= state.highBid;
+   const won = state.phase === 'GAME_END'
+     ? state.scores[mySeat % 2] >= state.targetScore || (state.roundNo === 1 && state.highBid === 9 && state.tricksWon[mySeat % 2] === 9)
+     : (madeContract ? bidderTeam : 1 - bidderTeam) === mySeat % 2;
+   react((mySeat + 2) % count, won ? RESULT_LINES.win : RESULT_LINES.lose);
+   if (!won) {
+     const timer = setTimeout(() => { react((mySeat + 1) % count, RESULT_LINES.opponent); reactionTimers.current.delete(timer); }, 3600);
+     reactionTimers.current.add(timer);
+   }
+ }, [state.phase, state.roundNo]);
+ const bubble = (seat: number) => reactions[seat] || speechBubbles[seat];
  const myTurn = state.currentSeat === mySeat && state.phase === 'PLAY';
  const name = (seat:number) => state.players?.[seat]?.name || `لاعب ${seat + 1}`;
  const active = state.phase === 'TRUMP' ? state.bidderSeat : state.currentSeat;
@@ -111,7 +160,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
        if (seat === mySeat) return null;
        const relative = (seat - mySeat + count) % count;
        const bid = state.bids.find(b => b.seat === seat)?.bid;
-       return <div key={seat} className={`reference-seat seat-${count}-${relative} ${seat % 2 === mySeat % 2 ? 'seat-team' : 'seat-opponent'} ${active === seat ? 'seat-active' : ''}`}>
+       return <div key={seat} className={`reference-seat seat-${count}-${relative} ${seat % 2 === mySeat % 2 ? 'seat-team' : 'seat-opponent'} ${active === seat ? 'seat-active' : ''} ${speakingSeat === seat ? 'seat-speaking' : ''}`}>
          <span className="reference-player-name">{name(seat)}</span>
          <div className="reference-seat-row">
            <img className="reference-portrait" src={portraits[seat % portraits.length]} alt={name(seat)} />
@@ -120,7 +169,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
            </div>}
            {state.bidderSeat === seat && <Crown className="reference-crown w-4 h-4" />}
          </div>
-         {speechBubbles[seat] && <div className="reference-speech">{speechBubbles[seat]}</div>}
+         <AnimatePresence>{bubble(seat) && <motion.div key={bubble(seat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(seat)}</motion.div>}</AnimatePresence>
        </div>;
      })}
      <div className="reference-trick" aria-label="الأوراق على الطاولة">
@@ -132,14 +181,18 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
        })}</AnimatePresence>
         {trickWinnerAnnouncement && <span className="reference-winner">{trickWinnerAnnouncement}</span>}
       </div>
-      <AnimatePresence>{trumpSlam && <motion.div key={trumpSlam.id} className="reference-slam" initial={reducedMotion ? false : { scale: 0.1, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0 }} transition={{ duration: reducedMotion ? 0 : .45, ease: [0.16, 1, 0.3, 1] }}><SuitSvg suit={trumpSlam.suit} className="reference-slam-icon" /></motion.div>}</AnimatePresence>
-     <div className="reference-local-hand"><Hand cards={state.hands[mySeat] || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" /></div>
-     {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{KUWAITI_PHRASES.map(phrase=><Button key={phrase} variant="ghost" onClick={()=>{playBubbleSound(); onSendSpeechBubble?.(phrase); setChatOpen(false);}}>{phrase}</Button>)}</div></div>}
+             <AnimatePresence>{slam && <motion.div key={slam.id} className={`reference-slam slam-${slam.kind}`} initial={reducedMotion ? false : { scale: .35, opacity: 0, rotate: -12 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 1.2, opacity: 0 }} transition={{ duration: reducedMotion ? 0 : .32 }}>
+         <div className="reference-slam-ring" />
+         <div className="reference-slam-symbol">{slam.kind === 'trump-ace' && slam.suit ? <SuitSvg suit={slam.suit} className="reference-slam-icon" /> : <JokerSvg isRed={slam.kind === 'joker'} className="reference-slam-joker" />}</div>
+         <strong>{slam.kind === 'joker' ? 'الجيكر' : slam.kind === 'maker' ? 'الميكر' : 'أكة الحكم'}</strong>
+       </motion.div>}</AnimatePresence>
+<div className="reference-local-hand"><Hand cards={state.hands[mySeat] || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" /></div>
+     {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{KUWAITI_PHRASES.map(phrase=><Button key={phrase} variant="ghost" onClick={()=>{playBubbleSound(); react(mySeat, phrase); onSendSpeechBubble?.(phrase); setChatOpen(false);}}>{phrase}</Button>)}</div></div>}
    </section>
    <footer className="reference-controlbar" dir="ltr">
      <div className="reference-tools">{headerControls}<Button variant="ghost" size="icon" aria-label="تعليقات الشخصيات" title="تعليقات الشخصيات" onClick={()=>{playTapSound();setChatOpen(v=>!v);}}><MessageSquare/></Button></div>
-     {speechBubbles[mySeat] && <span className="reference-local-speech">{speechBubbles[mySeat]}</span>}
-     <div className="reference-local-player"><span>{name(mySeat)}</span><img src={portraits[mySeat % portraits.length]} className="reference-portrait" alt={name(mySeat)}/></div>
+     {bubble(mySeat) && <span className="reference-local-speech" role="status">{bubble(mySeat)}</span>}
+     <div className={`reference-local-player ${speakingSeat === mySeat ? 'seat-speaking' : ''}`}><span>{name(mySeat)}</span><img src={portraits[mySeat % portraits.length]} className="reference-portrait" alt={name(mySeat)}/></div>
    </footer>
  </div>;
 };

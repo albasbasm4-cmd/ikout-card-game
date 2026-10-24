@@ -34,7 +34,6 @@ import {
   Users,
 } from 'lucide-react';
 import { RulesModal } from './RulesModal';
-import { RotatePrompt } from './RotatePrompt';
 import { Button } from './ui/button';
 import { stopReferenceAudio } from '../utils/referenceAudio';
 
@@ -258,8 +257,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       dir="rtl"
       className={`w-screen h-[100dvh] bg-neutral-950 text-amber-50 select-none overflow-hidden ${className}`}
     >
-      {/* Mobile Orientation Request Prompt */}
-      <RotatePrompt />
 
       <div className="relative w-full h-full flex flex-col overflow-hidden">
         {/* Main Interactive Table Component with Integrated Header Controls */}
@@ -519,7 +516,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                 <Button
                   type="button"
                   onClick={() => {
-                    playTapSound();
+                    if (settings.soundEnabled) stopReferenceAudio();
                     toggleSound();
                   }}
                   className="p-2 rounded-xl bg-neutral-900 text-amber-300 border border-neutral-700 cursor-pointer"
