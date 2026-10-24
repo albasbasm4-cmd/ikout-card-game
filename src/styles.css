@@ -473,8 +473,87 @@
 .reference-slam-icon {
   width: min(34vmin, 220px);
   height: min(34vmin, 220px);
-  filter: drop-shadow(0 18px 30px rgb(0 0 0 / 0.55));
+  filter: drop-shadow(0 18px 30px var(--reference-shadow));
 }
 @media (prefers-reduced-motion: reduce) {
   .reference-slam-icon { filter: none; }
+}
+
+/* Stable mobile table geometry; the hand always sits above the tool rail. */
+.reference-game { position:relative; isolation:isolate; }
+.reference-scorebar { z-index:35; }
+.reference-controlbar { bottom:0; height:66px; padding:4px max(12px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)); background:var(--reference-bar); border-top:1px solid var(--reference-disc-edge); }
+.reference-local-hand { bottom:65px; width:min(76%,650px); }
+.reference-tools button { width:36px!important; height:36px!important; min-width:36px; }
+.reference-local-player .reference-portrait { width:44px; height:46px; }
+.reference-local-speech { position:absolute; right:80px; bottom:75px; max-width:220px; white-space:normal; padding:6px 10px; border-radius:6px; background:var(--reference-text); color:var(--reference-ink); box-shadow:0 2px 8px var(--reference-shadow); }
+.reference-disc { top:46%; }
+.reference-trick { top:46%; }
+.reference-speech { font-size:12px; line-height:1.45; width:max-content; max-width:145px; padding:6px 9px; border-radius:6px; z-index:3; }
+.reference-speech::after { content:''; position:absolute; top:100%; left:calc(50% - 5px); border:5px solid transparent; border-top-color:var(--reference-text); }
+.reference-chat { bottom:76px; width:min(310px,calc(100% - 16px)); max-height:60%; overflow-y:auto; border-radius:8px; }
+.reference-chat button { min-height:44px; font-size:12px; white-space:normal; }
+.reference-chat>button { margin-bottom:4px; }
+.reference-selection-overlay { padding-bottom:130px; }
+.hand-warning { position:absolute; top:-24px; z-index:80; background:var(--reference-red); color:var(--reference-text); border:1px solid var(--reference-text); font-size:12px; font-weight:700; padding:5px 12px; border-radius:6px; box-shadow:0 3px 10px var(--reference-shadow); }
+.seat-speaking .reference-portrait { animation:character-talk .24s ease-in-out infinite alternate; box-shadow:0 0 0 3px var(--reference-gold); }
+@keyframes character-talk { from { transform:translateY(0) rotate(-1deg); } to { transform:translateY(-3px) rotate(1deg); } }
+.reference-slam { flex-direction:column; gap:4px; }
+.reference-slam-symbol { position:relative; z-index:1; line-height:1; }
+.reference-slam strong { position:relative; z-index:1; font-size:24px; color:var(--reference-text); text-shadow:0 2px 5px var(--reference-ink); }
+.reference-slam-ring { position:absolute; width:210px; height:210px; border-radius:50%; border:5px solid var(--reference-gold); box-shadow:0 0 26px var(--reference-gold),inset 0 0 26px var(--reference-gold); animation:slam-ring .8s ease-out both; }
+.reference-slam-joker { font-size:150px; display:block; text-shadow:0 4px 0 var(--reference-text),0 8px 20px var(--reference-shadow); }
+.slam-maker .reference-slam-ring { border-color:var(--reference-cyan); box-shadow:0 0 26px var(--reference-cyan),inset 0 0 26px var(--reference-cyan); }
+@keyframes slam-ring { from { transform:scale(.4); opacity:1; } to { transform:scale(1.5); opacity:0; } }
+@media (orientation:portrait) and (max-width:767px) {
+ .reference-scorebar { top:env(safe-area-inset-top,0px); right:0; left:0; width:100%; height:40px; padding:0 12px; }
+ .reference-score { gap:14px; } .reference-score strong { font-size:17px; } .reference-round { font-size:11px; }
+ .reference-disc { top:45%; width:76%; height:34%; }
+ .reference-trick { top:45%; }
+ .reference-trump { top:105px; left:calc(50% + 46px); }
+ .reference-seat { min-width:64px; }
+ .reference-portrait { width:44px; height:48px; border-width:2px; border-radius:8px; }
+ .reference-seat-row { gap:5px; }
+ .reference-opponent-hand { position:absolute; top:100%; width:35px; height:26px; margin:18px 0 0; }
+ .reference-mini-back { width:14px; height:22px; margin-left:-12px; }
+ .reference-player-name { font-size:10px; max-width:96px; line-height:17px; }
+ .seat-6-3,.seat-4-2 { top:65px; }
+ .seat-6-2,.seat-6-4 { top:28%; } .seat-6-1,.seat-6-5 { top:59%; }
+ .seat-4-1,.seat-4-3 { top:37%; }
+ .seat-6-1,.seat-6-2,.seat-4-1 { right:7px; }
+ .seat-6-4,.seat-6-5,.seat-4-3 { left:7px; }
+ .reference-trick-card .playing-card-sm { width:40px!important; height:60px!important; }
+ .reference-local-hand { width:100%; bottom:78px; }
+ .playing-card-md { width:62px!important; height:94px!important; } .hand-fan-height { height:112px; }
+ .reference-controlbar { height:68px; gap:5px; padding:5px 8px; }
+ .reference-tools,.reference-tools>div { position:static; display:flex; gap:4px; }
+ .reference-tools button { width:32px!important; height:38px!important; min-width:32px; }
+ .reference-local-player .reference-portrait { width:38px; height:42px; }
+ .reference-local-speech { right:12px; bottom:202px; max-width:210px; }
+ .reference-speech { max-width:104px; font-size:10px; }
+ .reference-selection-overlay { padding-bottom:110px; }
+}
+@media (orientation:landscape) and (max-height:500px) {
+ .reference-scorebar { top:6px; right:8px; height:28px; width:215px; }
+ .reference-controlbar { height:48px; }
+ .reference-tools>div { position:absolute; top:auto; bottom:calc(100dvh - 42px); left:8px; display:flex; gap:5px; }
+ .reference-tools button { width:32px!important; min-width:32px; height:32px!important; }
+ .reference-local-hand { bottom:35px; width:min(65%,500px); }
+ .hand-fan-height { height:93px; } .playing-card-md { width:58px!important; height:86px!important; }
+ .reference-disc { top:45%; height:48%; width:58%; }
+ .reference-trick { top:45%; }
+ .reference-seat { min-width:70px; } .reference-seat-row { gap:8px; }
+ .seat-6-3,.seat-4-2 { top:43px; }
+ .seat-6-2,.seat-6-4 { top:23%; } .seat-6-1,.seat-6-5 { top:59%; }
+ .reference-local-player .reference-portrait { width:32px; height:34px; }
+ .reference-local-player span { display:none; }
+ .reference-speech { max-width:130px; font-size:10px; padding:3px 7px; }
+ .reference-local-speech { bottom:52px; right:12px; font-size:10px; }
+ .reference-chat { bottom:54px; max-height:70%; }
+ .reference-selection-overlay { padding-bottom:35px; }
+ .reference-trump { left:calc(50% + 64px); top:45px; }
+ .reference-slam-joker { font-size:100px; } .reference-slam strong { font-size:18px; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .seat-speaking .reference-portrait,.reference-slam-ring { animation:none; }
 }

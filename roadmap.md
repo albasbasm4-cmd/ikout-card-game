@@ -1,4 +1,7 @@
 # iKout reference matching
+- [ ] Improve reversible card dragging and special-card motion without changing rules.
+- [ ] Add static character voice bank, spoken taunts and win/loss reactions with mute and cleanup.
+- [ ] Refine phone portrait/landscape layouts and verify real gameplay, audio loading and tests.
 - [x] Compare the newer gameplay video; update stone oval table, reference portraits, grid bidding, simplified card faces, and animated throws/collection while preserving rules.
 - [x] Wire sampled pass speech and card effect with mute/cleanup; verify bidding, trump, card removal, image loading, and all 69 tests.
 - [x] Implement reference-based table, score/control bars, extracted portraits, bid wheel, French card faces and fan; exact fidelity remains unverified at 256×144.
