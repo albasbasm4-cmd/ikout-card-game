@@ -14,3 +14,5 @@
 - Reference presentation uses dedicated CSS classes and semantic tokens; game rules, AI, and network behavior stay independent of visual matching.
 - Trailer portraits and licensed French card faces are served through Lovable Assets pointers; retain the card asset license with source.
 - Gameplay-reference media and sampled effects use asset pointers; referenceAudio owns interruptible client playback, while Table handles visual motion without changing engine timing or rules.
+- Static generated Gulf Arabic lines use asset pointers and characterAudio owns single-voice playback and speaking-seat notifications; presentation effects stay separate from engine decisions to preserve gameplay and offline operation.
+- Hand interactions preview on first tap and commit on second tap or a legal upward drag; ResizeObserver sizes the fan to the available phone width to prevent clipped cards.
