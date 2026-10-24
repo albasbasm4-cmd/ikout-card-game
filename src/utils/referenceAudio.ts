@@ -2,10 +2,12 @@ import pass from '../assets/gameplay/pass-two.mp3.asset.json';
 import card from '../assets/gameplay/card.mp3.asset.json';
 import trump from '../assets/gameplay/trump.mp3.asset.json';
 import { loadSettings } from '../store/useSettings';
+import { stopCharacterVoice } from './characterAudio';
 
 let voice: HTMLAudioElement | null = null;
 const effects = new Set<HTMLAudioElement>();
 export function stopReferenceAudio() {
+  stopCharacterVoice();
   voice?.pause();
   voice = null;
   effects.forEach(audio => audio.pause());

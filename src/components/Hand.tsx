@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
-import { motion } from 'motion/react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { Card as CardType, Suit } from '../types/kout';
 import { Card } from './Card';
 import { playTapSound } from '../utils/audio';
 import { sortHandCards } from '../rules/cards';
+import { commitsCardDrag } from '../utils/gamePresentation';
 
 export interface HandProps {
   cards: CardType[];
@@ -22,9 +23,6 @@ export interface HandProps {
   cardSize?: 'sm' | 'md' | 'lg';
   autoSort?: boolean;
 }
-
-/** Dragging a card this far upward commits it to the table. */
-const DRAG_COMMIT_Y = -90;
 
 export const Hand: React.FC<HandProps> = ({
   cards,
@@ -41,6 +39,25 @@ export const Hand: React.FC<HandProps> = ({
   const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
   const [shakingCardId, setShakingCardId] = useState<string | null>(null);
   const [warningTip, setWarningTip] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [fanWidth, setFanWidth] = useState(600);
+  const [measuredCardWidth, setMeasuredCardWidth] = useState(76);
+  const container = useRef<HTMLDivElement>(null);
+  const ignoreClickUntil = useRef(0);
+  const reducedMotion = useReducedMotion();
+  useEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const measure = () => {
+      setFanWidth(element.clientWidth - 24);
+      const card = element.querySelector<HTMLElement>('.playing-card');
+      if (card) setMeasuredCardWidth(card.offsetWidth);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    measure();
+    return () => observer.disconnect();
+  }, [cards.length]);
 
   // Auto-sort player cards: Jokers first, then grouped by suit (trump first) and rank descending
   const displayCards = useMemo(() => {
@@ -61,7 +78,7 @@ export const Hand: React.FC<HandProps> = ({
   const count = displayCards.length;
   if (count === 0) {
     return (
-      <div className={`flex items-center justify-center p-3 text-xs text-amber-200/50 ${className}`}>
+      <div className={`flex items-center justify-center p-3 text-xs text-muted-foreground ${className}`}>
         لا توجد أوراق في اليد
       </div>
     );
@@ -70,9 +87,9 @@ export const Hand: React.FC<HandProps> = ({
   // Calculate fan angle and horizontal overlap based on card count
   const maxAngleSpread = Math.min(14, count * 1.6);
   const angleStep = count > 1 ? (maxAngleSpread * 2) / (count - 1) : 0;
-  const horizontalOverlap = count > 7 ? -40 : count > 5 ? -32 : -20;
+  const horizontalOverlap = count > 1 ? Math.min(-20, (fanWidth - count * measuredCardWidth) / (count - 1)) : 0;
 
-  const handleCardClick = (card: CardType) => {
+  const handleCardClick = (card: CardType, commit = false) => {
     const isLegal = legalSet ? legalSet.has(card.id) && isMyTurn : isMyTurn;
 
     if (!isMyTurn) {
@@ -90,7 +107,12 @@ export const Hand: React.FC<HandProps> = ({
       return;
     }
 
-    // Legal move (the play sound is triggered once by the game itself)
+    if (!commit && selectedId !== card.id) {
+      setInternalSelectedId(card.id);
+      onSelectCard?.(card);
+      return;
+    }
+    // A second tap or a committed upward drag plays the selected card.
     if (onPlayCard) {
       onPlayCard(card);
     }
@@ -102,12 +124,13 @@ export const Hand: React.FC<HandProps> = ({
 
   return (
     <div
+      ref={container}
       dir="ltr"
       className={`relative w-full flex flex-col items-center justify-center pt-3 pb-2 px-1 select-none overflow-visible ${className}`}
     >
       {/* Floating Warning Tip */}
       {warningTip && (
-        <div className="absolute -top-7 z-50 bg-rose-900/90 text-rose-100 border border-rose-400 text-[11px] font-bold px-3 py-1 rounded-full shadow-2xl backdrop-blur-md animate-in zoom-in-95 duration-150">
+        <div className="hand-warning" role="status">
           {warningTip}
         </div>
       )}
@@ -118,7 +141,7 @@ export const Hand: React.FC<HandProps> = ({
           const isLegal = legalSet ? legalSet.has(card.id) && isMyTurn : isMyTurn;
           const isSelected = selectedId === card.id;
           const isShaking = shakingCardId === card.id;
-          const canDrag = isLegal && isMyTurn;
+          const canDrag = true;
 
           // Natural parabolic fan geometry
           const normalizedIdx = index - (count - 1) / 2;
@@ -133,22 +156,24 @@ export const Hand: React.FC<HandProps> = ({
                 transform: isSelected
                   ? `translateY(-22px) rotate(0deg) scale(1.08)`
                   : `rotate(${rotateDeg}deg) translateY(${translateY}px)`,
-                zIndex: isSelected ? 40 : index + 10,
+                zIndex: draggingId === card.id ? 70 : isSelected ? 40 : index + 10,
                 animationDelay: `${index * 45}ms`,
                 transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), margin 0.2s ease-out',
               }}
-              className={`origin-bottom will-change-transform animate-deal-card ${isShaking ? 'animate-card-shake' : ''}`}
+              className={`origin-bottom will-change-transform ${reducedMotion ? '' : 'animate-deal-card'} ${isShaking ? 'animate-card-shake' : ''}`}
             >
               <motion.div
                 drag={canDrag}
                 dragSnapToOrigin
                 dragElastic={0.18}
                 dragTransition={{ bounceStiffness: 420, bounceDamping: 26 }}
+                onDragStart={() => { setDraggingId(card.id); ignoreClickUntil.current = Date.now() + 60000; }}
                 onDragEnd={(_, info) => {
-                  if (canDrag && info.offset.y <= DRAG_COMMIT_Y) handleCardClick(card);
+                  setDraggingId(null);
+                  ignoreClickUntil.current = Date.now() + 250;
+                  if (commitsCardDrag(info.offset.y, isLegal, isMyTurn)) handleCardClick(card, true);
                 }}
-                onTap={() => handleCardClick(card)}
-                whileDrag={{ scale: 1.12, rotate: -rotateDeg, zIndex: 60 }}
+                whileDrag={{ scale: reducedMotion ? 1 : 1.1, rotate: -rotateDeg, zIndex: 60 }}
                 style={{ touchAction: canDrag ? 'none' : 'auto' }}
               >
                 <Card
@@ -157,6 +182,7 @@ export const Hand: React.FC<HandProps> = ({
                   isLegal={isLegal}
                   isSelected={isSelected}
                   size={cardSize}
+                  onClick={() => { if (Date.now() >= ignoreClickUntil.current) handleCardClick(card); }}
                 />
               </motion.div>
             </div>
