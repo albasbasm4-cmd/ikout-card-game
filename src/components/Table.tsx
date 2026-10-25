@@ -133,7 +133,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
    if (resultPlayed.current === key) return;
    resultPlayed.current = key;
    const bidderTeam = (state.bidderSeat ?? 0) % 2;
-   const madeContract = state.tricksWon[bidderTeam] >= state.highBid;
+   const madeContract = state.tricksWon[bidderTeam] >= (state.highBid ?? 0);
    const won = state.phase === 'GAME_END'
      ? state.scores[mySeat % 2] >= state.targetScore || (state.roundNo === 1 && state.highBid === 9 && state.tricksWon[mySeat % 2] === 9)
      : (madeContract ? bidderTeam : 1 - bidderTeam) === mySeat % 2;
