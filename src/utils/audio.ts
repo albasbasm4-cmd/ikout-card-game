@@ -4,155 +4,71 @@
  */
 
 import { loadSettings } from "../store/useSettings";
-import { playSfx, playTone } from "./gameAudioBindings";
-
-let audioCtx: AudioContext | null = null;
-
-function getAudioContext(): AudioContext | null {
-  if (typeof window === "undefined") return null;
-
-  if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    if (AudioContextClass) {
-      try {
-        audioCtx = new AudioContextClass();
-      } catch {
-        return null;
-      }
-    }
-  }
-
-  if (audioCtx && audioCtx.state === "suspended") {
-    audioCtx.resume().catch(() => {});
-  }
-
-  return audioCtx;
-}
+import { playSfx, playExtraSfx, playTone } from "./gameAudioBindings";
 
 function isSoundAllowed(override?: boolean): boolean {
   if (override !== undefined) return override;
   return loadSettings().soundEnabled;
 }
 
-/**
- * Plays a quick, crisp card snapping/sliding sound using WebAudio
- */
 let lastCardSoundAt = 0;
 
+/**
+ * Plays authentic iKout card sliding/snapping sound
+ */
 export function playCardSound(enabled?: boolean): void {
-  if (enabled === false) return;
+  if (enabled === false || !isSoundAllowed(enabled)) return;
   const t = Date.now();
-  if (t - lastCardSoundAt < 40) return;
+  if (t - lastCardSoundAt < 35) return;
   lastCardSoundAt = t;
-  playSfx("card", 0.55, 40);
+  playSfx("card", 0.65, 35);
 }
 
 /**
- * Plays a triumphant celebratory major-chord fanfare (Win)
+ * Plays authentic iKout card dealing sound
+ */
+export function playDealSound(enabled?: boolean): void {
+  if (!isSoundAllowed(enabled)) return;
+  playExtraSfx("deal", 0.7);
+}
+
+/**
+ * Plays epic Match Win celebration sound
  */
 export function playWinSound(enabled?: boolean): void {
   if (!isSoundAllowed(enabled)) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  try {
-    const now = ctx.currentTime;
-    // Major triad arpeggio: C5 (523Hz), E5 (659Hz), G5 (784Hz), C6 (1046Hz)
-    const notes = [523.25, 659.25, 783.99, 1046.5];
-
-    notes.forEach((freq, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const noteTime = now + idx * 0.12;
-
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, noteTime);
-
-      gain.gain.setValueAtTime(0, noteTime);
-      gain.gain.linearRampToValueAtTime(0.25, noteTime + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.4);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(noteTime);
-      osc.stop(noteTime + 0.45);
-    });
-  } catch {
-    // Ignore audio playback errors
-  }
+  playExtraSfx("win", 0.95);
 }
 
 /**
- * Plays a descending minor chord / game loss sound
+ * Plays Match Loss dramatic sound
  */
 export function playLoseSound(enabled?: boolean): void {
   if (!isSoundAllowed(enabled)) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  try {
-    const now = ctx.currentTime;
-    // Descending notes: E4 (329Hz), C4 (261Hz), A3 (220Hz)
-    const notes = [329.63, 261.63, 220.0];
-
-    notes.forEach((freq, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const noteTime = now + idx * 0.18;
-
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(freq, noteTime);
-
-      gain.gain.setValueAtTime(0.2, noteTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, noteTime + 0.35);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(noteTime);
-      osc.stop(noteTime + 0.38);
-    });
-  } catch {
-    // Ignore audio playback errors
-  }
+  playExtraSfx("loss", 0.85);
 }
 
 /**
- * Plays a subtle UI tap sound
+ * Plays authentic button tap / click sound
  */
 export function playTapSound(enabled?: boolean): void {
   if (!isSoundAllowed(enabled)) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  try {
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(800, now);
-    osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
-
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + 0.04);
-  } catch {
-    // Ignore audio playback errors
-  }
+  playExtraSfx("click", 0.5);
 }
 
 /**
- * Plays a bright two-tone chime when a trick is collected
+ * Plays speech bubble pop / reaction chime
+ */
+export function playBubbleSound(enabled?: boolean): void {
+  if (!isSoundAllowed(enabled)) return;
+  playExtraSfx("bubble", 0.65);
+}
+
+/**
+ * Plays trick collection audio chime
  */
 export function playTrickWinSound(enabled?: boolean): void {
-  if (enabled === false) return;
+  if (!isSoundAllowed(enabled)) return;
   playTone([
     { freq: 587.33, at: 0, dur: 0.18, vol: 0.16 },
     { freq: 880, at: 0.08, dur: 0.22, vol: 0.16 },
@@ -160,39 +76,17 @@ export function playTrickWinSound(enabled?: boolean): void {
 }
 
 /**
- * Plays a fanfare chime when Trump (Hokm) is declared
+ * Plays fanfare chime when Trump (Hokm) is declared
  */
 export function playTrumpSound(enabled?: boolean): void {
-  if (enabled === false) return;
+  if (!isSoundAllowed(enabled)) return;
   playSfx("trump", 0.9);
 }
 
 /**
- * Plays a cheerful pop chime when a speech bubble or taunt is triggered
+ * Plays Malzoom / Kout announcement sound
  */
-export function playBubbleSound(enabled?: boolean): void {
+export function playMalzoomSound(enabled?: boolean): void {
   if (!isSoundAllowed(enabled)) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  try {
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(600, now);
-    osc.frequency.exponentialRampToValueAtTime(1100, now + 0.09);
-
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + 0.1);
-  } catch {
-    // Ignore audio playback errors
-  }
+  playExtraSfx("malzoom", 0.95);
 }

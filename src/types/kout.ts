@@ -33,6 +33,8 @@ export interface PlayerSlot {
   connected: boolean;
   playerToken?: string;
   difficulty?: Difficulty;
+  characterId?: string;
+  voicePack?: string;
 }
 
 export interface TrickPlay {

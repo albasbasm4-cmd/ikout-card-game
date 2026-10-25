@@ -12,6 +12,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { hasSavedGame, loadSavedGameState, clearSavedGameState } from "../utils/persist";
 import { useKeepAwake } from "../store/useSettings";
 import { RotateCcw, Play, X, Home } from "lucide-react";
+import { loadPlayerProfile } from "../utils/playerProfile";
 
 export default function App() {
   const [activeView, setActiveView] = useState<"start" | "lobby" | "game">("start");
@@ -30,7 +31,12 @@ export default function App() {
 
   const handleLaunchStartScreen = (config: GameLaunchConfig) => {
     clearSavedGameState();
-    const players = createDefaultPlayers(config.variant, config.difficulty);
+    const profile = loadPlayerProfile();
+    const players = createDefaultPlayers(config.variant, config.difficulty).map((player) =>
+      player.seatIndex === 0
+        ? { ...player, name: profile.nickname, characterId: profile.characterId }
+        : player,
+    );
     setRoomConfig({
       variant: config.variant,
       targetScore: config.targetScore,
@@ -43,7 +49,13 @@ export default function App() {
 
   const handleStartGame = (config: RoomConfig) => {
     clearSavedGameState();
-    setRoomConfig(config);
+    const profile = loadPlayerProfile();
+    setRoomConfig({
+      ...config,
+      players: config.players.map((player) => player.seatIndex === 0
+        ? { ...player, name: profile.nickname, characterId: profile.characterId }
+        : player),
+    });
     setResumedState(null);
     setActiveView("game");
   };
@@ -161,6 +173,7 @@ export default function App() {
             initialDifficulty={roomConfig?.botDifficulty ?? "MEDIUM"}
             initialTargetScore={roomConfig?.targetScore ?? 51}
             initialState={resumedState ?? undefined}
+            initialPlayers={roomConfig?.players}
             onGoToLobby={() => setActiveView("lobby")}
             onBackToStart={() => setActiveView("start")}
           />

@@ -14,6 +14,7 @@ const SFX_URLS: Record<SfxName, string[]> = {
     "/assets/ikout/audio/card_play3.mp3",
     "/assets/ikout/audio/card_play4.mp3",
     "/assets/ikout/audio/card_play5.mp3",
+    "/assets/ikout/audio/card_play6.mp3",
   ],
   trump: ["/assets/ikout/audio/hokum_ace.mp3"],
   pass: ["/assets/ikout/audio/pass.mp3"],
@@ -23,8 +24,13 @@ export const EXTRA_SFX = {
   deal: "/assets/ikout/audio/card_deal.mp3",
   win: "/assets/ikout/audio/win.mp3",
   loss: "/assets/ikout/audio/loss.mp3",
+  victory_trumpet: "/assets/ikout/audio/victory_trumpet.mp3",
+  losing_brass: "/assets/ikout/audio/losing_brass.mp3",
+  click: "/assets/ikout/audio/click.mp3",
+  bubble: "/assets/ikout/audio/bubble.mp3",
   score: "/assets/ikout/audio/score.mp3",
   malzoom: "/assets/ikout/audio/malzoom.mp3",
+  challenge: "/assets/ikout/audio/challenge.mp3",
 };
 
 let installed = false;
