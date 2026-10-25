@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for iKout gameplay overhaul: rule updates (freedom of card play, bidder plays last on trick 1, Black Joker trump conversion), mobile screen layout fix (uncovering cards and removing black table artifacts), dedicated game setup screen (4 or 6 players and target score), manual soundboard drawer with authentic voice clips, and smarter Bot AI.",
-  "updatedAt":  "2026-10-25T18:22:34.282297247Z",
-  "requestFeedback":  true,
-  "userFacing":  true
+  "summary": "Implementation plan for iKout gameplay overhaul: rule updates (freedom of card play, bidder plays last on trick 1, Black Joker trump conversion), mobile screen layout fix (uncovering cards and removing black table artifacts), dedicated game setup screen (4 or 6 players and target score), manual soundboard drawer with authentic voice clips, and smarter Bot AI.",
+  "updatedAt": "2026-10-25T18:22:34.282297247Z",
+  "requestFeedback": true,
+  "userFacing": true
 }

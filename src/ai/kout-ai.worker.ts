@@ -44,6 +44,7 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
         state.highBid,
         isDealerForced,
         difficulty,
+        { seat, bidderSeat: state.bidderSeat },
       );
 
       decision = {

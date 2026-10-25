@@ -121,3 +121,53 @@ function logVoice(entry: Record<string, unknown>) {
   const w = window as unknown as { __voiceLog?: unknown[] };
   (w.__voiceLog ??= []).push({ ...entry, t: Math.round(performance.now()) });
 }
+
+// ========= أصوات الشخصيات المرتبطة بأحداث اللعبة (ليست من قائمة الدردشة) =========
+export type EventVoiceKey =
+  | "joker" // انزال الجيكر الأحمر
+  | "maker" // انزال الميكر (الجوكر الأسود)
+  | "ace" // انزال الواحدة حكم (الأكة)
+  | "king" // الشايب حكم (K الحكم) — مرة واحدة بالجولة
+  | "H"
+  | "S"
+  | "D"
+  | "C" // اختيار الحكم
+  | "bid6"
+  | "bid7"
+  | "bid8"
+  | "kout" // ضغط الحكم 6-9
+  | "taf"; // زر الطاف
+
+export function eventVoiceSource(key: EventVoiceKey, seat = 0): string | undefined {
+  if (key === "taf") return seat % 2 === 0 ? passTwo.url : passOne.url;
+  return assets[`../assets/voices/${key}.mp3.asset.json`]?.url;
+}
+
+/** تشغيل صوت حدث كصوت شخصية على مقعد صاحب الحدث */
+export function playEventVoice(
+  key: EventVoiceKey,
+  opts: {
+    seat?: number;
+    token?: string | null;
+    isStillValid?: () => boolean;
+    onEnd?: () => void;
+  } = {},
+) {
+  if (typeof window === "undefined" || !loadSettings().soundEnabled) return;
+  const src = eventVoiceSource(key, opts.seat ?? 0);
+  if (!src) return;
+  void loadBuffer(src).then((buf) => {
+    if (!buf || (opts.isStillValid && !opts.isStillValid())) return;
+    playBuffer(src, {
+      channel: "voice",
+      volume: 0.9,
+      token: opts.token ?? null,
+      isStillValid: opts.isStillValid,
+      onEnd: () => {
+        notify(null);
+        opts.onEnd?.();
+      },
+    });
+    if (opts.seat != null) notify(opts.seat); // يظهر مؤشر "يتكلم" على الشخصية
+  });
+}

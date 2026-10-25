@@ -97,7 +97,7 @@ describe("KoutScoring", () => {
       expect(result.pointsAdded).toBe(SCORING[7].failPenalty); // 7
 
       const nextState = scoreRound(state);
-      expect(nextState.scores).toEqual([17, 10]);
+      expect(nextState.scores).toEqual([24, 10]);
       expect(nextState.phase).toBe("ROUND_END");
       expect(nextState.dealer).toBe(1);
     });

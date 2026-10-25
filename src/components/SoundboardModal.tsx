@@ -28,19 +28,6 @@ const PHRASE_CATEGORIES: PhraseCategory[] = [
     ],
   },
   {
-    title: "نداءات الحكم والطلبات",
-    items: [
-      { text: "الأمر: هاص", label: "هاص ♥" },
-      { text: "الأمر: سبيت", label: "سبيت ♠" },
-      { text: "الأمر: ديمن", label: "ديمن ♦" },
-      { text: "الأمر: كلفس", label: "كلفس ♣" },
-      { text: "طلب 5", label: "طلب ٥" },
-      { text: "طلب 6", label: "طلب ٦" },
-      { text: "طلب 7", label: "طلب ٧" },
-      { text: "طلب 8", label: "طلب ٨" },
-    ],
-  },
-  {
     title: "الفوز والتحدي",
     items: [
       { text: "كفو يا ذيب! مبروك الفوز!", label: "كفو يا ذيب!" },

@@ -14,6 +14,8 @@ import {
 } from "./protocol";
 import { GameState, PlayerSlot, SeatKind } from "../types/kout";
 import { RULES } from "../rules/config";
+import { verifyCheatReport } from "../rules/cheat";
+import { getLegalCards } from "../rules/cards";
 
 export interface HostSessionOptions {
   engine?: KoutGameEngine;
@@ -96,6 +98,10 @@ export class HostSession {
       }
       case "PLAY_CARD_REQUEST": {
         this.handlePlayCardRequest(playerToken, packet);
+        break;
+      }
+      case "CHEAT_REPORT": {
+        this.handleCheatReport(playerToken, packet);
         break;
       }
       case "PING": {
@@ -299,12 +305,73 @@ export class HostSession {
       return;
     }
 
+    const hasRemoteHuman = (this.engine.state.players ?? []).some(
+      (p) => p.kind === "HUMAN_REMOTE" && p.connected,
+    );
+
+    // Against bots: enforce follow-suit legality. With remote humans: freedom of play.
+    if (!hasRemoteHuman) {
+      const playerHand = this.engine.state.hands[senderSeat] || [];
+      const legalCards = getLegalCards(
+        playerHand,
+        this.engine.state.currentTrick,
+        this.engine.state.trump,
+        { allowJokerAnytime: true },
+      );
+      if (!legalCards.some((c) => c.id === packet.payload.cardId)) {
+        this.sendError(
+          playerToken,
+          "ILLEGAL_MOVE",
+          `Illegal card play for card ${packet.payload.cardId}. Must follow suit.`,
+          packet.seq,
+        );
+        return;
+      }
+    }
+
     try {
       this.engine.playCard(senderSeat, packet.payload.cardId);
       this.broadcastState();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.sendError(playerToken, "PLAY_REJECTED", msg, packet.seq);
+    }
+  }
+
+  private handleCheatReport(
+    playerToken: string,
+    packet: Extract<ClientPacket, { type: "CHEAT_REPORT" }>,
+  ): void {
+    const reporterSeat = this.tokenToSeat.get(playerToken);
+    if (reporterSeat === undefined) {
+      this.sendError(playerToken, "NOT_JOINED", "Must join before taking actions", packet.seq);
+      return;
+    }
+
+    const { accusedSeat, cardType } = packet.payload;
+    const confirmed = verifyCheatReport(this.engine.state, accusedSeat, cardType);
+    const doubledBid = confirmed ? (this.engine.state.highBid ?? 0) * 2 : null;
+
+    if (confirmed) {
+      (this.engine.state as any).contractDoubled = true;
+      (this.engine.state as any).doubledBid = doubledBid;
+    }
+
+    for (const [seatIndex, token] of this.seatToToken.entries()) {
+      this.sendPacket(token, {
+        type: "CHEAT_VERDICT",
+        payload: {
+          reporterSeat,
+          accusedSeat,
+          cardType,
+          confirmed,
+          doubledBid,
+        },
+      });
+    }
+
+    if (confirmed) {
+      this.broadcastState();
     }
   }
 

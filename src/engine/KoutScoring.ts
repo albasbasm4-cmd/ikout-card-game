@@ -24,6 +24,7 @@ export interface RoundScoreResult {
  */
 export function computeRoundResult(state: GameState): RoundScoreResult {
   const highBid = (state.highBid ?? 5) as Exclude<Bid, 0>;
+  const bidPoints = state.doubledBid ?? state.highBid ?? 0;
   const bidderSeat = state.bidderSeat ?? 0;
 
   const bidderTeam: 0 | 1 =
@@ -39,12 +40,22 @@ export function computeRoundResult(state: GameState): RoundScoreResult {
 
   const made = bidderTricks >= highBid;
   const scoringTable = (RULES as unknown as { SCORING?: typeof SCORING }).SCORING || SCORING;
-  const scoreConfig = scoringTable[highBid] || {
+  const baseConfig = scoringTable[highBid] || {
     successPoints: highBid,
-    failPenalty: highBid,
+    failPenalty: highBid * 2,
     kaboutBonus: highBid * 2,
     description: `طلب ${highBid}`,
   };
+
+  const isDoubled = state.contractDoubled || state.doubledBid != null;
+  const scoreConfig = isDoubled
+    ? {
+        successPoints: bidPoints,
+        failPenalty: bidPoints * 2,
+        kaboutBonus: bidPoints * 2,
+        description: `طلب ${highBid} (دبل ${bidPoints})`,
+      }
+    : baseConfig;
 
   // Instant win on successful 9 (Bawan / باوان) in round 1
   const isBawan = state.roundNo === 1 && highBid === 9 && made;

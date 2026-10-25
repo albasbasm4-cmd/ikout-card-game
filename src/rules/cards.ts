@@ -129,16 +129,22 @@ export function getLegalCards(
 
       if (ledSuit === trump) {
         // When trump is led, trump-suited cards and jokers all follow trump
-        matchingCards = hand.filter((c) => c.suit === trump || c.joker !== undefined);
+        const matchingCards = hand.filter((c) => c.suit === trump || c.joker !== undefined);
+        if (matchingCards.length > 0) {
+          return matchingCards;
+        }
       } else {
-        // Plain suit led: only cards of that suit follow, unless allowJokerAnytime is enabled
+        // Plain suit led:
         const suitCards = hand.filter((c) => c.suit === ledSuit);
-        const jokers = allowJokerAnytime ? hand.filter((c) => c.joker !== undefined) : [];
-        matchingCards = [...suitCards, ...jokers];
-      }
-
-      if (matchingCards.length > 0) {
-        return matchingCards;
+        if (suitCards.length > 0) {
+          // If player has cards of the led suit, they must follow suit
+          // If allowJokerAnytime is true, they also have the option to play a joker
+          const jokers = allowJokerAnytime ? hand.filter((c) => c.joker !== undefined) : [];
+          return [...suitCards, ...jokers];
+        }
+        // Player has NO cards of the led suit (void in led suit):
+        // Player is free to play ANY card from their hand (not forced to play Jokers/Makers)
+        return [...hand];
       }
     }
 

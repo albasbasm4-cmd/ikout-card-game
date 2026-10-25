@@ -19,6 +19,7 @@ import {
 } from "../utils/audio";
 import { saveGameState } from "../utils/persist";
 import { useHaptics } from "./useSettings";
+import { verifyCheatReport } from "../rules/cheat";
 
 export interface UseGameOptions {
   variant?: "BO6" | "BO4";
@@ -83,14 +84,24 @@ export function useGame(options: UseGameOptions = {}) {
     }
   }, [state.currentTrick]);
 
-  // Legal cards for human player (seat 0): absolute freedom to play any card in hand at any time
+  const hasRemoteHuman = (state.players ?? []).some(
+    (p) => p.kind === "HUMAN_REMOTE" && p.connected,
+  );
+
   const legalCardsForHuman = useMemo(() => {
     if (state.phase !== "PLAY" || state.currentSeat !== 0 || isResolvingTrickRef.current) {
       return new Set<string>();
     }
     const myHand = state.hands[0] || [];
-    return new Set(myHand.map((c) => c.id));
-  }, [state]);
+    // القيد مفيد للاعب ضد البوتات. مع لاعب حقيقي عن بعد (hotspot): حرية كاملة
+    // لاختيار أي بطاقة، والفلتر هو زر بلاغ الغش وليس القيد.
+    if (hasRemoteHuman) return new Set(myHand.map((c) => c.id));
+    return new Set(
+      getLegalCards(myHand, state.currentTrick, state.trump, { allowJokerAnytime: true }).map(
+        (c) => c.id,
+      ),
+    );
+  }, [state, hasRemoteHuman]);
 
   // Is human turn?
   const isHumanTurn =
@@ -267,6 +278,28 @@ export function useGame(options: UseGameOptions = {}) {
     [variant, targetScore, difficulty],
   );
 
+  const reportCheat = useCallback(
+    (accusedSeat: number, cardType: Suit | "JOKER" | "MAKER") => {
+      const confirmed = verifyCheatReport(state, accusedSeat, cardType);
+      const doubledBid = confirmed ? (state.highBid ?? 0) * 2 : null;
+      if (confirmed) {
+        const nextState: GameState = {
+          ...state,
+          contractDoubled: true,
+          doubledBid,
+          version: state.version + 1,
+        };
+        setState(nextState);
+        saveGameState(nextState);
+        sendSpeechBubble("بلاغ غش صحيح! اللعبة دبل! ⚠️", 0);
+      } else {
+        sendSpeechBubble("بلاغ غش غير صحيح!", 0);
+      }
+      return confirmed;
+    },
+    [state, sendSpeechBubble],
+  );
+
   // Human turn timeout handler (auto-plays legal move)
   const handleHumanTimeout = useCallback(() => {
     const engine = engineRef.current;
@@ -394,6 +427,8 @@ export function useGame(options: UseGameOptions = {}) {
     startNextRound,
     startNewGame,
     handleHumanTimeout,
+    reportCheat,
+    hasRemoteHuman,
   };
 }
 

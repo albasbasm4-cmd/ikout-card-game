@@ -13,11 +13,12 @@ import {
 import { playTapSound, playWinSound } from "../utils/audio";
 import { useSettings } from "../store/useSettings";
 import { RulesModal } from "./RulesModal";
+import { Difficulty } from "../types/kout";
 
 export interface GameLaunchConfig {
   variant: "BO6" | "BO4";
   targetScore: number;
-  difficulty: "EASY" | "MEDIUM" | "HARD";
+  difficulty: Difficulty;
 }
 
 export interface StartScreenProps {
@@ -35,7 +36,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 }) => {
   const [variant, setVariant] = useState<"BO6" | "BO4">("BO6");
   const [targetScore, setTargetScore] = useState<number>(51);
-  const [difficulty, setDifficulty] = useState<"EASY" | "MEDIUM" | "HARD">("MEDIUM");
+  const [difficulty, setDifficulty] = useState<Difficulty>("MEDIUM");
   const [showRules, setShowRules] = useState<boolean>(false);
 
   const { settings, toggleSound } = useSettings();
@@ -217,14 +218,14 @@ export const StartScreen: React.FC<StartScreenProps> = ({
           <div className="grid grid-cols-2 gap-2.5">
             {[
               { id: "MEDIUM", label: "عادي (ديوانية)", desc: "لعب واقعي ومتوازن" },
-              { id: "HARD", label: "محترف (تحدي قوي)", desc: "ذكاء تكتيكي وحساب دقيق" },
+              { id: "EXPERT", label: "محترف (تحدي قوي)", desc: "ذكاء تكتيكي وحساب دقيق" },
             ].map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => {
                   playTapSound();
-                  setDifficulty(item.id as any);
+                  setDifficulty(item.id as Difficulty);
                 }}
                 className={`p-2.5 rounded-2xl border-2 transition-all text-center cursor-pointer flex flex-col items-center gap-0.5 ${
                   difficulty === item.id

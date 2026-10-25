@@ -37,6 +37,7 @@ import {
 import { RulesModal } from "./RulesModal";
 import { Button } from "./ui/button";
 import { stopReferenceAudio } from "../utils/referenceAudio";
+import { playEventVoice, type EventVoiceKey } from "../utils/characterAudio";
 
 export interface GameScreenProps {
   initialDifficulty?: Difficulty;
@@ -76,6 +77,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     startNextRound,
     startNewGame,
     handleHumanTimeout,
+    reportCheat,
+    hasRemoteHuman,
   } = useGame({
     difficulty: initialDifficulty,
     variant: initialVariant,
@@ -83,6 +86,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     autoStart: true,
     initialState,
   });
+
+  const handleBid = (bid: number) => {
+    if (bid === 0) playEventVoice("taf", { seat: 0 });
+    else if (bid >= 6)
+      playEventVoice(bid === 9 ? "kout" : (`bid${bid}` as EventVoiceKey), { seat: 0 });
+    humanBid(bid);
+  };
 
   const { settings, toggleSound, setBotSpeed } = useSettings();
   const [showScoreboardModal, setShowScoreboardModal] = useState<boolean>(false);
@@ -283,6 +293,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
           legalCardIds={legalCardsForHuman}
           onSendSpeechBubble={sendSpeechBubble}
           headerControls={headerControls}
+          canCheatReport={hasRemoteHuman}
+          onCheatReport={reportCheat}
           className="w-full h-full"
         />
 
@@ -293,7 +305,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
               currentHighBid={state.highBid}
               isDealerForced={isDealerForced}
               maxBid={isBO6 ? 9 : 8}
-              onBid={humanBid}
+              onBid={handleBid}
             />
           </div>
         )}

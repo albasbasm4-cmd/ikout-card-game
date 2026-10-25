@@ -63,6 +63,8 @@ export interface GameState {
   targetScore: number;
   version: number;
   players?: PlayerSlot[];
+  contractDoubled?: boolean;
+  doubledBid?: number | null;
 }
 
 export interface SyncStatePacket {

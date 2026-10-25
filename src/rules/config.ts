@@ -82,32 +82,32 @@ export const SCORING: Record<
 > = {
   5: {
     successPoints: 5,
-    failPenalty: 5,
+    failPenalty: 10,
     kaboutBonus: 10,
-    description: "طلب ٥ أكَلات",
+    description: "طلب ٥ أكَلات (ملزوم)",
   },
   6: {
     successPoints: 6,
-    failPenalty: 6,
+    failPenalty: 12,
     kaboutBonus: 12,
     description: "طلب ٦ أكَلات",
   },
   7: {
     successPoints: 7,
-    failPenalty: 7,
+    failPenalty: 14,
     kaboutBonus: 14,
     description: "طلب ٧ أكَلات",
   },
   8: {
     successPoints: 8,
-    failPenalty: 8,
+    failPenalty: 16,
     kaboutBonus: 16,
     description: "طلب ٨ أكَلات",
   },
   9: {
     successPoints: 9,
-    failPenalty: 9,
+    failPenalty: 18,
     kaboutBonus: 18,
-    description: "طلب ٩ أكَلات (كبوت كامل)",
+    description: "طلب ٩ أكَلات (كوت كامل)",
   },
 };

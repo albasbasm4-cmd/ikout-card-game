@@ -24,28 +24,28 @@ export const BidPanel: React.FC<BidPanelProps> = ({
   return (
     <div className={`reference-bid-wheel ${className}`} role="group" aria-label="المزايدة">
       <span className="reference-picker-ribbon">اختر طلبك</span>
-      {([5, 6, 7, 8, 9] as Bid[]).map((bid, i) => (
+      {([6, 7, 8, 9] as Bid[]).map((bid) => (
         <Button
           key={bid}
           variant="ghost"
           disabled={bid > maxBid || bid <= (currentHighBid ?? 0)}
           aria-label={`طلب ${bid}`}
           onClick={() => choose(bid)}
-          className={`bid-wedge wedge-${i}`}
+          className={`bid-wedge wedge-${bid}`}
         >
           <span>{bid}</span>
         </Button>
       ))}
       <Button
         variant="ghost"
-        disabled={isDealerForced}
-        aria-label="طاف"
-        title={isDealerForced ? "ملزوم" : "طاف"}
-        onClick={() => choose(0)}
+        disabled={false}
+        aria-label={isDealerForced ? "ملزوم ٥" : "طاف"}
+        title={isDealerForced ? "ملزوم (٥)" : "طاف"}
+        onClick={() => choose(isDealerForced ? 5 : 0)}
         className="bid-pass"
       >
         <Hand />
-        <span>{isDealerForced ? "ملزوم" : "طاف"}</span>
+        <span>{isDealerForced ? "ملزوم ٥" : "طاف"}</span>
       </Button>
     </div>
   );

@@ -88,8 +88,12 @@ export const Hand: React.FC<HandProps> = ({
   // Calculate fan angle and horizontal overlap based on card count
   const maxAngleSpread = Math.min(14, count * 1.6);
   const angleStep = count > 1 ? (maxAngleSpread * 2) / (count - 1) : 0;
-  const horizontalOverlap =
-    count > 1 ? Math.min(-20, (fanWidth - count * measuredCardWidth) / (count - 1)) : 0;
+  const step = Math.max(0, (fanWidth - measuredCardWidth) / Math.max(1, count - 1));
+  const overlap = Math.min(
+    measuredCardWidth * 0.45, // أقصى تغطية للبطاقة 45% بحيث تبقى 55% على الأقل ظاهرة
+    Math.max(0, measuredCardWidth - step),
+  );
+  const horizontalOverlap = count > 1 ? -overlap : 0;
 
   const handleCardClick = (card: CardType, commit = false) => {
     const isLegal = legalSet ? legalSet.has(card.id) && isMyTurn : isMyTurn;

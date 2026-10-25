@@ -50,8 +50,23 @@ export interface PingPayload {
   timestamp: number;
 }
 
+export type ReportedCardType = Suit | "JOKER" | "MAKER";
+
+export interface CheatReportPayload {
+  accusedSeat: number;
+  cardType: ReportedCardType;
+}
+
+export interface CheatVerdictPayload {
+  reporterSeat: number;
+  accusedSeat: number;
+  cardType: ReportedCardType;
+  confirmed: boolean;
+  doubledBid: number | null; // قيمة الحكم بعد الدبل إذا تأكد البلاغ
+}
+
 export type ClientPacketType =
-  "JOIN" | "BID_REQUEST" | "TRUMP_REQUEST" | "PLAY_CARD_REQUEST" | "PING";
+  "JOIN" | "BID_REQUEST" | "TRUMP_REQUEST" | "PLAY_CARD_REQUEST" | "PING" | "CHEAT_REPORT";
 
 export interface BaseClientPacket<TType extends ClientPacketType, TPayload> {
   v: number;
@@ -66,9 +81,15 @@ export type BidRequestPacket = BaseClientPacket<"BID_REQUEST", BidRequestPayload
 export type TrumpRequestPacket = BaseClientPacket<"TRUMP_REQUEST", TrumpRequestPayload>;
 export type PlayCardRequestPacket = BaseClientPacket<"PLAY_CARD_REQUEST", PlayCardRequestPayload>;
 export type PingPacket = BaseClientPacket<"PING", PingPayload>;
+export type CheatReportPacket = BaseClientPacket<"CHEAT_REPORT", CheatReportPayload>;
 
 export type ClientPacket =
-  JoinPacket | BidRequestPacket | TrumpRequestPacket | PlayCardRequestPacket | PingPacket;
+  | JoinPacket
+  | BidRequestPacket
+  | TrumpRequestPacket
+  | PlayCardRequestPacket
+  | PingPacket
+  | CheatReportPacket;
 
 // -------------------------------------------------------------
 // Host Message Packets (Host -> Client)
@@ -96,7 +117,8 @@ export interface PongPayload {
   serverTime: number;
 }
 
-export type HostPacketType = "CLIENT_STATE_UPDATE" | "SEAT_UPDATE" | "ERROR" | "PONG";
+export type HostPacketType =
+  "CLIENT_STATE_UPDATE" | "SEAT_UPDATE" | "ERROR" | "PONG" | "CHEAT_VERDICT";
 
 export interface BaseHostPacket<TType extends HostPacketType, TPayload> {
   v: number;
@@ -113,8 +135,10 @@ export type ClientStateUpdatePacket = BaseHostPacket<
 export type SeatUpdatePacket = BaseHostPacket<"SEAT_UPDATE", SeatUpdatePayload>;
 export type ErrorPacket = BaseHostPacket<"ERROR", ErrorPayload>;
 export type PongPacket = BaseHostPacket<"PONG", PongPayload>;
+export type CheatVerdictPacket = BaseHostPacket<"CHEAT_VERDICT", CheatVerdictPayload>;
 
-export type HostPacket = ClientStateUpdatePacket | SeatUpdatePacket | ErrorPacket | PongPacket;
+export type HostPacket =
+  ClientStateUpdatePacket | SeatUpdatePacket | ErrorPacket | PongPacket | CheatVerdictPacket;
 
 /**
  * Filters a GameState snapshot for a specific seat:

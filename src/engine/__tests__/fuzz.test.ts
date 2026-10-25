@@ -73,7 +73,7 @@ function simulateGame(variant: "BO6" | "BO4", seed: number, targetScore = 51) {
         legalBids.push(0);
       } else {
         legalBids.push(0); // Pass
-        const minBid = Math.max(5, currentHigh + 1);
+        const minBid = Math.max(6, currentHigh + 1);
         for (let b = minBid; b <= cardsPerPlayer; b++) {
           legalBids.push(b as Bid);
         }

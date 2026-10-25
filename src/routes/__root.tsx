@@ -84,7 +84,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { name: "theme-color", content: "#072a1e" },
       { title: "iKout - كوت بوستة" },
-      { name: "description", content: "لعبة كوت بوستة" },
+      {
+        name: "description",
+        content: "لعبة كوت بوستة كويتية كاملة مع ذكاء اصطناعي وأصوات خليجية وغرف لعب",
+      },
+      { property: "og:title", content: "iKout - كوت بوستة" },
+      {
+        property: "og:description",
+        content: "لعبة كوت بوستة كويتية كاملة مع ذكاء اصطناعي وأصوات خليجية وغرف لعب",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },

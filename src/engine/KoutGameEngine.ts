@@ -154,8 +154,9 @@ export class KoutGameEngine {
 
     // Validate bid value
     if (effectiveBid !== 0) {
-      if (effectiveBid < 5 || effectiveBid > 9) {
-        throw new Error(`Invalid bid ${effectiveBid}. Valid bids are 0 (pass) or 5..9`);
+      const minBid = allOthersPassed ? 5 : 6;
+      if (effectiveBid < minBid || effectiveBid > 9) {
+        throw new Error(`Invalid bid ${effectiveBid}. Valid bids are 0 (pass) or ${minBid}..9`);
       }
 
       if (this._state.highBid !== null && effectiveBid <= this._state.highBid) {

@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { GameState, Card as CardType, Suit, TrickPlay } from "../types/kout";
 import { Card, SuitSvg, JokerSvg } from "./Card";
 import { Hand } from "./Hand";
-import { Crown, MessageSquare, X, Hand as PassHand } from "lucide-react";
+import { Crown, MessageSquare, X, Hand as PassHand, ShieldAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import { playBubbleSound, playTapSound } from "../utils/audio";
 import shemagh from "../assets/gameplay/shemagh-player.png.asset.json";
@@ -16,11 +16,12 @@ import {
   subscribeCharacterVoice,
   preloadCharacterVoices,
   stopCharacterVoice,
+  playEventVoice,
+  type EventVoiceKey,
 } from "../utils/characterAudio";
 import {
   CHARACTER_PHRASES,
   SPECIAL_LINES,
-  RESULT_LINES,
   specialPlay,
   type SpecialPlay,
 } from "../utils/gamePresentation";
@@ -38,6 +39,8 @@ export interface TableProps {
   legalCardIds?: Set<string>;
   onSendSpeechBubble?: (message: string) => void;
   headerControls?: React.ReactNode;
+  canCheatReport?: boolean;
+  onCheatReport?: (accusedSeat: number, cardType: Suit | "JOKER" | "MAKER") => void;
   className?: string;
 }
 const portraits = [elder.url, shemagh.url, elder.url, green.url, elder.url, shemagh.url];
@@ -104,10 +107,16 @@ export const Table: React.FC<TableProps> = ({
   legalCardIds,
   onSendSpeechBubble,
   headerControls,
+  canCheatReport,
+  onCheatReport,
   className = "",
 }) => {
   const [chatOpen, setChatOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [accused, setAccused] = useState<number | null>(null);
   const [slam, setSlam] = useState<{ id: string; kind: SpecialPlay; suit?: Suit } | null>(null);
+  const [trumpSlam, setTrumpSlam] = useState<Suit | null>(null);
+  const prevTrump = useRef<Suit | null>(state.trump);
   const [reactions, setReactions] = useState<Record<number, string>>({});
   const [speakingSeat, setSpeakingSeat] = useState<number | null>(null);
   const reducedMotion = useReducedMotion();
@@ -116,7 +125,22 @@ export const Table: React.FC<TableProps> = ({
   const previousRound = useRef(state.roundNo);
   const trumpKingSpokenRound = useRef<number | null>(null);
   const reactionTimers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
-  const resultPlayed = useRef<string | null>(null);
+
+  const SUIT_AR: Record<Suit | "JOKER" | "MAKER", string> = {
+    S: "سبيت",
+    H: "هاص",
+    D: "ديمن",
+    C: "كلفس",
+    JOKER: "الجيكر",
+    MAKER: "الميكر",
+  };
+
+  const submitReport = (t: Suit | "JOKER" | "MAKER") => {
+    if (accused == null) return;
+    onCheatReport?.(accused, t);
+    setReportOpen(false);
+    setAccused(null);
+  };
   const count = state.variant === "BO6" ? 6 : 4;
   const trick = displayedTrick ?? state.currentTrick;
   const visibleCards = useRef<Set<string>>(new Set());
@@ -179,7 +203,6 @@ export const Table: React.FC<TableProps> = ({
       previousRound.current = state.roundNo;
       setReactions({});
       setSlam(null);
-      resultPlayed.current = null;
       reactionTimers.current.forEach(clearTimeout);
       reactionTimers.current.clear();
     }
@@ -199,9 +222,8 @@ export const Table: React.FC<TableProps> = ({
     const onTable = (id: string) => () => visibleCards.current.has(id);
 
     // Contextual sound design matched with Kuwaiti gameplay:
-    // 1. Strong cards (Red Joker, Black Joker, Trump Ace): play "باف" (trump slam) + slam visual
+    // 1. Strong cards (Red Joker, Black Joker, Trump Ace): play character voice (joker/maker/ace) + slam visual
     // 2. Trump King: "الشايب نزل!" strictly once per round
-    // 3. No random automated chatter: banters are triggered by players via the Soundboard modal
     for (let i = 0; i < trick.length; i++) {
       const play = trick[i];
       if (seenPlays.current.has(play.card.id)) continue;
@@ -210,7 +232,12 @@ export const Table: React.FC<TableProps> = ({
       const kind = specialPlay(play.card, state.trump);
       if (kind) {
         setSlam({ id: play.card.id, kind, suit: play.card.suit });
-        playReferenceAudio("trump"); // "باف" slam sound
+        const ev: EventVoiceKey = kind === "joker" ? "joker" : kind === "maker" ? "maker" : "ace";
+        playEventVoice(ev, {
+          seat: play.seat,
+          token: `card-${play.card.id}`,
+          isStillValid: onTable(play.card.id),
+        });
         const timer = setTimeout(() => {
           setSlam((current) => (current?.id === play.card.id ? null : current));
           reactionTimers.current.delete(timer);
@@ -235,28 +262,19 @@ export const Table: React.FC<TableProps> = ({
     }
   }, [trick, state.trump, state.roundNo, state.phase]);
 
+  // أنيميشن وصوت إعلان الحكم (هاص/سبيت/ديمن/كلفس) — يغطي البشر والبوتات
   useEffect(() => {
-    if (state.phase !== "ROUND_END" && state.phase !== "GAME_END") return;
-    const key = `${state.roundNo}-${state.phase}`;
-    if (resultPlayed.current === key) return;
-    resultPlayed.current = key;
-    const bidderTeam = (state.bidderSeat ?? 0) % 2;
-    const madeContract = state.tricksWon[bidderTeam] >= (state.highBid ?? 0);
-    const won =
-      state.phase === "GAME_END"
-        ? state.scores[mySeat % 2] >= state.targetScore ||
-          (state.roundNo === 1 && state.highBid === 9 && state.tricksWon[mySeat % 2] === 9)
-        : (madeContract ? bidderTeam : 1 - bidderTeam) === mySeat % 2;
-    const resultValid = () => phaseRef.current === "ROUND_END" || phaseRef.current === "GAME_END";
-    react((mySeat + 2) % count, won ? RESULT_LINES.win : RESULT_LINES.lose, "result", resultValid);
-    if (!won) {
-      const timer = setTimeout(() => {
-        react((mySeat + 1) % count, RESULT_LINES.opponent, "result", resultValid);
-        reactionTimers.current.delete(timer);
-      }, 3600);
-      reactionTimers.current.add(timer);
+    if (state.trump && state.trump !== prevTrump.current) {
+      setTrumpSlam(state.trump);
+      playEventVoice(state.trump, { seat: state.bidderSeat ?? 0 });
+      const t = setTimeout(() => {
+        setTrumpSlam(null);
+        reactionTimers.current.delete(t);
+      }, 1300);
+      reactionTimers.current.add(t);
     }
-  }, [state.phase, state.roundNo]);
+    prevTrump.current = state.trump;
+  }, [state.trump, state.bidderSeat]);
   const bubble = (seat: number) => reactions[seat] || speechBubbles[seat];
   const myTurn = state.currentSeat === mySeat && state.phase === "PLAY";
   const name = (seat: number) => state.players?.[seat]?.name || `لاعب ${seat + 1}`;
@@ -282,6 +300,27 @@ export const Table: React.FC<TableProps> = ({
         <div className="reference-disc" aria-hidden="true">
           <div className="reference-rosette" />
         </div>
+        <AnimatePresence>
+          {trumpSlam && (
+            <motion.div
+              key={`trump-${state.roundNo}-${state.trump}`}
+              dir="ltr"
+              className="trump-slam-overlay"
+              initial={{ scale: 0.3, opacity: 0, rotate: -10 }}
+              animate={{ scale: [0.3, 1.25, 1], opacity: [0, 1, 1], rotate: 0 }}
+              exit={{ scale: 1.5, opacity: 0 }}
+              transition={{ duration: 1.2 }}
+            >
+              <SuitSvg suit={trumpSlam} className="w-24 h-24" />
+              <strong>{state.highBid ?? ""}</strong>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {state.contractDoubled && (
+          <div className="cheat-verdict-banner">
+            ⚠️ اللعبة دبل — الحكم {state.highBid} يحسب {state.doubledBid} نقطة
+          </div>
+        )}
         <div className="reference-trump">
           {state.trump && (
             <>
@@ -440,10 +479,95 @@ export const Table: React.FC<TableProps> = ({
             onSendSpeechBubble?.(phrase);
           }}
         />
+        <AnimatePresence>
+          {reportOpen && (
+            <motion.div
+              dir="rtl"
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-3"
+              onClick={() => setReportOpen(false)}
+            >
+              <motion.div
+                dir="rtl"
+                className="w-full max-w-md bg-neutral-900 border-2 border-amber-500/50 rounded-3xl p-5 text-amber-50"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <h4 className="font-extrabold text-amber-400">بلاغ غش</h4>
+                  <button
+                    type="button"
+                    onClick={() => setReportOpen(false)}
+                    className="text-neutral-400 hover:text-white cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-xs text-amber-200/70 mb-3">
+                  اختر اللاعب ونوع الورقة اللي غش فيها. إذا الاثنين صحيح، الحكم ينحسب دبل.
+                </p>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {state.players
+                    ?.filter((p) => p.seatIndex !== mySeat && p.seatIndex % 2 !== mySeat % 2)
+                    .map((p) => (
+                      <button
+                        key={p.seatIndex}
+                        onClick={() => setAccused(p.seatIndex)}
+                        className={`rounded-xl px-3 py-2 text-sm border cursor-pointer ${
+                          accused === p.seatIndex
+                            ? "bg-amber-500/30 border-amber-400 font-bold"
+                            : "bg-white/5 border-white/10"
+                        }`}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                </div>
+                {accused != null && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {(["S", "H", "D", "C"] as Suit[]).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => submitReport(s)}
+                        className="rounded-xl px-3 py-2 text-sm bg-white/5 border border-white/10 flex items-center justify-center gap-1 cursor-pointer hover:bg-white/10"
+                      >
+                        <SuitSvg suit={s} className="w-4 h-4" /> {SUIT_AR[s]}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => submitReport("JOKER")}
+                      className="rounded-xl px-3 py-2 text-sm bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10"
+                    >
+                      جيكر
+                    </button>
+                    <button
+                      onClick={() => submitReport("MAKER")}
+                      className="rounded-xl px-3 py-2 text-sm bg-white/5 border border-white/10 cursor-pointer hover:bg-white/10"
+                    >
+                      ميكر
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
       <footer className="reference-controlbar" dir="ltr">
         <div className="reference-tools">
           {headerControls}
+          {canCheatReport && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="بلاغ غش"
+              title="بلاغ غش"
+              onClick={() => {
+                playTapSound();
+                setReportOpen(true);
+              }}
+            >
+              <ShieldAlert className="w-4 h-4 text-amber-400" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
