@@ -43,7 +43,14 @@ export interface TableProps {
   onCheatReport?: (accusedSeat: number, cardType: Suit | "JOKER" | "MAKER") => void;
   className?: string;
 }
-const portraits = [elder.url, shemagh.url, elder.url, green.url, elder.url, shemagh.url];
+const portraits = [
+  "/assets/ikout/images/avatar_shayib.png",
+  "/assets/ikout/images/avatar_player1.png",
+  "/assets/ikout/images/avatar_player2.png",
+  "/assets/ikout/images/avatar_player3.png",
+  "/assets/ikout/images/avatar_player4.png",
+  "/assets/ikout/images/avatar_player5.png",
+];
 export const KUWAITI_PHRASES = CHARACTER_PHRASES;
 export const MOCK_TABLE_STATE: GameState = {
   variant: "BO6",

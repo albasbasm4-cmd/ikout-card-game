@@ -87,7 +87,7 @@ export const Card: React.FC<CardProps> = ({
             ? "J"
             : String(rank ?? "");
   const content = !faceUp ? (
-    <div className="card-back-pattern" />
+    <img src="/assets/ikout/images/card_back.png" alt="Card Back" draggable={false} className="h-full w-full object-cover rounded-[inherit] pointer-events-none" />
   ) : card.joker ? (
     <div className={`reference-joker ${card.joker === "RED" ? "text-card-red" : "text-card-ink"}`}>
       <span>JOKER</span>

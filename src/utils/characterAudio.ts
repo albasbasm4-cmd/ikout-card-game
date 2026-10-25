@@ -9,17 +9,34 @@ import {
   stopVoiceByToken,
 } from "./gameAudio";
 import { gameAudioPreloaded } from "./gameAudioBindings";
-import passOne from "../assets/gameplay/pass-one.mp3.asset.json";
-import passTwo from "../assets/gameplay/pass-two.mp3.asset.json";
 import { CHARACTER_PHRASES, RESULT_LINES, SPECIAL_LINES } from "./gamePresentation";
 
-const assets = import.meta.glob<{ url: string }>("../assets/voices/*.asset.json", {
-  eager: true,
-  import: "default",
-});
+// Official extracted voice assets from iKout mapped to phrases and contexts
+const OFFICIAL_VOICES: Record<string, string> = {
+  partner: "/assets/ikout/audio/taunt1.mp3",
+  play: "/assets/ikout/audio/taunt2.mp3",
+  ace: "/assets/ikout/audio/ace.mp3",
+  king: "/assets/ikout/audio/hokum_ace.mp3",
+  surprise: "/assets/ikout/audio/taunt3.mp3",
+  kout: "/assets/ikout/audio/malzoom.mp3",
+  "pass-taunt": "/assets/ikout/audio/pass.mp3",
+  tea: "/assets/ikout/audio/taunt4.mp3",
+  joker: "/assets/ikout/audio/joker.mp3",
+  maker: "/assets/ikout/audio/joker.mp3",
+  "trump-ace": "/assets/ikout/audio/hokum_ace.mp3",
+  win: "/assets/ikout/audio/win.mp3",
+  lose: "/assets/ikout/audio/loss.mp3",
+  "opponent-win": "/assets/ikout/audio/taunt5.mp3",
+  H: "/assets/ikout/audio/hearts.mp3",
+  S: "/assets/ikout/audio/spades.mp3",
+  D: "/assets/ikout/audio/diamonds.mp3",
+  C: "/assets/ikout/audio/clubs.mp3",
+  pass: "/assets/ikout/audio/pass.mp3",
+};
+
 const phraseKeys = ["partner", "play", "ace", "king", "surprise", "kout", "pass-taunt", "tea"];
-export const MAX_VOICE_DELAY_MS = 250; // warm buffer window
-const COLD_LOAD_GRACE_MS = 400; // first-time load window
+export const MAX_VOICE_DELAY_MS = 250;
+const COLD_LOAD_GRACE_MS = 400;
 
 let activeSeat: number | null = null;
 const listeners = new Set<(seat: number | null) => void>();
@@ -41,7 +58,7 @@ export function preloadCharacterVoices() {
   gameAudioPreloaded();
   installAudioUnlock();
   ensureContext();
-  [passOne.url, passTwo.url, ...Object.values(assets).map((a) => a.url)].forEach((src) => {
+  Object.values(OFFICIAL_VOICES).forEach((src) => {
     void loadBuffer(src);
   });
 }
@@ -58,7 +75,7 @@ export function voiceKey(message: string): string | null {
   if (message === RESULT_LINES.lose) return "lose";
   if (message === RESULT_LINES.opponent) return "opponent-win";
   const bid = /^طلب ([5-9])$/.exec(message);
-  if (bid) return bid[1] === "9" ? "kout" : `bid${bid[1]}`;
+  if (bid) return bid[1] === "9" ? "kout" : ;
   if (message === "كوت" || message === "كوت بوستة!" || message === "طلب 9") return "kout";
   if (message.startsWith("الأمر:")) {
     if (message.includes("هاص")) return "H";
@@ -70,9 +87,9 @@ export function voiceKey(message: string): string | null {
 }
 
 export function voiceSource(message: string, seat: number = 0): string | undefined {
-  if (message === "طاف") return seat % 2 === 0 ? passTwo.url : passOne.url;
+  if (message === "طاف") return OFFICIAL_VOICES.pass;
   const key = voiceKey(message);
-  return key ? assets[`../assets/voices/${key}.mp3.asset.json`]?.url : undefined;
+  return key ? OFFICIAL_VOICES[key] : undefined;
 }
 
 export function playCharacterVoice(
@@ -122,28 +139,26 @@ function logVoice(entry: Record<string, unknown>) {
   (w.__voiceLog ??= []).push({ ...entry, t: Math.round(performance.now()) });
 }
 
-// ========= أصوات الشخصيات المرتبطة بأحداث اللعبة (ليست من قائمة الدردشة) =========
 export type EventVoiceKey =
-  | "joker" // انزال الجيكر الأحمر
-  | "maker" // انزال الميكر (الجوكر الأسود)
-  | "ace" // انزال الواحدة حكم (الأكة)
-  | "king" // الشايب حكم (K الحكم) — مرة واحدة بالجولة
+  | "joker"
+  | "maker"
+  | "ace"
+  | "king"
   | "H"
   | "S"
   | "D"
-  | "C" // اختيار الحكم
+  | "C"
   | "bid6"
   | "bid7"
   | "bid8"
-  | "kout" // ضغط الحكم 6-9
-  | "taf"; // زر الطاف
+  | "kout"
+  | "taf";
 
 export function eventVoiceSource(key: EventVoiceKey, seat = 0): string | undefined {
-  if (key === "taf") return seat % 2 === 0 ? passTwo.url : passOne.url;
-  return assets[`../assets/voices/${key}.mp3.asset.json`]?.url;
+  if (key === "taf") return OFFICIAL_VOICES.pass;
+  return OFFICIAL_VOICES[key];
 }
 
-/** تشغيل صوت حدث كصوت شخصية على مقعد صاحب الحدث */
 export function playEventVoice(
   key: EventVoiceKey,
   opts: {
@@ -168,6 +183,6 @@ export function playEventVoice(
         opts.onEnd?.();
       },
     });
-    if (opts.seat != null) notify(opts.seat); // يظهر مؤشر "يتكلم" على الشخصية
+    if (opts.seat != null) notify(opts.seat);
   });
 }
