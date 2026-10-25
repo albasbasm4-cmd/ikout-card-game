@@ -92,7 +92,7 @@ export function playCharacterVoice(message: string, seat: number, token: string 
   const requested = performance.now();
   const startBuffer = (buf: AudioBuffer) => {
     const c = context();
-    if (!c || !isStillValid() || performance.now() - requested > MAX_VOICE_DELAY_MS) return;
+    if (!c || !isStillValid() || performance.now() - requested > MAX_VOICE_DELAY_MS) { if (import.meta.env.DEV) logVoice({ message, token, dropped: true, delay: Math.round(performance.now() - requested) }); return; }
     stopCharacterVoice();
     const node = c.createBufferSource();
     const gain = c.createGain();
@@ -103,9 +103,15 @@ export function playCharacterVoice(message: string, seat: number, token: string 
     node.onended = () => { if (current === entry) { current = null; notify(null); } };
     current = entry;
     node.start();
+    if (import.meta.env.DEV) logVoice({ message, token, delay: Math.round(performance.now() - requested), cards: document.querySelectorAll('.reference-trick-card').length, phase: document.querySelector('.reference-game') ? 'table' : 'other' });
     notify(seat);
   };
   const ready = buffers.get(src);
   if (ready) { startBuffer(ready); return; }
   void load(src).then(buf => { if (buf) startBuffer(buf); });
+}
+
+function logVoice(entry: Record<string, unknown>) {
+  const w = window as unknown as { __voiceLog?: unknown[] };
+  (w.__voiceLog ??= []).push({ ...entry, t: Math.round(performance.now()) });
 }
