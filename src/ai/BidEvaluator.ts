@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Card, Suit, Bid, Difficulty } from '../types/kout';
+import { Card, Suit, Bid, Difficulty } from "../types/kout";
 
-export const ALL_SUITS: Suit[] = ['S', 'H', 'D', 'C'];
+export const ALL_SUITS: Suit[] = ["S", "H", "D", "C"];
 
 export interface BidEvaluation {
   bid: Bid;
@@ -33,8 +33,8 @@ export function scoreHandForSuit(hand: Card[], trumpCandidate: Suit): number {
   let score = 0;
 
   // 1. Jokers
-  const hasRedJoker = hand.some((c) => c.joker === 'RED');
-  const hasBlackJoker = hand.some((c) => c.joker === 'BLACK');
+  const hasRedJoker = hand.some((c) => c.joker === "RED");
+  const hasBlackJoker = hand.some((c) => c.joker === "BLACK");
   if (hasRedJoker) score += 1.1;
   if (hasBlackJoker) score += 0.95;
 
@@ -101,11 +101,11 @@ export function evaluateBid(
   hand: Card[],
   currentHighBid: Bid | null,
   isDealerForced: boolean,
-  difficulty: Difficulty = 'MEDIUM',
-  context: BidContext = {}
+  difficulty: Difficulty = "MEDIUM",
+  context: BidContext = {},
 ): BidEvaluation {
   // Score every suit and pick the best one
-  let bestSuit: Suit = 'S';
+  let bestSuit: Suit = "S";
   let bestScore = -1;
 
   for (const suit of ALL_SUITS) {
@@ -119,11 +119,11 @@ export function evaluateBid(
   let expectedTricks = bestScore;
 
   // Difficulty adjustments
-  if (difficulty === 'EASY') {
+  if (difficulty === "EASY") {
     // Add random noise between -1.2 and +1.2
     const noise = (Math.random() - 0.5) * 2.4;
     expectedTricks += noise;
-  } else if (difficulty === 'EXPERT') {
+  } else if (difficulty === "EXPERT") {
     // Expert adjustment:
     // Partner position: in a 6-player team, partner is directly opposite (3 seats away)
     // Partner contributes expected ~0.8 tricks
@@ -140,7 +140,7 @@ export function evaluateBid(
   // Derive bid from expected tricks
   let rawBid: Bid = 0;
 
-  if (difficulty === 'EXPERT') {
+  if (difficulty === "EXPERT") {
     // Strict thresholds for Expert
     if (expectedTricks >= 8.8) rawBid = 9;
     else if (expectedTricks >= 7.8) rawBid = 8;
@@ -148,7 +148,7 @@ export function evaluateBid(
     else if (expectedTricks >= 5.8) rawBid = 6;
     else if (expectedTricks >= 4.9) rawBid = 5;
     else rawBid = 0;
-  } else if (difficulty === 'EASY') {
+  } else if (difficulty === "EASY") {
     // Looser thresholds for Easy
     const rounded = Math.round(expectedTricks);
     if (rounded >= 9) rawBid = 9;

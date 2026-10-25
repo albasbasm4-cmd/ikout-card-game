@@ -3,17 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { GameScreen } from './GameScreen';
-import { Lobby } from './Lobby';
-import { RoomConfig } from '../store/useRoom';
-import { ErrorBoundary } from './ErrorBoundary';
-import { hasSavedGame, loadSavedGameState, clearSavedGameState } from '../utils/persist';
-import { useKeepAwake } from '../store/useSettings';
-import { RotateCcw, Play, X } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { GameScreen } from "./GameScreen";
+import { Lobby } from "./Lobby";
+import { StartScreen, GameLaunchConfig } from "./StartScreen";
+import { RoomConfig, createDefaultPlayers } from "../store/useRoom";
+import { ErrorBoundary } from "./ErrorBoundary";
+import { hasSavedGame, loadSavedGameState, clearSavedGameState } from "../utils/persist";
+import { useKeepAwake } from "../store/useSettings";
+import { RotateCcw, Play, X, Home } from "lucide-react";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<'lobby' | 'game'>('game');
+  const [activeView, setActiveView] = useState<"start" | "lobby" | "game">("start");
   const [roomConfig, setRoomConfig] = useState<RoomConfig | null>(null);
   const [showResumePrompt, setShowResumePrompt] = useState<boolean>(false);
   const [resumedState, setResumedState] = useState<any>(null);
@@ -27,18 +28,31 @@ export default function App() {
     }
   }, []);
 
+  const handleLaunchStartScreen = (config: GameLaunchConfig) => {
+    clearSavedGameState();
+    const players = createDefaultPlayers(config.variant, config.difficulty);
+    setRoomConfig({
+      variant: config.variant,
+      targetScore: config.targetScore,
+      botDifficulty: config.difficulty,
+      players,
+    });
+    setResumedState(null);
+    setActiveView("game");
+  };
+
   const handleStartGame = (config: RoomConfig) => {
     clearSavedGameState();
     setRoomConfig(config);
     setResumedState(null);
-    setActiveView('game');
+    setActiveView("game");
   };
 
   const handleResumeGame = () => {
     const saved = loadSavedGameState();
     if (saved) {
       setResumedState(saved);
-      setActiveView('game');
+      setActiveView("game");
     }
     setShowResumePrompt(false);
   };
@@ -51,8 +65,8 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="relative w-full min-h-screen">
-        {/* Top Floating Menu Bar for easy switching when in Lobby */}
-        {activeView === 'lobby' && (
+        {/* Navigation Bar when in Lobby */}
+        {activeView === "lobby" && (
           <nav
             dir="rtl"
             aria-label="القائمة الرئيسية"
@@ -60,14 +74,21 @@ export default function App() {
           >
             <button
               type="button"
-              onClick={() => setActiveView('game')}
+              onClick={() => setActiveView("start")}
+              className="px-3 py-1 rounded-full transition-all cursor-pointer text-amber-200/70 hover:text-white"
+            >
+              الرئيسية
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView("game")}
               className="px-3 py-1 rounded-full transition-all cursor-pointer text-amber-200/70 hover:text-white"
             >
               طاولة اللعب
             </button>
             <button
               type="button"
-              onClick={() => setActiveView('lobby')}
+              onClick={() => setActiveView("lobby")}
               className="px-3 py-1 rounded-full transition-all cursor-pointer bg-amber-400 text-black shadow-md font-extrabold"
             >
               غرفة اللعب (Lobby)
@@ -75,8 +96,8 @@ export default function App() {
           </nav>
         )}
 
-        {/* Resume Saved Game Banner / Notification on Start */}
-        {showResumePrompt && (
+        {/* Resume Saved Game Banner / Notification on Start (only if in game view) */}
+        {showResumePrompt && activeView === "game" && (
           <div
             dir="rtl"
             className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 z-50 bg-neutral-900 border-2 border-amber-400/80 rounded-2xl p-3.5 shadow-2xl backdrop-blur-md text-amber-50 animate-in slide-in-from-bottom duration-300"
@@ -124,18 +145,24 @@ export default function App() {
           </div>
         )}
 
-        {activeView === 'lobby' ? (
-          <Lobby
-            onStartGame={handleStartGame}
-            initialConfig={roomConfig ?? undefined}
+        {activeView === "start" ? (
+          <StartScreen
+            onStartGame={handleLaunchStartScreen}
+            onResumeGame={handleResumeGame}
+            hasSavedGame={hasSavedGame()}
+            onOpenLobby={() => setActiveView("lobby")}
           />
+        ) : activeView === "lobby" ? (
+          <Lobby onStartGame={handleStartGame} initialConfig={roomConfig ?? undefined} />
         ) : (
           <GameScreen
-            key={`${roomConfig?.variant}-${roomConfig?.targetScore}-${roomConfig?.botDifficulty}-${resumedState ? 'resumed' : 'new'}`}
-            initialVariant={roomConfig?.variant}
-            initialDifficulty={roomConfig?.botDifficulty}
+            key={`${roomConfig?.variant}-${roomConfig?.targetScore}-${roomConfig?.botDifficulty}-${resumedState ? "resumed" : "new"}`}
+            initialVariant={roomConfig?.variant ?? "BO6"}
+            initialDifficulty={roomConfig?.botDifficulty ?? "MEDIUM"}
+            initialTargetScore={roomConfig?.targetScore ?? 51}
             initialState={resumedState ?? undefined}
-            onGoToLobby={() => setActiveView('lobby')}
+            onGoToLobby={() => setActiveView("lobby")}
+            onBackToStart={() => setActiveView("start")}
           />
         )}
       </div>

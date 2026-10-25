@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { KoutGameEngine } from '../engine/KoutGameEngine';
-import { saveGameState, loadSavedGameState } from './persist';
+import { describe, it, expect } from "vitest";
+import { KoutGameEngine } from "../engine/KoutGameEngine";
+import { saveGameState, loadSavedGameState } from "./persist";
 
-describe('save and resume', () => {
-  it('restores the exact saved state into a new engine', () => {
-    const e = new KoutGameEngine({ variant: 'BO4', seed: 7 });
+describe("save and resume", () => {
+  it("restores the exact saved state into a new engine", () => {
+    const e = new KoutGameEngine({ variant: "BO4", seed: 7 });
     e.startRound(99);
     e.placeBid(e.state.currentSeat, 5);
     saveGameState(e.state as any);

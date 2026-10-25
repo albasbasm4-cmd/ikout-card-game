@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { IHostTransport, Unsubscribe } from './ITransport';
-import { ClientPacket, HostPacket, PROTOCOL_VERSION } from './protocol';
-import { LoopbackHub } from './LoopbackTransport';
-import { HostSession } from './HostSession';
-import { PlayerSlot, SeatKind } from '../types/kout';
+import { IHostTransport, Unsubscribe } from "./ITransport";
+import { ClientPacket, HostPacket, PROTOCOL_VERSION } from "./protocol";
+import { LoopbackHub } from "./LoopbackTransport";
+import { HostSession } from "./HostSession";
+import { PlayerSlot, SeatKind } from "../types/kout";
 
 export interface LocalHostServerOptions {
   hostSession?: HostSession;
@@ -19,7 +19,7 @@ export interface LocalHostServerOptions {
  * Checks for Capacitor NodeJS plugin or react-native node bridge in window/global
  */
 function getCapacitorNodeBridge(): any {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     const win = window as any;
     if (win.Capacitor?.Plugins?.NodeJS) {
       return win.Capacitor.Plugins.NodeJS;
@@ -39,9 +39,7 @@ export class LocalHostServer implements IHostTransport {
   private loopbackHub: LoopbackHub | null = null;
   private loopbackHostTransport: IHostTransport | null = null;
 
-  private clientMessageHandlers = new Set<
-    (playerToken: string, packet: ClientPacket) => void
-  >();
+  private clientMessageHandlers = new Set<(playerToken: string, packet: ClientPacket) => void>();
   private clientConnectedHandlers = new Set<(playerToken: string) => void>();
   private clientDisconnectedHandlers = new Set<(playerToken: string) => void>();
 
@@ -138,7 +136,7 @@ export class LocalHostServer implements IHostTransport {
     if (this.hostSessionRef) {
       const state = this.hostSessionRef.getEngine().state;
       if (state.players && state.players[seatIndex]) {
-        state.players[seatIndex].kind = 'HUMAN_REMOTE';
+        state.players[seatIndex].kind = "HUMAN_REMOTE";
         state.players[seatIndex].connected = true;
 
         this.hostSessionRef.broadcastState();
@@ -156,7 +154,7 @@ export class LocalHostServer implements IHostTransport {
 
     if (state.players && state.players[seatIndex]) {
       // Convert seat to AI_BOT to keep gameplay proceeding
-      state.players[seatIndex].kind = 'AI_BOT';
+      state.players[seatIndex].kind = "AI_BOT";
       state.players[seatIndex].connected = true;
 
       // Broadcast updated seat status
@@ -168,7 +166,7 @@ export class LocalHostServer implements IHostTransport {
   private setupBridgeListeners(): void {
     const handleBridgeMessage = (raw: any) => {
       let msg = raw;
-      if (typeof raw === 'string') {
+      if (typeof raw === "string") {
         try {
           msg = JSON.parse(raw);
         } catch {
@@ -179,17 +177,17 @@ export class LocalHostServer implements IHostTransport {
       if (!msg || !msg.type) return;
 
       switch (msg.type) {
-        case 'CLIENT_CONNECTED':
+        case "CLIENT_CONNECTED":
           for (const handler of this.clientConnectedHandlers) {
             handler(msg.clientId);
           }
           break;
 
-        case 'CLIENT_DISCONNECTED':
+        case "CLIENT_DISCONNECTED":
           this.handleClientDisconnected(msg.clientId);
           break;
 
-        case 'CLIENT_MESSAGE':
+        case "CLIENT_MESSAGE":
           for (const handler of this.clientMessageHandlers) {
             handler(msg.clientId, msg.data);
           }
@@ -201,9 +199,9 @@ export class LocalHostServer implements IHostTransport {
     };
 
     if (this.bridge.addListener) {
-      this.bridge.addListener('message', handleBridgeMessage);
+      this.bridge.addListener("message", handleBridgeMessage);
     } else if (this.bridge.on) {
-      this.bridge.on('message', handleBridgeMessage);
+      this.bridge.on("message", handleBridgeMessage);
     }
   }
 
@@ -236,7 +234,7 @@ export class LocalHostServer implements IHostTransport {
   public sendToClient(playerToken: string, packet: HostPacket): void {
     if (this.bridge) {
       const payload = {
-        type: 'SEND_TO_CLIENT',
+        type: "SEND_TO_CLIENT",
         clientId: playerToken,
         data: packet,
       };
@@ -253,7 +251,7 @@ export class LocalHostServer implements IHostTransport {
   public broadcast(packet: HostPacket): void {
     if (this.bridge) {
       const payload = {
-        type: 'BROADCAST',
+        type: "BROADCAST",
         data: packet,
       };
       if (this.bridge.send) {
@@ -267,7 +265,7 @@ export class LocalHostServer implements IHostTransport {
   }
 
   public onClientMessage(
-    handler: (playerToken: string, packet: ClientPacket) => void
+    handler: (playerToken: string, packet: ClientPacket) => void,
   ): Unsubscribe {
     this.clientMessageHandlers.add(handler);
     return () => {

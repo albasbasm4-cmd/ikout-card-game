@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RotateCcw, Home } from 'lucide-react';
-import { clearSavedGameState } from '../utils/persist';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import { AlertTriangle, RotateCcw, Home } from "lucide-react";
+import { clearSavedGameState } from "../utils/persist";
 
 export interface ErrorBoundaryProps {
   children: ReactNode;
@@ -17,10 +17,7 @@ export interface ErrorBoundaryState {
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {
@@ -37,7 +34,7 @@ export class ErrorBoundary extends Component<
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('ErrorBoundary caught an unhandled error:', error, errorInfo);
+    console.error("ErrorBoundary caught an unhandled error:", error, errorInfo);
   }
 
   public handleRetry = (): void => {
@@ -65,9 +62,7 @@ export class ErrorBoundary extends Component<
               <AlertTriangle className="w-8 h-8" />
             </div>
 
-            <h2 className="text-lg font-black text-amber-300 mb-1">
-              حدث خطأ غير متوقع
-            </h2>
+            <h2 className="text-lg font-black text-amber-300 mb-1">حدث خطأ غير متوقع</h2>
             <p className="text-xs text-amber-200/70 leading-relaxed mb-4">
               نعتذر عن هذا الخطأ. يمكنك إعادة المحاولة لاستئناف اللعب دون فقدان بياناتك.
             </p>

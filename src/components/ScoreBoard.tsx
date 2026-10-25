@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { Bid } from '../types/kout';
-import { Trophy, Target, Award, FileText } from 'lucide-react';
+import React from "react";
+import { Bid } from "../types/kout";
+import { Trophy, Target, Award, FileText } from "lucide-react";
 
 export interface ScoreBoardProps {
   scores: [number, number];
@@ -24,7 +24,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   currentBid,
   bidderSeat,
   tricksWon = [0, 0],
-  className = '',
+  className = "",
 }) => {
   const team0Score = scores[0];
   const team1Score = scores[1];
@@ -140,7 +140,8 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
 
       {/* Diwaniya Footer Tip */}
       <div className="text-center text-[10px] text-amber-950 font-bold">
-        أول فريق يصل إلى <span className="font-black text-amber-900">{targetScore}</span> نقطة يُسجل الفوز
+        أول فريق يصل إلى <span className="font-black text-amber-900">{targetScore}</span> نقطة يُسجل
+        الفوز
       </div>
     </div>
   );

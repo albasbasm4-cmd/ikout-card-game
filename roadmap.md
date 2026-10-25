@@ -1,4 +1,5 @@
 # iKout reference matching
+
 - [ ] Improve reversible card dragging and special-card motion without changing rules.
 - [ ] Add static character voice bank, spoken taunts and win/loss reactions with mute and cleanup.
 - [ ] Refine phone portrait/landscape layouts and verify real gameplay, audio loading and tests.

@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GameState, Bid } from '../types/kout';
-import { RULES, SCORING } from '../rules/config';
+import { GameState, Bid } from "../types/kout";
+import { RULES, SCORING } from "../rules/config";
 
 export interface RoundScoreResult {
   bidderTeam: 0 | 1;
@@ -116,7 +116,7 @@ export function scoreRound(state: GameState): GameState {
     state.scores[1] + (result.awardedTeam === 1 ? result.pointsAdded : 0),
   ];
 
-  const nextPhase = result.gameWinner !== null ? 'GAME_END' : 'ROUND_END';
+  const nextPhase = result.gameWinner !== null ? "GAME_END" : "ROUND_END";
 
   // Rotate dealer counter-clockwise for next round
   const nextDealer = (state.dealer + 1) % numSeats;

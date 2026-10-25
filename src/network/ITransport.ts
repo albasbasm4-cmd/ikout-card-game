@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ClientPacket, HostPacket } from './protocol';
+import { ClientPacket, HostPacket } from "./protocol";
 
 export type Unsubscribe = () => void;
 
@@ -23,9 +23,7 @@ export interface ITransport {
 export interface IHostTransport {
   sendToClient(playerToken: string, packet: HostPacket): void;
   broadcast(packet: HostPacket): void;
-  onClientMessage(
-    handler: (playerToken: string, packet: ClientPacket) => void
-  ): Unsubscribe;
+  onClientMessage(handler: (playerToken: string, packet: ClientPacket) => void): Unsubscribe;
   onClientConnected?(handler: (playerToken: string) => void): Unsubscribe;
   onClientDisconnected?(handler: (playerToken: string) => void): Unsubscribe;
 }

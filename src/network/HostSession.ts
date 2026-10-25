@@ -3,21 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { KoutGameEngine } from '../engine/KoutGameEngine';
-import { IHostTransport } from './ITransport';
+import { KoutGameEngine } from "../engine/KoutGameEngine";
+import { IHostTransport } from "./ITransport";
 import {
   PROTOCOL_VERSION,
   ClientPacket,
   HostPacket,
   filterStateForSeat,
   ClientGameState,
-} from './protocol';
-import { GameState, PlayerSlot, SeatKind } from '../types/kout';
-import { RULES } from '../rules/config';
+} from "./protocol";
+import { GameState, PlayerSlot, SeatKind } from "../types/kout";
+import { RULES } from "../rules/config";
 
 export interface HostSessionOptions {
   engine?: KoutGameEngine;
-  variant?: 'BO6' | 'BO4';
+  variant?: "BO6" | "BO4";
   targetScore?: number;
   initialDealer?: number;
   seed?: number;
@@ -42,7 +42,7 @@ export class HostSession {
       this.engine = options.engine;
     } else {
       this.engine = new KoutGameEngine({
-        variant: options.variant ?? 'BO6',
+        variant: options.variant ?? "BO6",
         targetScore: options.targetScore ?? 51,
         initialDealer: options.initialDealer ?? 0,
         seed: options.seed ?? 12345,
@@ -69,7 +69,7 @@ export class HostSession {
     this.unsubscribeMessages = this.transport.onClientMessage(
       (playerToken: string, packet: ClientPacket) => {
         this.handleClientPacket(playerToken, packet);
-      }
+      },
     );
   }
 
@@ -82,25 +82,25 @@ export class HostSession {
 
   private handleClientPacket(playerToken: string, packet: ClientPacket): void {
     switch (packet.type) {
-      case 'JOIN': {
+      case "JOIN": {
         this.handleJoin(playerToken, packet);
         break;
       }
-      case 'BID_REQUEST': {
+      case "BID_REQUEST": {
         this.handleBidRequest(playerToken, packet);
         break;
       }
-      case 'TRUMP_REQUEST': {
+      case "TRUMP_REQUEST": {
         this.handleTrumpRequest(playerToken, packet);
         break;
       }
-      case 'PLAY_CARD_REQUEST': {
+      case "PLAY_CARD_REQUEST": {
         this.handlePlayCardRequest(playerToken, packet);
         break;
       }
-      case 'PING': {
+      case "PING": {
         this.sendPacket(playerToken, {
-          type: 'PONG',
+          type: "PONG",
           payload: {
             timestamp: packet.payload.timestamp,
             serverTime: Date.now(),
@@ -111,25 +111,22 @@ export class HostSession {
       default: {
         this.sendError(
           playerToken,
-          'UNKNOWN_PACKET',
+          "UNKNOWN_PACKET",
           `Unknown packet type: ${(packet as any).type}`,
-          (packet as any).seq
+          (packet as any).seq,
         );
       }
     }
   }
 
-  private handleJoin(
-    playerToken: string,
-    packet: Extract<ClientPacket, { type: 'JOIN' }>
-  ): void {
+  private handleJoin(playerToken: string, packet: Extract<ClientPacket, { type: "JOIN" }>): void {
     const numSeats = RULES[this.engine.state.variant].seats;
     const preferred = packet.payload.preferredSeat;
 
     if (this.roomCode) {
       const given = (packet.payload as { roomCode?: string }).roomCode?.trim().toUpperCase();
       if (given !== this.roomCode) {
-        this.sendError(playerToken, 'INVALID_ROOM', 'Room code does not match', packet.seq);
+        this.sendError(playerToken, "INVALID_ROOM", "Room code does not match", packet.seq);
         return;
       }
     }
@@ -157,12 +154,7 @@ export class HostSession {
     }
 
     if (assignedSeat === undefined) {
-      this.sendError(
-        playerToken,
-        'ROOM_FULL',
-        'No available seats in this room',
-        packet.seq
-      );
+      this.sendError(playerToken, "ROOM_FULL", "No available seats in this room", packet.seq);
       return;
     }
 
@@ -174,7 +166,7 @@ export class HostSession {
     const currentPlayers = [...(this.engine.state.players || [])];
     const updatedSlot: PlayerSlot = {
       seatIndex: assignedSeat,
-      kind: 'HUMAN_REMOTE' as SeatKind,
+      kind: "HUMAN_REMOTE" as SeatKind,
       name: packet.payload.playerName || `لاعب ${assignedSeat + 1}`,
       team: (assignedSeat % 2) as 0 | 1,
       connected: true,
@@ -184,7 +176,7 @@ export class HostSession {
 
     // Inform client of assigned seat
     this.sendPacket(playerToken, {
-      type: 'SEAT_UPDATE',
+      type: "SEAT_UPDATE",
       payload: {
         seatIndex: assignedSeat,
         player: updatedSlot,
@@ -198,20 +190,20 @@ export class HostSession {
 
   private handleBidRequest(
     playerToken: string,
-    packet: Extract<ClientPacket, { type: 'BID_REQUEST' }>
+    packet: Extract<ClientPacket, { type: "BID_REQUEST" }>,
   ): void {
     const senderSeat = this.tokenToSeat.get(playerToken);
     if (senderSeat === undefined) {
-      this.sendError(playerToken, 'NOT_JOINED', 'Must join before taking actions', packet.seq);
+      this.sendError(playerToken, "NOT_JOINED", "Must join before taking actions", packet.seq);
       return;
     }
 
-    if (this.engine.state.phase !== 'BID') {
+    if (this.engine.state.phase !== "BID") {
       this.sendError(
         playerToken,
-        'INVALID_PHASE',
+        "INVALID_PHASE",
         `Current phase is ${this.engine.state.phase}, expected BID`,
-        packet.seq
+        packet.seq,
       );
       return;
     }
@@ -220,9 +212,9 @@ export class HostSession {
     if (senderSeat !== this.engine.state.currentSeat) {
       this.sendError(
         playerToken,
-        'NOT_YOUR_TURN',
+        "NOT_YOUR_TURN",
         `Not seat ${senderSeat}'s turn to bid (current seat is ${this.engine.state.currentSeat})`,
-        packet.seq
+        packet.seq,
       );
       return;
     }
@@ -232,26 +224,26 @@ export class HostSession {
       this.broadcastState();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.sendError(playerToken, 'BID_REJECTED', msg, packet.seq);
+      this.sendError(playerToken, "BID_REJECTED", msg, packet.seq);
     }
   }
 
   private handleTrumpRequest(
     playerToken: string,
-    packet: Extract<ClientPacket, { type: 'TRUMP_REQUEST' }>
+    packet: Extract<ClientPacket, { type: "TRUMP_REQUEST" }>,
   ): void {
     const senderSeat = this.tokenToSeat.get(playerToken);
     if (senderSeat === undefined) {
-      this.sendError(playerToken, 'NOT_JOINED', 'Must join before taking actions', packet.seq);
+      this.sendError(playerToken, "NOT_JOINED", "Must join before taking actions", packet.seq);
       return;
     }
 
-    if (this.engine.state.phase !== 'TRUMP') {
+    if (this.engine.state.phase !== "TRUMP") {
       this.sendError(
         playerToken,
-        'INVALID_PHASE',
+        "INVALID_PHASE",
         `Current phase is ${this.engine.state.phase}, expected TRUMP`,
-        packet.seq
+        packet.seq,
       );
       return;
     }
@@ -260,9 +252,9 @@ export class HostSession {
     if (senderSeat !== this.engine.state.bidderSeat) {
       this.sendError(
         playerToken,
-        'NOT_BIDDER',
+        "NOT_BIDDER",
         `Only the winning bidder (seat ${this.engine.state.bidderSeat}) can declare trump`,
-        packet.seq
+        packet.seq,
       );
       return;
     }
@@ -272,26 +264,26 @@ export class HostSession {
       this.broadcastState();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.sendError(playerToken, 'TRUMP_REJECTED', msg, packet.seq);
+      this.sendError(playerToken, "TRUMP_REJECTED", msg, packet.seq);
     }
   }
 
   private handlePlayCardRequest(
     playerToken: string,
-    packet: Extract<ClientPacket, { type: 'PLAY_CARD_REQUEST' }>
+    packet: Extract<ClientPacket, { type: "PLAY_CARD_REQUEST" }>,
   ): void {
     const senderSeat = this.tokenToSeat.get(playerToken);
     if (senderSeat === undefined) {
-      this.sendError(playerToken, 'NOT_JOINED', 'Must join before taking actions', packet.seq);
+      this.sendError(playerToken, "NOT_JOINED", "Must join before taking actions", packet.seq);
       return;
     }
 
-    if (this.engine.state.phase !== 'PLAY') {
+    if (this.engine.state.phase !== "PLAY") {
       this.sendError(
         playerToken,
-        'INVALID_PHASE',
+        "INVALID_PHASE",
         `Current phase is ${this.engine.state.phase}, expected PLAY`,
-        packet.seq
+        packet.seq,
       );
       return;
     }
@@ -300,9 +292,9 @@ export class HostSession {
     if (senderSeat !== this.engine.state.currentSeat) {
       this.sendError(
         playerToken,
-        'NOT_YOUR_TURN',
+        "NOT_YOUR_TURN",
         `Not seat ${senderSeat}'s turn to play (current seat is ${this.engine.state.currentSeat})`,
-        packet.seq
+        packet.seq,
       );
       return;
     }
@@ -312,7 +304,7 @@ export class HostSession {
       this.broadcastState();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.sendError(playerToken, 'PLAY_REJECTED', msg, packet.seq);
+      this.sendError(playerToken, "PLAY_REJECTED", msg, packet.seq);
     }
   }
 
@@ -329,13 +321,10 @@ export class HostSession {
     const token = playerToken ?? this.seatToToken.get(seatIndex);
     if (!token) return;
 
-    const filtered: ClientGameState = filterStateForSeat(
-      this.engine.state,
-      seatIndex
-    );
+    const filtered: ClientGameState = filterStateForSeat(this.engine.state, seatIndex);
 
     this.sendPacket(token, {
-      type: 'CLIENT_STATE_UPDATE',
+      type: "CLIENT_STATE_UPDATE",
       payload: {
         state: filtered,
         seatIndex,
@@ -343,9 +332,9 @@ export class HostSession {
     });
   }
 
-  private sendPacket<T extends HostPacket['type']>(
+  private sendPacket<T extends HostPacket["type"]>(
     playerToken: string,
-    packetData: { type: T; payload: Extract<HostPacket, { type: T }>['payload'] }
+    packetData: { type: T; payload: Extract<HostPacket, { type: T }>["payload"] },
   ): void {
     const packet: HostPacket = {
       v: PROTOCOL_VERSION,
@@ -362,10 +351,10 @@ export class HostSession {
     playerToken: string,
     code: string,
     message: string,
-    originalSeq?: number
+    originalSeq?: number,
   ): void {
     this.sendPacket(playerToken, {
-      type: 'ERROR',
+      type: "ERROR",
       payload: {
         code,
         message,

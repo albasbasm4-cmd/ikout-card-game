@@ -1,30 +1,30 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * 
+ *
  * Embedded Node.js WebSocket relay server for iKout
  * Listens on 0.0.0.0:8080 and relays all traffic to/from the app webview.
  */
 
-const http = require('http');
+const http = require("http");
 let WebSocketServer;
 try {
-  WebSocketServer = require('ws').WebSocketServer;
+  WebSocketServer = require("ws").WebSocketServer;
 } catch {
   try {
-    WebSocketServer = require('ws').Server;
+    WebSocketServer = require("ws").Server;
   } catch (err) {
-    console.error('[NodeJS Server] ws package not found:', err);
+    console.error("[NodeJS Server] ws package not found:", err);
   }
 }
 
 // Locate Capacitor / nodejs-mobile bridge
 let bridge = null;
 try {
-  bridge = require('nodejs-mobile-react-native');
+  bridge = require("nodejs-mobile-react-native");
 } catch {
   try {
-    bridge = require('rn-bridge');
+    bridge = require("rn-bridge");
   } catch {
     bridge = null;
   }
@@ -42,14 +42,14 @@ function sendToApp(message) {
 }
 
 if (!WebSocketServer) {
-  console.warn('[NodeJS Server] WebSocketServer unavailable. Relay inactive.');
-  sendToApp({ type: 'SERVER_ERROR', message: 'WebSocket module not available' });
+  console.warn("[NodeJS Server] WebSocketServer unavailable. Relay inactive.");
+  sendToApp({ type: "SERVER_ERROR", message: "WebSocket module not available" });
   return;
 }
 
 const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify({ status: 'iKout Local Server Running', port: 8080 }));
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ status: "iKout Local Server Running", port: 8080 }));
 });
 
 const wss = new WebSocketServer({ server });
@@ -58,49 +58,49 @@ const wss = new WebSocketServer({ server });
 const clients = new Map();
 let clientIdCounter = 0;
 
-wss.on('connection', (ws, req) => {
+wss.on("connection", (ws, req) => {
   const clientId = `client_${++clientIdCounter}_${Date.now()}`;
   ws.clientId = clientId;
   ws.isAlive = true;
   clients.set(clientId, ws);
 
-  ws.on('pong', () => {
+  ws.on("pong", () => {
     ws.isAlive = true;
   });
 
   // Notify app of new client connection
   sendToApp({
-    type: 'CLIENT_CONNECTED',
+    type: "CLIENT_CONNECTED",
     clientId,
     remoteAddress: req.socket.remoteAddress,
   });
 
-  ws.on('message', (data) => {
+  ws.on("message", (data) => {
     try {
       const parsed = JSON.parse(data.toString());
       sendToApp({
-        type: 'CLIENT_MESSAGE',
+        type: "CLIENT_MESSAGE",
         clientId,
         data: parsed,
       });
     } catch {
       sendToApp({
-        type: 'CLIENT_MESSAGE',
+        type: "CLIENT_MESSAGE",
         clientId,
         data: data.toString(),
       });
     }
   });
 
-  ws.on('close', () => {
+  ws.on("close", () => {
     clients.delete(clientId);
     sendToApp({
-      type: 'CLIENT_DISCONNECTED',
+      type: "CLIENT_DISCONNECTED",
       clientId,
     });
   });
 
-  ws.on('error', (err) => {
+  ws.on("error", (err) => {
     console.error(`[NodeJS WS] Error on ${clientId}:`, err.message);
   });
 });
@@ -111,7 +111,7 @@ const heartbeatInterval = setInterval(() => {
     if (ws.isAlive === false) {
       clients.delete(ws.clientId);
       sendToApp({
-        type: 'CLIENT_DISCONNECTED',
+        type: "CLIENT_DISCONNECTED",
         clientId: ws.clientId,
       });
       return ws.terminate();
@@ -121,14 +121,14 @@ const heartbeatInterval = setInterval(() => {
   });
 }, 5000);
 
-wss.on('close', () => {
+wss.on("close", () => {
   clearInterval(heartbeatInterval);
 });
 
 // Handle incoming messages from the App (App -> NodeJS -> Clients)
 function handleAppMessage(rawMessage) {
   let message = rawMessage;
-  if (typeof rawMessage === 'string') {
+  if (typeof rawMessage === "string") {
     try {
       message = JSON.parse(rawMessage);
     } catch {
@@ -139,23 +139,17 @@ function handleAppMessage(rawMessage) {
   if (!message || !message.type) return;
 
   switch (message.type) {
-    case 'SEND_TO_CLIENT': {
+    case "SEND_TO_CLIENT": {
       const client = clients.get(message.clientId);
       if (client && client.readyState === 1 /* OPEN */) {
-        client.send(
-          typeof message.data === 'string'
-            ? message.data
-            : JSON.stringify(message.data)
-        );
+        client.send(typeof message.data === "string" ? message.data : JSON.stringify(message.data));
       }
       break;
     }
 
-    case 'BROADCAST': {
+    case "BROADCAST": {
       const payload =
-        typeof message.data === 'string'
-          ? message.data
-          : JSON.stringify(message.data);
+        typeof message.data === "string" ? message.data : JSON.stringify(message.data);
       wss.clients.forEach((client) => {
         if (client.readyState === 1 /* OPEN */) {
           client.send(payload);
@@ -164,7 +158,7 @@ function handleAppMessage(rawMessage) {
       break;
     }
 
-    case 'DISCONNECT_CLIENT': {
+    case "DISCONNECT_CLIENT": {
       const client = clients.get(message.clientId);
       if (client) {
         client.close();
@@ -180,15 +174,15 @@ function handleAppMessage(rawMessage) {
 
 // Register app channel listener
 if (bridge && bridge.channel) {
-  bridge.channel.on('message', handleAppMessage);
+  bridge.channel.on("message", handleAppMessage);
 } else if (process.on) {
-  process.on('message', handleAppMessage);
+  process.on("message", handleAppMessage);
 }
 
 const PORT = 8080;
-const HOST = '0.0.0.0';
+const HOST = "0.0.0.0";
 
 server.listen(PORT, HOST, () => {
   console.log(`[iKout Node Server] WebSocket relay listening on ${HOST}:${PORT}`);
-  sendToApp({ type: 'SERVER_READY', port: PORT, host: HOST });
+  sendToApp({ type: "SERVER_READY", port: PORT, host: HOST });
 });

@@ -1,6 +1,30 @@
 [
-{"capability":"code","source":"React/Vite SPA","outcome":"migrate","status":"verified-pending","next_action":"build check"},
-{"capability":"schema/records/auth","source":"none (localStorage only)","outcome":"not applicable","status":"verified","next_action":"none"},
-{"capability":"AI (Gemini)","source":".env.example only, no call sites","outcome":"not applicable","status":"verified","next_action":"none"},
-{"capability":"nodejs-mobile LAN relay","source":"nodejs-project/","outcome":"kept as source; only runs inside a native mobile wrapper","status":"accepted","next_action":"none on web"}
+  {
+    "capability": "code",
+    "source": "React/Vite SPA",
+    "outcome": "migrate",
+    "status": "verified-pending",
+    "next_action": "build check"
+  },
+  {
+    "capability": "schema/records/auth",
+    "source": "none (localStorage only)",
+    "outcome": "not applicable",
+    "status": "verified",
+    "next_action": "none"
+  },
+  {
+    "capability": "AI (Gemini)",
+    "source": ".env.example only, no call sites",
+    "outcome": "not applicable",
+    "status": "verified",
+    "next_action": "none"
+  },
+  {
+    "capability": "nodejs-mobile LAN relay",
+    "source": "nodejs-project/",
+    "outcome": "kept as source; only runs inside a native mobile wrapper",
+    "status": "accepted",
+    "next_action": "none on web"
+  }
 ]

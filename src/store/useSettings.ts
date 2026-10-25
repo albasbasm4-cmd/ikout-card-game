@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
-export type BotSpeed = 'SLOW' | 'NORMAL' | 'FAST';
-export type CardStyle = 'CLASSIC' | 'MODERN' | 'TRADITIONAL';
-export type Language = 'AR' | 'EN';
+export type BotSpeed = "SLOW" | "NORMAL" | "FAST";
+export type CardStyle = "CLASSIC" | "MODERN" | "TRADITIONAL";
+export type Language = "AR" | "EN";
 
 export interface AppSettings {
   soundEnabled: boolean;
@@ -20,32 +20,32 @@ export interface AppSettings {
 export const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
   vibrationEnabled: true,
-  botSpeed: 'NORMAL',
-  cardStyle: 'CLASSIC',
-  language: 'AR',
+  botSpeed: "NORMAL",
+  cardStyle: "CLASSIC",
+  language: "AR",
 };
 
-const SETTINGS_STORAGE_KEY = 'ikout_settings_v1';
+const SETTINGS_STORAGE_KEY = "ikout_settings_v1";
 
 export function loadSettings(): AppSettings {
-  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+  if (typeof window === "undefined") return DEFAULT_SETTINGS;
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (raw) {
       return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
     }
   } catch (err) {
-    console.warn('Failed to load settings from localStorage:', err);
+    console.warn("Failed to load settings from localStorage:", err);
   }
   return DEFAULT_SETTINGS;
 }
 
 export function saveSettings(settings: AppSettings): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
   } catch (err) {
-    console.warn('Failed to save settings to localStorage:', err);
+    console.warn("Failed to save settings to localStorage:", err);
   }
 }
 
@@ -72,21 +72,21 @@ export function useSettings() {
     (botSpeed: BotSpeed) => {
       updateSettings({ botSpeed });
     },
-    [updateSettings]
+    [updateSettings],
   );
 
   const setCardStyle = useCallback(
     (cardStyle: CardStyle) => {
       updateSettings({ cardStyle });
     },
-    [updateSettings]
+    [updateSettings],
   );
 
   const setLanguage = useCallback(
     (language: Language) => {
       updateSettings({ language });
     },
-    [updateSettings]
+    [updateSettings],
   );
 
   return {
@@ -105,25 +105,25 @@ export function useSettings() {
  */
 export function useHaptics(enabled: boolean = true) {
   const trigger = useCallback(
-    (type: 'light' | 'medium' | 'heavy' | 'success' | 'error' = 'light') => {
-      if (!enabled || typeof navigator === 'undefined' || !navigator.vibrate) {
+    (type: "light" | "medium" | "heavy" | "success" | "error" = "light") => {
+      if (!enabled || typeof navigator === "undefined" || !navigator.vibrate) {
         return;
       }
       try {
         switch (type) {
-          case 'light':
+          case "light":
             navigator.vibrate(15);
             break;
-          case 'medium':
+          case "medium":
             navigator.vibrate(30);
             break;
-          case 'heavy':
+          case "heavy":
             navigator.vibrate(50);
             break;
-          case 'success':
+          case "success":
             navigator.vibrate([20, 40, 20]);
             break;
-          case 'error':
+          case "error":
             navigator.vibrate([40, 60, 40]);
             break;
         }
@@ -131,7 +131,7 @@ export function useHaptics(enabled: boolean = true) {
         // Safe no-op on platforms restricting vibration
       }
     },
-    [enabled]
+    [enabled],
   );
 
   return { trigger };
@@ -142,14 +142,14 @@ export function useHaptics(enabled: boolean = true) {
  */
 export function useKeepAwake(active: boolean = true) {
   useEffect(() => {
-    if (!active || typeof navigator === 'undefined') return;
+    if (!active || typeof navigator === "undefined") return;
 
     let wakeLock: any = null;
 
     const requestWakeLock = async () => {
       try {
-        if ('wakeLock' in navigator && (navigator as any).wakeLock) {
-          wakeLock = await (navigator as any).wakeLock.request('screen');
+        if ("wakeLock" in navigator && (navigator as any).wakeLock) {
+          wakeLock = await (navigator as any).wakeLock.request("screen");
         }
       } catch {
         // Safe no-op
@@ -159,15 +159,15 @@ export function useKeepAwake(active: boolean = true) {
     requestWakeLock();
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && !wakeLock) {
+      if (document.visibilityState === "visible" && !wakeLock) {
         requestWakeLock();
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (wakeLock && wakeLock.release) {
         wakeLock.release().catch(() => {});
       }

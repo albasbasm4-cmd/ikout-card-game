@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { evaluateBid } from './BidEvaluator';
-import { chooseCard } from './ISMCTS';
-import { RULES } from '../rules/config';
-import { GameState, Difficulty, Bid, Suit, Card } from '../types/kout';
+import { evaluateBid } from "./BidEvaluator";
+import { chooseCard } from "./ISMCTS";
+import { RULES } from "../rules/config";
+import { GameState, Difficulty, Bid, Suit, Card } from "../types/kout";
 
 export interface WorkerRequest {
   state: GameState;
@@ -16,9 +16,9 @@ export interface WorkerRequest {
 }
 
 export type WorkerDecision =
-  | { type: 'BID'; bid: Bid; bestSuit: Suit }
-  | { type: 'TRUMP'; suit: Suit }
-  | { type: 'PLAY'; card: Card };
+  | { type: "BID"; bid: Bid; bestSuit: Suit }
+  | { type: "TRUMP"; suit: Suit }
+  | { type: "PLAY"; card: Card };
 
 export interface WorkerResponse {
   requestId: string | number;
@@ -33,42 +33,35 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   try {
     let decision: WorkerDecision;
 
-    if (state.phase === 'BID') {
+    if (state.phase === "BID") {
       const numSeats = RULES[state.variant].seats;
       const isDealer = seat === state.dealer;
       const isDealerForced =
-        isDealer &&
-        state.bids.length === numSeats - 1 &&
-        state.bids.every((b) => b.bid === 0);
+        isDealer && state.bids.length === numSeats - 1 && state.bids.every((b) => b.bid === 0);
 
       const evalResult = evaluateBid(
         state.hands[seat] || [],
         state.highBid,
         isDealerForced,
-        difficulty
+        difficulty,
       );
 
       decision = {
-        type: 'BID',
+        type: "BID",
         bid: evalResult.bid,
         bestSuit: evalResult.bestSuit,
       };
-    } else if (state.phase === 'TRUMP') {
-      const evalResult = evaluateBid(
-        state.hands[seat] || [],
-        null,
-        false,
-        difficulty
-      );
+    } else if (state.phase === "TRUMP") {
+      const evalResult = evaluateBid(state.hands[seat] || [], null, false, difficulty);
 
       decision = {
-        type: 'TRUMP',
+        type: "TRUMP",
         suit: evalResult.bestSuit,
       };
-    } else if (state.phase === 'PLAY') {
+    } else if (state.phase === "PLAY") {
       const card = chooseCard(state, seat, { difficulty });
       decision = {
-        type: 'PLAY',
+        type: "PLAY",
         card,
       };
     } else {

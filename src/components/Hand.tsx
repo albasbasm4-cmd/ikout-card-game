@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
-import { Card as CardType, Suit } from '../types/kout';
-import { Card } from './Card';
-import { playTapSound } from '../utils/audio';
-import { sortHandCards } from '../rules/cards';
-import { commitsCardDrag } from '../utils/gamePresentation';
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { Card as CardType, Suit } from "../types/kout";
+import { Card } from "./Card";
+import { playTapSound } from "../utils/audio";
+import { sortHandCards } from "../rules/cards";
+import { commitsCardDrag } from "../utils/gamePresentation";
 
 export interface HandProps {
   cards: CardType[];
@@ -20,7 +20,7 @@ export interface HandProps {
   onSelectCard?: (card: CardType) => void;
   isMyTurn?: boolean;
   className?: string;
-  cardSize?: 'sm' | 'md' | 'lg';
+  cardSize?: "sm" | "md" | "lg";
   autoSort?: boolean;
 }
 
@@ -32,8 +32,8 @@ export const Hand: React.FC<HandProps> = ({
   onPlayCard,
   onSelectCard,
   isMyTurn = true,
-  className = '',
-  cardSize = 'md',
+  className = "",
+  cardSize = "md",
   autoSort = true,
 }) => {
   const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
@@ -50,7 +50,7 @@ export const Hand: React.FC<HandProps> = ({
     if (!element) return;
     const measure = () => {
       setFanWidth(element.clientWidth - 24);
-      const card = element.querySelector<HTMLElement>('.playing-card');
+      const card = element.querySelector<HTMLElement>(".playing-card");
       if (card) setMeasuredCardWidth(card.offsetWidth);
     };
     const observer = new ResizeObserver(measure);
@@ -65,8 +65,7 @@ export const Hand: React.FC<HandProps> = ({
     return sortHandCards(cards, trump);
   }, [cards, trump, autoSort]);
 
-  const selectedId =
-    controlledSelectedId !== undefined ? controlledSelectedId : internalSelectedId;
+  const selectedId = controlledSelectedId !== undefined ? controlledSelectedId : internalSelectedId;
 
   // Pre-calculate set of legal card IDs
   const legalSet = React.useMemo(() => {
@@ -78,7 +77,9 @@ export const Hand: React.FC<HandProps> = ({
   const count = displayCards.length;
   if (count === 0) {
     return (
-      <div className={`flex items-center justify-center p-3 text-xs text-muted-foreground ${className}`}>
+      <div
+        className={`flex items-center justify-center p-3 text-xs text-muted-foreground ${className}`}
+      >
         لا توجد أوراق في اليد
       </div>
     );
@@ -87,20 +88,21 @@ export const Hand: React.FC<HandProps> = ({
   // Calculate fan angle and horizontal overlap based on card count
   const maxAngleSpread = Math.min(14, count * 1.6);
   const angleStep = count > 1 ? (maxAngleSpread * 2) / (count - 1) : 0;
-  const horizontalOverlap = count > 1 ? Math.min(-20, (fanWidth - count * measuredCardWidth) / (count - 1)) : 0;
+  const horizontalOverlap =
+    count > 1 ? Math.min(-20, (fanWidth - count * measuredCardWidth) / (count - 1)) : 0;
 
   const handleCardClick = (card: CardType, commit = false) => {
     const isLegal = legalSet ? legalSet.has(card.id) && isMyTurn : isMyTurn;
 
     if (!isMyTurn) {
-      setWarningTip('ليس دورك الآن!');
+      setWarningTip("ليس دورك الآن!");
       setTimeout(() => setWarningTip(null), 1200);
       return;
     }
 
     if (!isLegal) {
       setShakingCardId(card.id);
-      setWarningTip('يجب عليك اتباع لون اللعب!');
+      setWarningTip("يجب عليك اتباع لون اللعب!");
       playTapSound();
       setTimeout(() => setShakingCardId(null), 400);
       setTimeout(() => setWarningTip(null), 1400);
@@ -141,12 +143,11 @@ export const Hand: React.FC<HandProps> = ({
           const isLegal = legalSet ? legalSet.has(card.id) && isMyTurn : isMyTurn;
           const isSelected = selectedId === card.id;
           const isShaking = shakingCardId === card.id;
-          const canDrag = true;
 
           // Natural parabolic fan geometry
           const normalizedIdx = index - (count - 1) / 2;
           const rotateDeg = normalizedIdx * (angleStep * 0.65);
-          const translateY = Math.abs(normalizedIdx) * 2.2;
+          const translateY = Math.abs(normalizedIdx) * 2.0;
 
           return (
             <div
@@ -154,35 +155,48 @@ export const Hand: React.FC<HandProps> = ({
               style={{
                 marginLeft: index === 0 ? 0 : `${horizontalOverlap}px`,
                 transform: isSelected
-                  ? `translateY(-22px) rotate(0deg) scale(1.08)`
+                  ? `translateY(-30px) rotate(0deg) scale(1.1)`
                   : `rotate(${rotateDeg}deg) translateY(${translateY}px)`,
                 zIndex: draggingId === card.id ? 70 : isSelected ? 40 : index + 10,
-                animationDelay: `${index * 45}ms`,
-                transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), margin 0.2s ease-out',
+                transition: "transform 0.22s cubic-bezier(0.16,1,0.3,1), margin 0.2s ease-out",
               }}
-              className={`origin-bottom will-change-transform ${reducedMotion ? '' : 'animate-deal-card'} ${isShaking ? 'animate-card-shake' : ''}`}
+              className={`origin-bottom will-change-transform ${reducedMotion ? "" : "animate-deal-card"} ${isShaking ? "animate-card-shake" : ""}`}
             >
               <motion.div
-                drag={canDrag}
+                drag
                 dragSnapToOrigin
-                dragElastic={0.18}
-                dragTransition={{ bounceStiffness: 420, bounceDamping: 26 }}
-                onDragStart={() => { setDraggingId(card.id); ignoreClickUntil.current = Date.now() + 60000; }}
+                dragElastic={0.16}
+                dragTransition={{ bounceStiffness: 460, bounceDamping: 24 }}
+                whileDrag={{
+                  scale: 1.14,
+                  rotateZ: -rotateDeg,
+                  rotateY: Math.max(-14, Math.min(14, 0)),
+                  rotateX: 8,
+                  y: -34,
+                  zIndex: 60,
+                  transition: { type: "spring", stiffness: 500, damping: 28 },
+                }}
+                onDragStart={() => {
+                  setDraggingId(card.id);
+                  ignoreClickUntil.current = Date.now() + 60000;
+                }}
                 onDragEnd={(_, info) => {
                   setDraggingId(null);
                   ignoreClickUntil.current = Date.now() + 250;
-                  if (commitsCardDrag(info.offset.y, isLegal, isMyTurn)) handleCardClick(card, true);
+                  if (commitsCardDrag(info.offset.y, isLegal, isMyTurn))
+                    handleCardClick(card, true);
                 }}
-                whileDrag={{ scale: reducedMotion ? 1 : 1.1, rotate: -rotateDeg, zIndex: 60 }}
-                style={{ touchAction: canDrag ? 'none' : 'auto' }}
+                style={{ touchAction: "none", perspective: 800, transformStyle: "preserve-3d" }}
               >
                 <Card
                   card={card}
-                  faceUp={true}
+                  faceUp
                   isLegal={isLegal}
                   isSelected={isSelected}
                   size={cardSize}
-                  onClick={() => { if (Date.now() >= ignoreClickUntil.current) handleCardClick(card); }}
+                  onClick={() => {
+                    if (Date.now() >= ignoreClickUntil.current) handleCardClick(card);
+                  }}
                 />
               </motion.div>
             </div>

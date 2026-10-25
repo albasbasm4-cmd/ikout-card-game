@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type Suit = 'S' | 'H' | 'D' | 'C';
+export type Suit = "S" | "H" | "D" | "C";
 
 export type CardRank = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
 
@@ -11,7 +11,7 @@ export interface Card {
   id: string;
   suit?: Suit;
   rank?: CardRank | number; // 2..14, 14=Ace
-  joker?: 'RED' | 'BLACK';
+  joker?: "RED" | "BLACK";
 }
 
 /**
@@ -19,18 +19,11 @@ export interface Card {
  */
 export type Bid = 0 | 5 | 6 | 7 | 8 | 9;
 
-export type Phase =
-  | 'LOBBY'
-  | 'DEAL'
-  | 'BID'
-  | 'TRUMP'
-  | 'PLAY'
-  | 'ROUND_END'
-  | 'GAME_END';
+export type Phase = "LOBBY" | "DEAL" | "BID" | "TRUMP" | "PLAY" | "ROUND_END" | "GAME_END";
 
-export type SeatKind = 'HUMAN_LOCAL' | 'HUMAN_REMOTE' | 'AI_BOT';
+export type SeatKind = "HUMAN_LOCAL" | "HUMAN_REMOTE" | "AI_BOT";
 
-export type Difficulty = 'EASY' | 'MEDIUM' | 'EXPERT';
+export type Difficulty = "EASY" | "MEDIUM" | "EXPERT";
 
 export interface PlayerSlot {
   seatIndex: number;
@@ -53,7 +46,7 @@ export interface SeatBid {
 }
 
 export interface GameState {
-  variant: 'BO6' | 'BO4';
+  variant: "BO6" | "BO4";
   hands: Card[][];
   dealer: number;
   currentSeat: number;
@@ -73,7 +66,7 @@ export interface GameState {
 }
 
 export interface SyncStatePacket {
-  type: 'SYNC_STATE';
+  type: "SYNC_STATE";
   payload: {
     state: GameState;
   };
@@ -82,7 +75,7 @@ export interface SyncStatePacket {
 }
 
 export interface JoinRoomPacket {
-  type: 'JOIN_ROOM';
+  type: "JOIN_ROOM";
   payload: {
     roomCode: string;
     playerToken: string;
@@ -93,21 +86,21 @@ export interface JoinRoomPacket {
 }
 
 export interface PlayerActionPacket {
-  type: 'PLAYER_ACTION';
+  type: "PLAYER_ACTION";
   payload: {
     seatIndex: number;
     action:
-      | { type: 'BID'; bid: Bid }
-      | { type: 'SELECT_TRUMP'; suit: Suit }
-      | { type: 'PLAY_CARD'; cardId: string }
-      | { type: 'READY' };
+      | { type: "BID"; bid: Bid }
+      | { type: "SELECT_TRUMP"; suit: Suit }
+      | { type: "PLAY_CARD"; cardId: string }
+      | { type: "READY" };
   };
   v: number;
   seq: number;
 }
 
 export interface HeartbeatPacket {
-  type: 'HEARTBEAT';
+  type: "HEARTBEAT";
   payload: {
     timestamp: number;
   };
@@ -123,8 +116,4 @@ export interface GenericPacket {
 }
 
 export type NetworkPacket =
-  | SyncStatePacket
-  | JoinRoomPacket
-  | PlayerActionPacket
-  | HeartbeatPacket
-  | GenericPacket;
+  SyncStatePacket | JoinRoomPacket | PlayerActionPacket | HeartbeatPacket | GenericPacket;

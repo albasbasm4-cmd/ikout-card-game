@@ -1,0 +1,6 @@
+{
+  "name": "iKout - كوت بوستة",
+  "description": "لعبة كوت بوستة كويتية كاملة مع ذكاء اصطناعي وأصوات خليجية وغرف لعب",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

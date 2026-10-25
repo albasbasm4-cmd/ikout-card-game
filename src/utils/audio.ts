@@ -3,17 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { loadSettings } from '../store/useSettings';
-import { playReferenceAudio } from './referenceAudio';
+import { loadSettings } from "../store/useSettings";
+import { playSfx, playTone } from "./gameAudioBindings";
 
 let audioCtx: AudioContext | null = null;
 
 function getAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
 
   if (!audioCtx) {
-    const AudioContextClass =
-      window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (AudioContextClass) {
       try {
         audioCtx = new AudioContextClass();
@@ -23,7 +22,7 @@ function getAudioContext(): AudioContext | null {
     }
   }
 
-  if (audioCtx && audioCtx.state === 'suspended') {
+  if (audioCtx && audioCtx.state === "suspended") {
     audioCtx.resume().catch(() => {});
   }
 
@@ -41,12 +40,11 @@ function isSoundAllowed(override?: boolean): boolean {
 let lastCardSoundAt = 0;
 
 export function playCardSound(enabled?: boolean): void {
-  if (!isSoundAllowed(enabled)) return;
-  // Throttle: never stack the same snap twice within 40ms
+  if (enabled === false) return;
   const t = Date.now();
   if (t - lastCardSoundAt < 40) return;
   lastCardSoundAt = t;
-  playReferenceAudio('card');
+  playSfx("card", 0.55, 40);
 }
 
 /**
@@ -67,7 +65,7 @@ export function playWinSound(enabled?: boolean): void {
       const gain = ctx.createGain();
       const noteTime = now + idx * 0.12;
 
-      osc.type = 'sine';
+      osc.type = "sine";
       osc.frequency.setValueAtTime(freq, noteTime);
 
       gain.gain.setValueAtTime(0, noteTime);
@@ -103,7 +101,7 @@ export function playLoseSound(enabled?: boolean): void {
       const gain = ctx.createGain();
       const noteTime = now + idx * 0.18;
 
-      osc.type = 'triangle';
+      osc.type = "triangle";
       osc.frequency.setValueAtTime(freq, noteTime);
 
       gain.gain.setValueAtTime(0.2, noteTime);
@@ -133,7 +131,7 @@ export function playTapSound(enabled?: boolean): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'sine';
+    osc.type = "sine";
     osc.frequency.setValueAtTime(800, now);
     osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
 
@@ -154,66 +152,19 @@ export function playTapSound(enabled?: boolean): void {
  * Plays a bright two-tone chime when a trick is collected
  */
 export function playTrickWinSound(enabled?: boolean): void {
-  if (!isSoundAllowed(enabled)) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  try {
-    const now = ctx.currentTime;
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(587.33, now); // D5
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(880, now + 0.08); // A5
-
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc1.start(now);
-    osc1.stop(now + 0.12);
-    osc2.start(now + 0.08);
-    osc2.stop(now + 0.28);
-  } catch {
-    // Ignore audio playback errors
-  }
+  if (enabled === false) return;
+  playTone([
+    { freq: 587.33, at: 0, dur: 0.18, vol: 0.16 },
+    { freq: 880, at: 0.08, dur: 0.22, vol: 0.16 },
+  ]);
 }
 
 /**
  * Plays a fanfare chime when Trump (Hokm) is declared
  */
 export function playTrumpSound(enabled?: boolean): void {
-  if (!isSoundAllowed(enabled)) return;
-  const ctx = getAudioContext();
-  if (!ctx) return;
-
-  try {
-    const now = ctx.currentTime;
-    [440, 554.37, 659.25, 880].forEach((freq, idx) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const t = now + idx * 0.08;
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, t);
-
-      gain.gain.setValueAtTime(0.2, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.25);
-    });
-  } catch {
-    // Ignore audio playback errors
-  }
+  if (enabled === false) return;
+  playSfx("trump", 0.9);
 }
 
 /**
@@ -229,7 +180,7 @@ export function playBubbleSound(enabled?: boolean): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'sine';
+    osc.type = "sine";
     osc.frequency.setValueAtTime(600, now);
     osc.frequency.exponentialRampToValueAtTime(1100, now + 0.09);
 
@@ -245,4 +196,3 @@ export function playBubbleSound(enabled?: boolean): void {
     // Ignore audio playback errors
   }
 }
-

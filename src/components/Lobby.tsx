@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { useRoom, RoomConfig, RoomPreset } from '../store/useRoom';
-import { SeatKind, Difficulty } from '../types/kout';
+import React, { useState } from "react";
+import { useRoom, RoomConfig, RoomPreset } from "../store/useRoom";
+import { SeatKind, Difficulty } from "../types/kout";
 import {
   Shield,
   Play,
@@ -21,11 +21,10 @@ import {
   CheckCircle2,
   QrCode,
   LogIn,
-} from 'lucide-react';
-import { QrModal } from './QrModal';
-import { JoinScreen } from './JoinScreen';
-import { generateRoomCode } from '../network/localIp';
-
+} from "lucide-react";
+import { QrModal } from "./QrModal";
+import { JoinScreen } from "./JoinScreen";
+import { generateRoomCode } from "../network/localIp";
 
 export interface LobbyProps {
   initialConfig?: Partial<RoomConfig>;
@@ -35,27 +34,23 @@ export interface LobbyProps {
 
 const PRESETS: Array<{ id: RoomPreset; title: string; subtitle: string }> = [
   {
-    id: 'SOLO_VS_BOTS',
-    title: 'لاعب ضد ٥ بوتات',
-    subtitle: 'أنت تلعب بمفردك مع وبضد ذكاء اصطناعي',
+    id: "SOLO_VS_BOTS",
+    title: "لاعب ضد ٥ بوتات",
+    subtitle: "أنت تلعب بمفردك مع وبضد ذكاء اصطناعي",
   },
   {
-    id: 'TWO_HUMANS_COOP',
-    title: 'لاعبان بنفس الفريق',
-    subtitle: 'شريكك إنسان والخصوم بوتات',
+    id: "TWO_HUMANS_COOP",
+    title: "لاعبان بنفس الفريق",
+    subtitle: "شريكك إنسان والخصوم بوتات",
   },
   {
-    id: 'TWO_HUMANS_VERSUS',
-    title: 'لاعبان ضد بعض',
-    subtitle: 'أنت والخصم إنسان في فرق متنافسة',
+    id: "TWO_HUMANS_VERSUS",
+    title: "لاعبان ضد بعض",
+    subtitle: "أنت والخصم إنسان في فرق متنافسة",
   },
 ];
 
-export const Lobby: React.FC<LobbyProps> = ({
-  initialConfig,
-  onStartGame,
-  className = '',
-}) => {
+export const Lobby: React.FC<LobbyProps> = ({ initialConfig, onStartGame, className = "" }) => {
   const {
     variant,
     setVariant,
@@ -73,14 +68,12 @@ export const Lobby: React.FC<LobbyProps> = ({
     getConfig,
   } = useRoom(initialConfig);
 
-  const [selectedSeatForSwap, setSelectedSeatForSwap] = useState<number | null>(
-    null
-  );
+  const [selectedSeatForSwap, setSelectedSeatForSwap] = useState<number | null>(null);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [showJoinScreen, setShowJoinScreen] = useState<boolean>(false);
   const [roomCode] = useState<string>(() => generateRoomCode());
 
-  const isBO6 = variant === 'BO6';
+  const isBO6 = variant === "BO6";
 
   const handleSeatClickForSwap = (seatIdx: number) => {
     if (selectedSeatForSwap === null) {
@@ -111,7 +104,6 @@ export const Lobby: React.FC<LobbyProps> = ({
     >
       {/* Landscape and desktop responsive container */}
       <div className="relative w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[95vh] sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col wood-rail border border-amber-900/40">
-        
         {/* Top Header */}
         <header className="relative z-10 px-4 py-3 flex items-center justify-between border-b border-amber-500/20 bg-gradient-to-b from-black/80 to-black/40 backdrop-blur-md">
           <div className="flex items-center gap-2">
@@ -119,9 +111,7 @@ export const Lobby: React.FC<LobbyProps> = ({
               <Shield className="w-4 h-4 text-amber-400" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-amber-300 leading-none">
-                غرفة اللعب
-              </h1>
+              <h1 className="text-base font-bold text-amber-300 leading-none">غرفة اللعب</h1>
               <p className="text-[11px] text-amber-200/60 font-medium">
                 لوحة المضيف وإعداد المقاعد
               </p>
@@ -136,7 +126,6 @@ export const Lobby: React.FC<LobbyProps> = ({
 
         {/* Scrollable Configuration Body */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 text-xs">
-          
           {/* Quick Action Buttons: QR Room Code & Join Room */}
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -175,8 +164,8 @@ export const Lobby: React.FC<LobbyProps> = ({
                     onClick={() => applyPreset(preset.id)}
                     className={`p-2.5 rounded-xl border text-right transition-all flex items-center justify-between cursor-pointer ${
                       isActive
-                        ? 'bg-amber-500/20 border-amber-400/60 ring-1 ring-amber-400/40 shadow'
-                        : 'bg-neutral-900/60 border-neutral-700/40 hover:bg-neutral-800/60 text-neutral-300'
+                        ? "bg-amber-500/20 border-amber-400/60 ring-1 ring-amber-400/40 shadow"
+                        : "bg-neutral-900/60 border-neutral-700/40 hover:bg-neutral-800/60 text-neutral-300"
                     }`}
                   >
                     <div>
@@ -186,13 +175,9 @@ export const Lobby: React.FC<LobbyProps> = ({
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                         )}
                       </div>
-                      <div className="text-[10px] text-amber-200/50 mt-0.5">
-                        {preset.subtitle}
-                      </div>
+                      <div className="text-[10px] text-amber-200/50 mt-0.5">{preset.subtitle}</div>
                     </div>
-                    {isActive && (
-                      <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                    )}
+                    {isActive && <CheckCircle2 className="w-4 h-4 text-amber-400" />}
                   </button>
                 );
               })}
@@ -209,11 +194,11 @@ export const Lobby: React.FC<LobbyProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setVariant('BO6')}
+                  onClick={() => setVariant("BO6")}
                   className={`py-2 px-3 rounded-xl border font-bold text-xs flex flex-col items-center justify-center transition-all cursor-pointer ${
                     isBO6
-                      ? 'bg-emerald-800/80 border-emerald-400 text-white shadow-md ring-1 ring-emerald-400/30'
-                      : 'bg-neutral-900/50 border-neutral-700 text-neutral-400 hover:bg-neutral-800'
+                      ? "bg-emerald-800/80 border-emerald-400 text-white shadow-md ring-1 ring-emerald-400/30"
+                      : "bg-neutral-900/50 border-neutral-700 text-neutral-400 hover:bg-neutral-800"
                   }`}
                 >
                   <span className="font-extrabold text-sm">كوت بوستة</span>
@@ -222,11 +207,11 @@ export const Lobby: React.FC<LobbyProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setVariant('BO4')}
+                  onClick={() => setVariant("BO4")}
                   className={`py-2 px-3 rounded-xl border font-bold text-xs flex flex-col items-center justify-center transition-all cursor-pointer ${
                     !isBO6
-                      ? 'bg-emerald-800/80 border-emerald-400 text-white shadow-md ring-1 ring-emerald-400/30'
-                      : 'bg-neutral-900/50 border-neutral-700 text-neutral-400 hover:bg-neutral-800'
+                      ? "bg-emerald-800/80 border-emerald-400 text-white shadow-md ring-1 ring-emerald-400/30"
+                      : "bg-neutral-900/50 border-neutral-700 text-neutral-400 hover:bg-neutral-800"
                   }`}
                 >
                   <span className="font-extrabold text-sm">كوت بوأربعة</span>
@@ -250,8 +235,8 @@ export const Lobby: React.FC<LobbyProps> = ({
                       onClick={() => setTargetScore(pts)}
                       className={`py-1.5 rounded-lg font-bold text-xs border cursor-pointer transition-colors ${
                         targetScore === pts
-                          ? 'bg-amber-400 text-black border-amber-300'
-                          : 'bg-neutral-900 text-neutral-300 border-neutral-700 hover:bg-neutral-800'
+                          ? "bg-amber-400 text-black border-amber-300"
+                          : "bg-neutral-900 text-neutral-300 border-neutral-700 hover:bg-neutral-800"
                       }`}
                     >
                       {pts}
@@ -266,18 +251,18 @@ export const Lobby: React.FC<LobbyProps> = ({
                   مستوى البوتات:
                 </label>
                 <div className="grid grid-cols-3 gap-1">
-                  {(['EASY', 'MEDIUM', 'EXPERT'] as Difficulty[]).map((d) => (
+                  {(["EASY", "MEDIUM", "EXPERT"] as Difficulty[]).map((d) => (
                     <button
                       key={d}
                       type="button"
                       onClick={() => setBotDifficulty(d)}
                       className={`py-1.5 rounded-lg font-bold text-xs border cursor-pointer transition-colors ${
                         botDifficulty === d
-                          ? 'bg-amber-400 text-black border-amber-300'
-                          : 'bg-neutral-900 text-neutral-300 border-neutral-700 hover:bg-neutral-800'
+                          ? "bg-amber-400 text-black border-amber-300"
+                          : "bg-neutral-900 text-neutral-300 border-neutral-700 hover:bg-neutral-800"
                       }`}
                     >
-                      {d === 'EASY' ? 'سهل' : d === 'MEDIUM' ? 'متوسط' : 'خبير'}
+                      {d === "EASY" ? "سهل" : d === "MEDIUM" ? "متوسط" : "خبير"}
                     </button>
                   ))}
                 </div>
@@ -318,10 +303,10 @@ export const Lobby: React.FC<LobbyProps> = ({
                     key={slot.seatIndex}
                     className={`relative p-2.5 rounded-xl border transition-all flex flex-col justify-between ${
                       isSelected
-                        ? 'ring-2 ring-amber-400 border-amber-300 bg-amber-500/10'
+                        ? "ring-2 ring-amber-400 border-amber-300 bg-amber-500/10"
                         : isTeam0
-                        ? 'bg-emerald-950/50 border-emerald-500/30'
-                        : 'bg-rose-950/50 border-rose-500/30'
+                          ? "bg-emerald-950/50 border-emerald-500/30"
+                          : "bg-rose-950/50 border-rose-500/30"
                     }`}
                   >
                     {/* Top Row: Seat Index & Team Badge */}
@@ -332,11 +317,11 @@ export const Lobby: React.FC<LobbyProps> = ({
                       <span
                         className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
                           isTeam0
-                            ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-400/30'
-                            : 'bg-rose-600/30 text-rose-300 border border-rose-400/30'
+                            ? "bg-emerald-600/30 text-emerald-300 border border-emerald-400/30"
+                            : "bg-rose-600/30 text-rose-300 border border-rose-400/30"
                         }`}
                       >
-                        {isTeam0 ? 'فريق ١' : 'فريق ٢'}
+                        {isTeam0 ? "فريق ١" : "فريق ٢"}
                       </span>
                     </div>
 
@@ -344,9 +329,7 @@ export const Lobby: React.FC<LobbyProps> = ({
                     <input
                       type="text"
                       value={slot.name}
-                      onChange={(e) =>
-                        setPlayerName(slot.seatIndex, e.target.value)
-                      }
+                      onChange={(e) => setPlayerName(slot.seatIndex, e.target.value)}
                       className="w-full bg-black/40 border border-neutral-700/60 rounded px-1.5 py-1 text-xs text-white font-semibold mb-2 focus:outline-none focus:border-amber-400"
                       placeholder="اسم اللاعب"
                     />
@@ -355,12 +338,7 @@ export const Lobby: React.FC<LobbyProps> = ({
                     <div className="flex items-center justify-between gap-1">
                       <select
                         value={slot.kind}
-                        onChange={(e) =>
-                          setSeatKind(
-                            slot.seatIndex,
-                            e.target.value as SeatKind
-                          )
-                        }
+                        onChange={(e) => setSeatKind(slot.seatIndex, e.target.value as SeatKind)}
                         className="bg-neutral-900 border border-neutral-700 text-amber-200 text-[10px] rounded px-1.5 py-1 focus:outline-none cursor-pointer flex-1"
                       >
                         <option value="HUMAN_LOCAL">لاعب محلي</option>
@@ -374,8 +352,8 @@ export const Lobby: React.FC<LobbyProps> = ({
                         title="تبديل المقعد"
                         className={`p-1 rounded border text-[10px] cursor-pointer ${
                           isSelected
-                            ? 'bg-amber-400 text-black border-amber-300'
-                            : 'bg-neutral-800 text-neutral-300 border-neutral-700 hover:bg-neutral-700'
+                            ? "bg-amber-400 text-black border-amber-300"
+                            : "bg-neutral-800 text-neutral-300 border-neutral-700 hover:bg-neutral-700"
                         }`}
                       >
                         <ArrowLeftRight className="w-3.5 h-3.5" />
@@ -383,7 +361,7 @@ export const Lobby: React.FC<LobbyProps> = ({
                     </div>
 
                     {/* Remote Status Badge */}
-                    {slot.kind === 'HUMAN_REMOTE' && (
+                    {slot.kind === "HUMAN_REMOTE" && (
                       <div className="mt-1 flex items-center gap-1 text-[9px] text-amber-300/70">
                         <WifiOff className="w-2.5 h-2.5" />
                         <span>بانتظار انضمام اللاعب...</span>
@@ -400,10 +378,11 @@ export const Lobby: React.FC<LobbyProps> = ({
         <footer className="relative z-10 px-4 py-3 border-t border-amber-500/20 bg-gradient-to-t from-black/90 to-black/60 flex items-center justify-between gap-3">
           <div className="text-[11px] text-amber-200/70 leading-tight">
             <div>
-              {isBO6 ? '٦ لاعبين (بوستة)' : '٤ لاعبين (بوأربعة)'} • الهدف {targetScore}
+              {isBO6 ? "٦ لاعبين (بوستة)" : "٤ لاعبين (بوأربعة)"} • الهدف {targetScore}
             </div>
             <div className="text-[10px] text-amber-400/60 font-medium">
-              مستوى البوتات: {botDifficulty === 'EASY' ? 'سهل' : botDifficulty === 'MEDIUM' ? 'متوسط' : 'خبير'}
+              مستوى البوتات:{" "}
+              {botDifficulty === "EASY" ? "سهل" : botDifficulty === "MEDIUM" ? "متوسط" : "خبير"}
             </div>
           </div>
 
@@ -418,16 +397,10 @@ export const Lobby: React.FC<LobbyProps> = ({
         </footer>
 
         {/* QR Code Modal for Room Sharing */}
-        <QrModal
-          isOpen={showQrModal}
-          onClose={() => setShowQrModal(false)}
-          roomCode={roomCode}
-        />
-
+        <QrModal isOpen={showQrModal} onClose={() => setShowQrModal(false)} roomCode={roomCode} />
       </div>
     </div>
   );
 };
-
 
 export default Lobby;
