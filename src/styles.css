@@ -557,3 +557,23 @@
 @media (prefers-reduced-motion:reduce) {
  .seat-speaking .reference-portrait,.reference-slam-ring { animation:none; }
 }
+
+/* ---- 3D table presentation ---- */
+.reference-arena { perspective: 1100px; perspective-origin: 50% 30%; }
+.reference-disc {
+  transform: translate(-50%,-50%) rotateX(24deg);
+  transform-style: preserve-3d;
+  border-bottom-width: 14px;
+  box-shadow: 0 28px 34px -6px var(--reference-shadow), 0 8px 0 var(--reference-disc-edge), inset 0 -14px 30px var(--reference-shadow), inset 0 10px 24px var(--reference-disc-light);
+}
+.reference-rosette { box-shadow: inset 0 0 0 6px var(--reference-disc-edge), inset 0 0 50px var(--reference-shadow); }
+.reference-trick { transform-style: preserve-3d; }
+.reference-trick-card { will-change: transform; filter: drop-shadow(0 10px 8px var(--reference-shadow)); }
+.reference-trick-card.trick-winning { filter: drop-shadow(0 0 12px var(--reference-gold)) drop-shadow(0 12px 10px var(--reference-shadow)); }
+.reference-portrait { box-shadow: 0 6px 10px var(--reference-shadow), inset 0 2px 0 var(--reference-disc-light); transition: transform .2s ease, box-shadow .2s ease; }
+.seat-active .reference-portrait { transform: translateY(-3px) scale(1.06); box-shadow: 0 0 18px var(--reference-active), 0 8px 12px var(--reference-shadow); }
+.reference-mini-back { box-shadow: 0 3px 4px var(--reference-shadow); }
+.reference-local-hand { filter: drop-shadow(0 -6px 14px var(--reference-shadow)); }
+.reference-slam-symbol { filter: drop-shadow(0 0 22px var(--reference-gold)); animation: slam-pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes slam-pop { from { transform: scale(.4) translateZ(0); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .reference-disc { transform: translate(-50%,-50%); } .reference-slam-symbol { animation: none; } }
