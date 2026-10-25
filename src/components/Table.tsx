@@ -11,7 +11,7 @@ import elder from '../assets/gameplay/elder-player.png.asset.json';
 import green from '../assets/gameplay/green-player.png.asset.json';
 import stone from '../assets/gameplay/stone-clean.png.asset.json';
 import { playReferenceAudio, stopReferenceAudio } from '../utils/referenceAudio';
-import { playCharacterVoice, subscribeCharacterVoice } from '../utils/characterAudio';
+import { playCharacterVoice, subscribeCharacterVoice, preloadCharacterVoices, stopCharacterVoice } from '../utils/characterAudio';
 import { CHARACTER_PHRASES, SPECIAL_LINES, RESULT_LINES, specialPlay, type SpecialPlay } from '../utils/gamePresentation';
 export interface TableProps {
  state?: GameState; mySeat?: number; onPlayCard?: (card: CardType) => void; onBid?: (bid: number) => void; onDeclareTrump?: (suit: Suit) => void;
@@ -84,9 +84,16 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
  const resultPlayed = useRef<string | null>(null);
  const count = state.variant === 'BO6' ? 6 : 4;
  const trick = displayedTrick ?? state.currentTrick;
- const react = (seat: number, message: string) => {
+ const visibleCards = useRef<Set<string>>(new Set());
+ const phaseRef = useRef(state.phase);
+ phaseRef.current = state.phase;
+ const bubblesRef = useRef(speechBubbles);
+ bubblesRef.current = speechBubbles;
+ const reactionCause = useRef<Record<number, string>>({});
+ const react = (seat: number, message: string, token: string | null = null, valid: () => boolean = () => true) => {
    setReactions(current => ({ ...current, [seat]: message }));
-   playCharacterVoice(message, seat);
+   if (token) reactionCause.current[seat] = token; else delete reactionCause.current[seat];
+   playCharacterVoice(message, seat, token, valid);
    const timer = setTimeout(() => {
      setReactions(current => {
        if (current[seat] !== message) return current;
@@ -97,10 +104,11 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
    reactionTimers.current.add(timer);
  };
  useEffect(() => subscribeCharacterVoice(setSpeakingSeat), []);
+ useEffect(() => { preloadCharacterVoices(); for (const play of trick) seenPlays.current.add(play.card.id); }, []);
  useEffect(() => () => { stopReferenceAudio(); reactionTimers.current.forEach(clearTimeout); }, []);
  useEffect(() => {
    for (const [seat, message] of Object.entries(speechBubbles)) {
-     if (previousSpeech.current[Number(seat)] !== message) playCharacterVoice(message, Number(seat));
+     if (message && previousSpeech.current[Number(seat)] !== message) playCharacterVoice(message, Number(seat), `bubble-${seat}`, () => bubblesRef.current[Number(seat)] === message);
    }
    previousSpeech.current = speechBubbles;
  }, [speechBubbles]);
@@ -109,6 +117,17 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
      seenPlays.current.clear(); previousRound.current = state.roundNo;
      setReactions({}); setSlam(null); resultPlayed.current = null;
    }
+   visibleCards.current = new Set(trick.map(play => play.card.id));
+   // A card-triggered line must never outlive its card on the table.
+   for (const [seat, token] of Object.entries(reactionCause.current)) {
+     if (token.startsWith('card-') && !visibleCards.current.has(token.slice(5))) {
+       stopCharacterVoice(token);
+       delete reactionCause.current[Number(seat)];
+       setReactions(current => { const next = { ...current }; delete next[Number(seat)]; return next; });
+     }
+   }
+   const onTable = (id: string) => () => visibleCards.current.has(id);
+   let kingSpoken = false;
    for (const play of trick) {
      if (seenPlays.current.has(play.card.id)) continue;
      seenPlays.current.add(play.card.id);
@@ -116,14 +135,15 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
      if (kind) {
        setSlam({ id: play.card.id, kind, suit: play.card.suit });
        playReferenceAudio('trump');
-       react(play.seat, SPECIAL_LINES[kind]);
+       react(play.seat, SPECIAL_LINES[kind], `card-${play.card.id}`, onTable(play.card.id));
        const timer = setTimeout(() => {
          setSlam(current => current?.id === play.card.id ? null : current);
          reactionTimers.current.delete(timer);
        }, 1100);
        reactionTimers.current.add(timer);
-     } else if (play.card.rank === 13 && play.seat !== mySeat) {
-       react(play.seat, CHARACTER_PHRASES[3]);
+     } else if (play.card.rank === 13 && !play.card.joker && play.seat !== mySeat && !kingSpoken) {
+       kingSpoken = true;
+       react(play.seat, CHARACTER_PHRASES[3], `card-${play.card.id}`, onTable(play.card.id));
      }
    }
  }, [trick, state.trump, state.roundNo, state.phase]);
@@ -137,9 +157,10 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
    const won = state.phase === 'GAME_END'
      ? state.scores[mySeat % 2] >= state.targetScore || (state.roundNo === 1 && state.highBid === 9 && state.tricksWon[mySeat % 2] === 9)
      : (madeContract ? bidderTeam : 1 - bidderTeam) === mySeat % 2;
-   react((mySeat + 2) % count, won ? RESULT_LINES.win : RESULT_LINES.lose);
+   const resultValid = () => phaseRef.current === 'ROUND_END' || phaseRef.current === 'GAME_END';
+   react((mySeat + 2) % count, won ? RESULT_LINES.win : RESULT_LINES.lose, 'result', resultValid);
    if (!won) {
-     const timer = setTimeout(() => { react((mySeat + 1) % count, RESULT_LINES.opponent); reactionTimers.current.delete(timer); }, 3600);
+     const timer = setTimeout(() => { react((mySeat + 1) % count, RESULT_LINES.opponent, 'result', resultValid); reactionTimers.current.delete(timer); }, 3600);
      reactionTimers.current.add(timer);
    }
  }, [state.phase, state.roundNo]);
@@ -177,7 +198,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
          const relative = (play.seat - mySeat + count) % count;
          const angle = relative * Math.PI * 2 / count;
          const winnerAngle = ((winningTrickPlay?.seat ?? play.seat) - mySeat + count) % count * Math.PI * 2 / count;
-         return <motion.div key={play.card.id} className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? 'trick-winning' : ''}`} style={{ zIndex: i + 1 }} initial={reducedMotion ? false : { x: Math.sin(angle) * 240, y: Math.cos(angle) * 190, scale: .8, opacity: 0 }} animate={{ x: Math.sin(angle) * 70, y: Math.cos(angle) * 62, rotate: (relative % 2 ? -1 : 1) * 6, scale: 1, opacity: 1 }} exit={{ x: Math.sin(winnerAngle) * 260, y: Math.cos(winnerAngle) * 190, scale: .2, opacity: 0 }} transition={{ duration: reducedMotion ? 0 : .28, ease: 'easeOut' }}><Card card={play.card} size="sm" /></motion.div>;
+         return <motion.div key={play.card.id} className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? 'trick-winning' : ''}`} style={{ zIndex: i + 1 }} initial={reducedMotion ? false : { x: Math.sin(angle) * 240, y: Math.cos(angle) * 190, scale: 1.25, rotateX: 55, rotate: (relative % 2 ? -1 : 1) * 25, opacity: 0 }} animate={{ x: Math.sin(angle) * 70, y: Math.cos(angle) * 62, rotateX: 18, rotate: (relative % 2 ? -1 : 1) * 6, scale: 1, opacity: 1 }} exit={{ x: Math.sin(winnerAngle) * 260, y: Math.cos(winnerAngle) * 190, scale: .3, rotateX: 40, opacity: 0, transition: { duration: .35, ease: 'easeIn' } }} transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 30, mass: .7 }}><Card card={play.card} size="sm" /></motion.div>;
        })}</AnimatePresence>
         {trickWinnerAnnouncement && <span className="reference-winner">{trickWinnerAnnouncement}</span>}
       </div>
