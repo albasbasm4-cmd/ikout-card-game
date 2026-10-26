@@ -204,9 +204,22 @@ function chooseHeuristicCard(
 
   // Leading a trick
   if (trick.length === 0) {
-    // Prefer leading non-trump low cards to probe suits
+    // 1. If holding an Ace in a non-trump suit, lead it to cash an early trick
+    const nonTrumpAces = legalCards.filter(
+      (c) => c.suit !== trump && c.rank === 14 && c.joker === undefined,
+    );
+    if (nonTrumpAces.length > 0) {
+      return nonTrumpAces[0];
+    }
+
+    // 2. Prefer leading safe medium/low cards in non-trump suits
     const nonTrumps = legalCards.filter((c) => c.suit !== trump && c.joker === undefined);
     if (nonTrumps.length > 0) {
+      const lowNonTrumps = nonTrumps.filter((c) => (c.rank ?? 0) <= 10);
+      if (lowNonTrumps.length > 0) {
+        lowNonTrumps.sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0));
+        return lowNonTrumps[0];
+      }
       nonTrumps.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
       return nonTrumps[0];
     }
@@ -216,11 +229,10 @@ function chooseHeuristicCard(
 
   // Following a trick
   const currentWinningPlay = trickWinner(trick, trump);
-  const partnerSeat = (seat + 3) % 6; // In BO6 partner is opposite
   const partnerIsWinning = currentWinningPlay.seat % 2 === myTeam;
 
   if (partnerIsWinning) {
-    // Partner is winning: duck with lowest legal card
+    // Partner is winning: duck with lowest legal card to preserve winning power
     const sorted = [...legalCards].sort(
       (a, b) =>
         cardStrength(a, trump, trick[0].card.suit) - cardStrength(b, trump, trick[0].card.suit),
@@ -228,7 +240,7 @@ function chooseHeuristicCard(
     return sorted[0];
   }
 
-  // Opponent is winning: try to take with lowest winning card
+  // Opponent is winning: try to take with the cheapest winning card
   const winningStrength = cardStrength(currentWinningPlay.card, trump, trick[0].card.suit);
   const winningCards = legalCards.filter(
     (c) => cardStrength(c, trump, trick[0].card.suit) > winningStrength,
@@ -242,13 +254,23 @@ function chooseHeuristicCard(
     return winningCards[0];
   }
 
-  // Cannot win: discard lowest card
+  // Cannot win: discard lowest non-trump card if possible
+  const nonTrumpCards = legalCards.filter((c) => c.suit !== trump && c.joker === undefined);
+  if (nonTrumpCards.length > 0) {
+    nonTrumpCards.sort(
+      (a, b) =>
+        cardStrength(a, trump, trick[0].card.suit) - cardStrength(b, trick[0].card.suit, trump),
+    );
+    return nonTrumpCards[0];
+  }
+
   const sorted = [...legalCards].sort(
     (a, b) =>
       cardStrength(a, trump, trick[0].card.suit) - cardStrength(b, trump, trick[0].card.suit),
   );
   return sorted[0];
 }
+
 
 /**
  * Selects the best card to play using Information Set Monte Carlo Tree Search (ISMCTS):
