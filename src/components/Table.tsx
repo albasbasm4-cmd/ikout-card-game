@@ -407,7 +407,7 @@ export const Table: React.FC<TableProps> = ({
               return (
                 <motion.div
                   key={play.card.id}
-                  className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? "trick-winning" : ""}`}
+                  className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? "trick-winning" : ""} ${play.card.joker ? "joker-slam-animate" : ""}`}
                   style={{ zIndex: i + 1 }}
                   initial={
                     reducedMotion

@@ -1906,3 +1906,179 @@ body {
   box-shadow: 0 14px 25px rgba(0, 0, 0, 0.55), 0 0 12px rgba(212, 175, 55, 0.4);
   z-index: 50;
 }
+
+
+/* =========================================================
+   100% Mobile Optimized Experience & Full-Screen Gameplay
+   ========================================================= */
+
+@media screen and (max-width: 768px) {
+  /* Prevent horizontal scroll and bounce on mobile */
+  html, body {
+    overflow: hidden !important;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Full viewport reference arena */
+  .reference-arena.table-felt {
+    width: 100vw !important;
+    height: 100dvh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.95);
+  }
+
+  /* Disc size scaled for phone screens */
+  .reference-disc {
+    width: 92vw !important;
+    max-width: 95vw !important;
+    height: 52vh !important;
+    max-height: 55vh !important;
+    top: 46% !important;
+    transform: translate(-50%, -50%) rotateX(18deg) !important;
+    border-width: 3px !important;
+    border-bottom-width: 8px !important;
+  }
+
+  /* Center emblem scaled */
+  .reference-table-emblem {
+    width: 90px !important;
+    height: 90px !important;
+  }
+
+  /* Mobile Hand card sizing and overlap */
+  .reference-local-hand {
+    bottom: 8px !important;
+    padding: 0 4px !important;
+    gap: -14px !important;
+  }
+
+  .playing-card-md {
+    width: 54px !important;
+    height: 80px !important;
+    border-radius: 6px !important;
+  }
+
+  .playing-card-sm {
+    width: 42px !important;
+    height: 62px !important;
+    border-radius: 5px !important;
+  }
+
+  .playing-card-lg {
+    width: 64px !important;
+    height: 94px !important;
+    border-radius: 7px !important;
+  }
+
+  /* Mobile local hand hover/touch lift */
+  .reference-local-hand .playing-card:active,
+  .reference-local-hand .playing-card.card-selected {
+    transform: translateY(-22px) scale(1.12) !important;
+    z-index: 60 !important;
+  }
+
+  /* Mobile HUD scorebar & header */
+  .wood-rail {
+    padding: 4px 8px !important;
+  }
+
+  .reference-scorebar {
+    padding: 4px 10px !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* Speech bubbles on mobile */
+  .speech-bubble {
+    font-size: 0.75rem !important;
+    max-width: 140px !important;
+    padding: 4px 8px !important;
+  }
+}
+
+/* Landscape mobile optimization */
+@media screen and (max-height: 500px) and (orientation: landscape) {
+  .reference-disc {
+    width: 78vw !important;
+    height: 65vh !important;
+    top: 48% !important;
+  }
+
+  .playing-card-md {
+    width: 48px !important;
+    height: 72px !important;
+  }
+
+  .reference-local-hand {
+    bottom: 4px !important;
+  }
+}
+
+/* =========================================================
+   Authentic Spine & Unity Game Animations (Joker & Chest)
+   ========================================================= */
+
+/* Joker Slam Authentic Animation */
+@keyframes jokerSlamEffect {
+  0% {
+    transform: scale(2.8) rotate(-25deg);
+    opacity: 0;
+    filter: drop-shadow(0 0 40px rgba(255, 215, 0, 1)) brightness(2);
+  }
+  50% {
+    transform: scale(0.92) rotate(4deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(1.08) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.8)) brightness(1.1);
+  }
+}
+
+.joker-slam-animate {
+  animation: jokerSlamEffect 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  will-change: transform, filter;
+}
+
+/* Chest Shake & Victory Jump */
+@keyframes chestShakeJump {
+  0%, 100% { transform: translateY(0) scale(1) rotate(0deg); }
+  15% { transform: translateY(-8px) scale(1.05) rotate(-6deg); }
+  30% { transform: translateY(0) scale(1.02) rotate(5deg); }
+  45% { transform: translateY(-16px) scale(1.12) rotate(-3deg); filter: drop-shadow(0 0 25px rgba(255, 215, 0, 0.9)); }
+  60% { transform: translateY(-4px) scale(1.08) rotate(3deg); }
+  80% { transform: translateY(-10px) scale(1.05) rotate(0deg); }
+}
+
+.chest-victory-animate {
+  animation: chestShakeJump 1.2s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+}
+
+/* Golden Victory Particles / Confetti Falling */
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-20px) rotate(0deg) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg) scale(1);
+    opacity: 0;
+  }
+}
+
+.confetti-particle {
+  position: absolute;
+  pointer-events: none;
+  animation: confettiFall 2.4s linear infinite;
+}
