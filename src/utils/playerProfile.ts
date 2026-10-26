@@ -8,7 +8,7 @@ export function loadPlayerProfile(): PlayerProfile {
   if (typeof window === "undefined") return DEFAULT_PLAYER_PROFILE;
   try {
     const value = JSON.parse(localStorage.getItem(PLAYER_PROFILE_KEY) || "null");
-    if (value && typeof value.nickname === "string" && /^a([1-9]|[12]\d|3[0-5])$/.test(value.characterId)) {
+    if (value && typeof value.nickname === "string" && /^a([1-9]|[12]\d|3[0-6])$/.test(value.characterId)) {
       return { nickname: value.nickname.slice(0, 20), characterId: value.characterId };
     }
   } catch (error) {
@@ -28,10 +28,10 @@ export function savePlayerProfile(profile: PlayerProfile): void {
   localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify(clean));
 }
 
-export const CHARACTER_IDS = Array.from({ length: 35 }, (_, index) => `a${index + 1}`);
+export const CHARACTER_IDS = Array.from({ length: 36 }, (_, index) => `a${index + 1}`);
 
 export function characterPortrait(characterId: string): string {
-  return `/assets/ikout/characters/${characterId}-face.png`;
+  return `/assets/ikout/characters/${characterId}-portrait.png`;
 }
 
 export function characterName(characterId: string): string {

@@ -15,7 +15,7 @@ import { RulesModal } from "./RulesModal";
 import { Difficulty } from "../types/kout";
 import { PlayerProfile } from "../types/character";
 import { ProfileSetup } from "./ProfileSetup";
-import { hasPlayerProfile, loadPlayerProfile, savePlayerProfile, characterName } from "../utils/playerProfile";
+import { hasPlayerProfile, loadPlayerProfile, savePlayerProfile, characterName, characterPortrait } from "../utils/playerProfile";
 
 export interface GameLaunchConfig {
   variant: "BO6" | "BO4";
@@ -126,7 +126,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
           title="معلومات الحساب والملف الشخصي"
         >
           <img
-            src={`/assets/ikout/characters/${profile.characterId}-face.png`}
+            src={characterPortrait(profile.characterId)}
             alt={profile.nickname}
             className="w-7 h-7 rounded-xl border border-amber-300/60 object-cover bg-neutral-800 shrink-0"
           />
