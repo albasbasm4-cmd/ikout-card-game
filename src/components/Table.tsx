@@ -427,10 +427,10 @@ export const Table: React.FC<TableProps> = ({
                         }
                   }
                   animate={{
-                    x: Math.sin(angle) * 70,
-                    y: Math.cos(angle) * 62,
-                    rotateX: 18,
-                    rotate: (relative % 2 ? -1 : 1) * 6,
+                    x: Math.sin(angle) * 76,
+                    y: Math.cos(angle) * 66,
+                    rotateX: 14,
+                    rotate: (relative % 2 ? -1 : 1) * 5 + (i * 2 - 3),
                     scale: 1,
                     opacity: 1,
                   }}
@@ -445,7 +445,7 @@ export const Table: React.FC<TableProps> = ({
                   transition={
                     reducedMotion
                       ? { duration: 0 }
-                      : { type: "spring", stiffness: 460, damping: 28, mass: 0.6 }
+                      : { type: "spring", stiffness: 420, damping: 24, mass: 0.55 }
                   }
                 >
                   <Card card={play.card} size="sm" />
