@@ -6,7 +6,7 @@ describe('save and resume', () => {
   it('restores the exact saved state into a new engine', () => {
     const e = new KoutGameEngine({ variant: 'BO4', seed: 7 });
     e.startRound(99);
-    e.placeBid(e.state.currentSeat, 5);
+    e.placeBid(e.state.currentSeat, 6);
     saveGameState(e.state as any);
     const loaded = loadSavedGameState();
     expect(loaded).toEqual(e.state);

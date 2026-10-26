@@ -15,7 +15,7 @@ describe('KoutTricks & Trick Playing Engine', () => {
       engine.startRound();
 
       // Bidding: Seat 1 bids 5, all others pass
-      engine.placeBid(1, 5);
+      engine.placeBid(1, 6);
       for (let s = 2; s <= 5; s++) engine.placeBid(s, 0);
       engine.placeBid(0, 0);
 
@@ -29,7 +29,7 @@ describe('KoutTricks & Trick Playing Engine', () => {
       const playState = engine.declareTrump(1, 'H');
       expect(playState.phase).toBe('PLAY');
       expect(playState.trump).toBe('H');
-      expect(playState.currentSeat).toBe(1); // Bid winner leads first trick
+      expect(playState.currentSeat).toBe(2); // Player to the bidder's right leads; bidder plays last
     });
   });
 
@@ -37,31 +37,35 @@ describe('KoutTricks & Trick Playing Engine', () => {
     it('validates turn and throws if out-of-turn seat plays', () => {
       const engine = new KoutGameEngine({ variant: 'BO6', initialDealer: 0, seed: 5678 });
       engine.startRound();
-      engine.placeBid(1, 5);
+      engine.placeBid(1, 6);
       for (let s = 2; s <= 5; s++) engine.placeBid(s, 0);
       engine.placeBid(0, 0);
       engine.declareTrump(1, 'S');
 
-      // Current seat is 1, seat 2 tries to play
-      const cardSeat2 = engine.state.hands[2][0];
-      expect(() => engine.playCard(2, cardSeat2)).toThrowError(/Not seat 2's turn/);
+      // The player to the bidder's right (seat 2) leads; seat 3 plays out of turn
+      expect(engine.state.currentSeat).toBe(2);
+      const cardSeat3 = engine.state.hands[3][0];
+      expect(() => engine.playCard(3, cardSeat3)).toThrowError(/Not seat 3's turn/);
     });
 
     it('rejects illegal card plays when player fails to follow led suit', () => {
       const engine = new KoutGameEngine({ variant: 'BO6', initialDealer: 0, seed: 9999 });
       engine.startRound();
-      engine.placeBid(1, 5);
+      engine.placeBid(1, 6);
       for (let s = 2; s <= 5; s++) engine.placeBid(s, 0);
       engine.placeBid(0, 0);
       engine.declareTrump(1, 'C');
 
-      // Seat 1 leads a card
-      const hand1 = engine.state.hands[1];
-      const leadCard = hand1[0];
-      engine.playCard(1, leadCard);
+      // The player to the bidder's right (seat 2) leads the first trick
+      const leaderSeat = engine.state.currentSeat;
+      expect(leaderSeat).toBe(2);
+      const leaderHand = engine.state.hands[leaderSeat];
+      const leadCard = leaderHand[0];
+      engine.playCard(leaderSeat, leadCard);
 
-      // Now seat 2 must play
-      const hand2 = engine.state.hands[2];
+      // Now the next seat must play
+      const followerSeat = (leaderSeat + 1) % 6;
+      const hand2 = engine.state.hands[followerSeat];
       const ledSuit = leadCard.joker !== undefined ? 'C' : leadCard.suit;
 
       // Find if seat 2 has cards of ledSuit and also cards of another suit
@@ -72,7 +76,7 @@ describe('KoutTricks & Trick Playing Engine', () => {
 
       if (matchingCards.length > 0 && nonMatchingCards.length > 0) {
         // Trying to play non-matching card when holding matching cards must throw
-        expect(() => engine.playCard(2, nonMatchingCards[0])).toThrowError(
+        expect(() => engine.playCard(followerSeat, nonMatchingCards[0])).toThrowError(
           /Illegal card play/
         );
       }
@@ -110,7 +114,7 @@ describe('KoutTricks & Trick Playing Engine', () => {
       engine.declareTrump(1, 'D');
       expect(engine.state.phase).toBe('PLAY');
       expect(engine.state.trump).toBe('D');
-      expect(engine.state.currentSeat).toBe(1);
+      expect(engine.state.currentSeat).toBe(2); // Player to the bidder's right leads
 
       // 4. Play all 9 tricks (54 total card plays)
       const TOTAL_TRICKS = 9;

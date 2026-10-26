@@ -97,7 +97,7 @@ describe('KoutScoring', () => {
       expect(result.pointsAdded).toBe(SCORING[7].failPenalty); // 7
 
       const nextState = scoreRound(state);
-      expect(nextState.scores).toEqual([17, 10]);
+      expect(nextState.scores).toEqual([24, 10]); // failPenalty for bid 7 is now doubled (14)
       expect(nextState.phase).toBe('ROUND_END');
       expect(nextState.dealer).toBe(1);
     });
@@ -165,7 +165,7 @@ describe('KoutScoring', () => {
     it('automatically triggers scoreRound and updates score when the last card of a round is played', () => {
       const engine = new KoutGameEngine({ variant: 'BO6', initialDealer: 0, seed: 12345 });
       engine.startRound(12345);
-      engine.placeBid(1, 5);
+      engine.placeBid(1, 6);
       for (let s = 2; s <= 5; s++) engine.placeBid(s, 0);
       engine.placeBid(0, 0);
       engine.declareTrump(1, 'H');

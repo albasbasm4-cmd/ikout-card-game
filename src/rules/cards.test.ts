@@ -80,6 +80,77 @@ describe('Card Strength and Trick Winner Rules', () => {
       expect(winner.card.id).toBe('JOKER-BLACK');
     });
 
+    it('LED Joker becomes a Spade: any Spade card can take it (RULES.jokerLeadAsSpade)', () => {
+      const plays: TrickPlay[] = [
+        { seat: 0, card: redJoker }, // leads -> becomes a weak Spade
+        { seat: 1, card: { id: 'S-3', suit: 'S', rank: 3 } }, // any Spade beats it
+        { seat: 2, card: offSuitAce }, // off-suit cannot take it
+      ];
+      const winner = trickWinner(plays, trump);
+      expect(winner.seat).toBe(1);
+      expect(winner.card.id).toBe('S-3');
+    });
+
+    it('LED Joker becomes a Spade: any Hakam card can take it even when Hakam is not Spade', () => {
+      const plays: TrickPlay[] = [
+        { seat: 0, card: redJoker },
+        { seat: 1, card: { id: 'C-4', suit: 'C', rank: 4 } }, // off-suit
+        { seat: 2, card: trumpTwo }, // lowest Hakam still beats the led Joker
+      ];
+      const winner = trickWinner(plays, trump);
+      expect(winner.seat).toBe(2);
+      expect(winner.card.id).toBe('H-2');
+    });
+
+    it('LED Joker wins when nobody plays a Spade or Hakam card', () => {
+      const plays: TrickPlay[] = [
+        { seat: 0, card: redJoker },
+        { seat: 1, card: { id: 'D-5', suit: 'D', rank: 5 } },
+        { seat: 2, card: offSuitAce },
+      ];
+      const winner = trickWinner(plays, trump);
+      expect(winner.seat).toBe(0);
+    });
+
+    it('a Joker played after the Hakam Ace becomes Hakam: beats trumps, loses to the Ace', () => {
+      const plays: TrickPlay[] = [
+        { seat: 0, card: trumpKing },
+        { seat: 1, card: trumpAce },
+        { seat: 2, card: blackJoker }, // after the Ace -> Hakam (850), Ace still wins
+      ];
+      const winner = trickWinner(plays, trump);
+      expect(winner.seat).toBe(1);
+      expect(winner.card.id).toBe('H-14');
+    });
+
+    it('a Black Joker played after the Hakam Ace beats every trump below the Ace', () => {
+      const plays: TrickPlay[] = [
+        { seat: 0, card: trumpKing },
+        { seat: 1, card: blackJoker }, // Hakam 850 > trump King
+      ];
+      const winner = trickWinner(plays, trump);
+      expect(winner.seat).toBe(1);
+    });
+
+    it('the Red Joker played after the Hakam Ace is still the strongest', () => {
+      const plays: TrickPlay[] = [
+        { seat: 0, card: trumpAce },
+        { seat: 1, card: redJoker },
+      ];
+      const winner = trickWinner(plays, trump);
+      expect(winner.seat).toBe(1);
+    });
+
+    it('a non-led Joker keeps beating everything (Joker strongest except when led)', () => {
+      const plays: TrickPlay[] = [
+        { seat: 0, card: ledAce },
+        { seat: 1, card: trumpAce },
+        { seat: 2, card: redJoker },
+      ];
+      const winner = trickWinner(plays, trump);
+      expect(winner.seat).toBe(2);
+    });
+
     it('treats Joker lead as trump lead for following players', () => {
       const plays: TrickPlay[] = [
         { seat: 0, card: blackJoker }, // leads joker (counts as trump)
