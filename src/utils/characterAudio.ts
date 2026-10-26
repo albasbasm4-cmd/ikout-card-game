@@ -28,12 +28,12 @@ export function registerSeatCharacters(mapping: Record<number, string> | (string
 export function getSeatCharacterId(seat: number): string {
   if (seatCharacters[seat]) return seatCharacters[seat];
   if (seat === 0) return loadPlayerProfile().characterId || "a1";
-  return `a${((seat * 3) % 35) + 1}`;
+  return `a${((seat * 3) % 29) + 1}`;
 }
 
 const phraseKeys = ["partner", "play", "ace", "king", "surprise", "kout", "pass-taunt", "tea"];
-export const MAX_VOICE_DELAY_MS = 250;
-const COLD_LOAD_GRACE_MS = 400;
+export const MAX_VOICE_DELAY_MS = 300;
+const COLD_LOAD_GRACE_MS = 500;
 
 let activeSeat: number | null = null;
 const listeners = new Set<(seat: number | null) => void>();
@@ -84,8 +84,8 @@ export function voiceKey(message: string): string | null {
   const index = CHARACTER_PHRASES.indexOf(message);
   if (index >= 0) return phraseKeys[index];
   for (const [key, line] of Object.entries(SPECIAL_LINES)) if (message === line) return key;
-  if (message === RESULT_LINES.win || message.includes("مبروك الفوز")) return "win";
-  if (message === RESULT_LINES.lose || message.includes("نعوضها")) return "lose";
+  if (message === RESULT_LINES.win || message.includes("مبروك الفوز") || message.includes("كفو يا ذيب")) return "win";
+  if (message === RESULT_LINES.lose || message.includes("نعوضها") || message.includes("الجولة الجاية")) return "lose";
   if (message === RESULT_LINES.opponent || message.includes("خلّك من الورق")) return "taunt";
   const bid = /^طلب ([5-9])$/.exec(message);
   if (bid) return bid[1] === "9" ? "kout" : null;
@@ -115,7 +115,7 @@ export function voiceSource(message: string, seat: number = 0): string | undefin
   if (key === "D") return "/assets/ikout/audio/diamonds.mp3";
   if (key === "C") return "/assets/ikout/audio/clubs.mp3";
   if (key === "joker" || key === "maker") return "/assets/ikout/audio/joker.mp3";
-  if (key === "trump-ace") return "/assets/ikout/audio/hokum_ace.mp3";
+  if (key === "trump-ace") return `/assets/ikout/audio/voices/${charId}/ace.mp3`;
 
   // Character specific phrase binding
   const actionFile = key === "pass-taunt" ? "pass" : key;
@@ -166,6 +166,11 @@ export type EventVoiceKey =
   | "maker"
   | "ace"
   | "king"
+  | "partner"
+  | "surprise"
+  | "taunt"
+  | "win"
+  | "lose"
   | "H"
   | "S"
   | "D"
@@ -184,7 +189,7 @@ export function eventVoiceSource(key: EventVoiceKey, seat = 0): string | undefin
   if (key === "D") return "/assets/ikout/audio/diamonds.mp3";
   if (key === "C") return "/assets/ikout/audio/clubs.mp3";
   if (key === "joker" || key === "maker") return "/assets/ikout/audio/joker.mp3";
-  if (key === "ace" || key === "king" || key === "kout") {
+  if (["ace", "king", "partner", "surprise", "taunt", "win", "lose", "kout"].includes(key)) {
     return `/assets/ikout/audio/voices/${charId}/${key}.mp3`;
   }
   return undefined;
