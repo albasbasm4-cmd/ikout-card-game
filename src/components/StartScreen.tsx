@@ -14,6 +14,9 @@ import { playTapSound, playWinSound } from "../utils/audio";
 import { useSettings } from "../store/useSettings";
 import { RulesModal } from "./RulesModal";
 import { Difficulty } from "../types/kout";
+import { PlayerProfile } from "../types/character";
+import { ProfileSetup } from "./ProfileSetup";
+import { hasPlayerProfile, loadPlayerProfile, savePlayerProfile, characterName } from "../utils/playerProfile";
 
 export interface GameLaunchConfig {
   variant: "BO6" | "BO4";
@@ -38,11 +41,18 @@ export const StartScreen: React.FC<StartScreenProps> = ({
   const [targetScore, setTargetScore] = useState<number>(51);
   const [difficulty, setDifficulty] = useState<Difficulty>("MEDIUM");
   const [showRules, setShowRules] = useState<boolean>(false);
+  const [showProfileSetup, setShowProfileSetup] = useState(() => !hasPlayerProfile());
+  const [profile, setProfile] = useState<PlayerProfile>(() => loadPlayerProfile());
 
   const { settings, toggleSound } = useSettings();
 
   const handleLaunch = () => {
     playTapSound();
+    if (!hasPlayerProfile()) {
+      setShowProfileSetup(true);
+      return;
+    }
+    savePlayerProfile(profile);
     onStartGame({
       variant,
       targetScore,
@@ -104,6 +114,20 @@ export const StartScreen: React.FC<StartScreenProps> = ({
           </button>
         </div>
       </header>
+
+      <button
+        type="button"
+        onClick={() => setShowProfileSetup(true)}
+        className="relative z-10 w-full max-w-lg flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-neutral-900/75 px-3 py-2 text-right shadow-lg backdrop-blur"
+        aria-label="تعديل الملف الشخصي"
+      >
+        <img src={`/assets/ikout/characters/${profile.characterId}-face.png`} alt="" className="h-12 w-12 rounded-xl border border-amber-300/50 bg-neutral-800 object-cover" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[10px] font-bold text-amber-300/80">{characterName(profile.characterId)} • ملف اللاعب</span>
+          <span className="block truncate text-sm font-black text-amber-50">{profile.nickname}</span>
+        </span>
+        <span className="rounded-xl bg-amber-400/15 px-3 py-2 text-xs font-black text-amber-200">تعديل</span>
+      </button>
 
       {/* Main Configuration Card */}
       <main className="relative z-10 w-full max-w-lg my-auto py-4 space-y-4">
@@ -271,6 +295,17 @@ export const StartScreen: React.FC<StartScreenProps> = ({
       <footer className="relative z-10 w-full max-w-lg text-center pt-3 border-t border-white/10 text-[11px] text-amber-200/50">
         تنسيق متوافق مع كافة الهواتف والشاشات • حرية تامة في رمي الأوراق • أصوات كويتية
       </footer>
+
+      <ProfileSetup
+        open={showProfileSetup}
+        profile={profile}
+        onSave={(next) => {
+          savePlayerProfile(next);
+          setProfile(next);
+          setShowProfileSetup(false);
+        }}
+        onClose={() => setShowProfileSetup(false)}
+      />
 
       {/* Rules Modal */}
       <RulesModal isOpen={showRules} onClose={() => setShowRules(false)} />

@@ -20,6 +20,8 @@ import {
 import { saveGameState } from "../utils/persist";
 import { useHaptics } from "./useSettings";
 import { verifyCheatReport } from "../rules/cheat";
+import type { PlayerSlot } from "../types/kout";
+import { assignBotCharacters, loadPlayerProfile } from "../utils/playerProfile";
 
 export interface UseGameOptions {
   variant?: "BO6" | "BO4";
@@ -27,6 +29,7 @@ export interface UseGameOptions {
   difficulty?: Difficulty;
   autoStart?: boolean;
   initialState?: GameState;
+  initialPlayers?: PlayerSlot[];
 }
 
 const SUIT_ARABIC: Record<Suit, string> = {
@@ -55,6 +58,11 @@ export function useGame(options: UseGameOptions = {}) {
         targetScore,
         initialDealer: 0,
         seed: Math.floor(Math.random() * 1000000),
+        players: options.initialPlayers
+          ? assignBotCharacters(options.initialPlayers.map((player) => player.seatIndex === 0
+              ? { ...player, name: loadPlayerProfile().nickname, characterId: loadPlayerProfile().characterId }
+              : player), loadPlayerProfile().characterId)
+          : undefined,
       },
       options.initialState,
     );
@@ -248,8 +256,10 @@ export function useGame(options: UseGameOptions = {}) {
     if (!engine) return;
     setSpeechBubbles({});
     const nextState = engine.startRound();
-    setState({ ...nextState });
-    saveGameState(nextState);
+    const players = assignBotCharacters([...(nextState.players ?? [])], loadPlayerProfile().characterId);
+    const personalizedState = engine.setPlayers(players);
+    setState({ ...personalizedState });
+    saveGameState(personalizedState);
   }, []);
 
   const startNewGame = useCallback(
@@ -264,18 +274,31 @@ export function useGame(options: UseGameOptions = {}) {
       setWinningTrickPlay(null);
       setTrickWinnerAnnouncement(null);
 
+      const profile = loadPlayerProfile();
+      const initialPlayers = assignBotCharacters(
+        options.initialPlayers ?? Array.from({ length: v === "BO6" ? 6 : 4 }, (_, seatIndex) => ({
+          seatIndex,
+          kind: seatIndex === 0 ? "HUMAN_LOCAL" as const : "AI_BOT" as const,
+          name: seatIndex === 0 ? profile.nickname : `بوت ${seatIndex + 1}`,
+          team: (seatIndex % 2) as 0 | 1,
+          connected: true,
+          ...(seatIndex === 0 ? { characterId: profile.characterId } : {}),
+        })),
+        profile.characterId,
+      );
       const newEngine = new KoutGameEngine({
         variant: v,
         targetScore: t,
         initialDealer: 0,
         seed: Math.floor(Math.random() * 1000000),
+        players: initialPlayers,
       });
       engineRef.current = newEngine;
       const firstState = newEngine.startRound();
       setState({ ...firstState });
       saveGameState(firstState);
     },
-    [variant, targetScore, difficulty],
+    [variant, targetScore, difficulty, options.initialPlayers],
   );
 
   const reportCheat = useCallback(

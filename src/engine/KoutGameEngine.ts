@@ -71,6 +71,11 @@ export class KoutGameEngine {
     return this._state;
   }
 
+  public setPlayers(players: PlayerSlot[]): GameState {
+    this._state = { ...this._state, players };
+    return this._state;
+  }
+
   /**
    * Starts a new round:
    * - Rotates dealer counter-clockwise on subsequent rounds

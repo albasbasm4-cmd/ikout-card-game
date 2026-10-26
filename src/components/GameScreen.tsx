@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import type { GameState } from "../types/kout";
+import type { GameState, PlayerSlot } from "../types/kout";
 import { useGame } from "../store/useGame";
 import { Table } from "./Table";
 import { BidPanel } from "./BidPanel";
@@ -48,10 +48,12 @@ export interface GameScreenProps {
   className?: string;
   /** Saved game to restore exactly as it was. */
   initialState?: GameState;
+  initialPlayers?: PlayerSlot[];
 }
 
 export const GameScreen: React.FC<GameScreenProps> = ({
   initialState,
+  initialPlayers,
   initialDifficulty = "MEDIUM",
   initialVariant = "BO6",
   initialTargetScore = 51,
@@ -85,6 +87,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     targetScore: initialTargetScore,
     autoStart: true,
     initialState,
+    initialPlayers,
   });
 
   const handleBid = (bid: number) => {

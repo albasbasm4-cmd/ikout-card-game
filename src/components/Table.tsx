@@ -26,6 +26,7 @@ import {
   type SpecialPlay,
 } from "../utils/gamePresentation";
 import { SoundboardModal } from "./SoundboardModal";
+import { characterPortrait } from "../utils/playerProfile";
 export interface TableProps {
   state?: GameState;
   mySeat?: number;
@@ -178,6 +179,11 @@ export const Table: React.FC<TableProps> = ({
     reactionTimers.current.add(timer);
   };
   useEffect(() => subscribeCharacterVoice(setSpeakingSeat), []);
+  useEffect(() => {
+    if (state.players && state.players.length > 0) {
+      registerSeatCharacters(state.players.map((p) => p.characterId));
+    }
+  }, [state.players]);
   useEffect(() => {
     preloadCharacterVoices();
     for (const play of trick) seenPlays.current.add(play.card.id);
@@ -349,7 +355,7 @@ export const Table: React.FC<TableProps> = ({
               <div className="reference-seat-row">
                 <img
                   className="reference-portrait"
-                  src={portraits[seat % portraits.length]}
+                  src={state.players?.[seat]?.characterId ? characterPortrait(state.players[seat].characterId!) : portraits[seat % portraits.length]}
                   alt={name(seat)}
                 />
                 {bid !== undefined && state.phase === "BID" ? (
@@ -485,6 +491,7 @@ export const Table: React.FC<TableProps> = ({
             react(mySeat, phrase);
             onSendSpeechBubble?.(phrase);
           }}
+          characterId={state.players?.[mySeat]?.characterId}
         />
         <AnimatePresence>
           {reportOpen && (
@@ -596,7 +603,7 @@ export const Table: React.FC<TableProps> = ({
         <div className={`reference-local-player ${speakingSeat === mySeat ? "seat-speaking" : ""}`}>
           <span>{name(mySeat)}</span>
           <img
-            src={portraits[mySeat % portraits.length]}
+            src={state.players?.[mySeat]?.characterId ? characterPortrait(state.players[mySeat].characterId!) : portraits[mySeat % portraits.length]}
             className="reference-portrait"
             alt={name(mySeat)}
           />
