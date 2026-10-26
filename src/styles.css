@@ -1689,8 +1689,12 @@ body {
 }
 .reference-game {
   height: 100dvh;
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  overflow: hidden;
+  position: relative;
 }
 
 /* Cards scale with the viewport — no more oversized/overlapping hand */
@@ -2018,6 +2022,27 @@ body {
     bottom: calc(46px + env(safe-area-inset-bottom, 0px) + 4px) !important;
     width: min(84%, 540px) !important;
     z-index: 38 !important;
+  }
+
+  /* Safe margins for notch / Dynamic Island on modern phones */
+  .seat-6-1,
+  .seat-6-2,
+  .seat-4-1 {
+    right: max(12px, calc(env(safe-area-inset-right, 0px) + 6px)) !important;
+  }
+
+  .seat-6-4,
+  .seat-6-5,
+  .seat-4-3 {
+    left: max(12px, calc(env(safe-area-inset-left, 0px) + 6px)) !important;
+  }
+
+  .reference-tools > div {
+    left: max(8px, calc(env(safe-area-inset-left, 0px) + 4px)) !important;
+  }
+
+  .reference-scorebar {
+    right: max(8px, calc(env(safe-area-inset-right, 0px) + 4px)) !important;
   }
 }
 

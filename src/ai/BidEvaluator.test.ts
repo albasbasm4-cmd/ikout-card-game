@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from "vitest";
 import { Card } from "../types/kout";
-import { evaluateBid, scoreHandForSuit } from "./BidEvaluator";
+import { evaluateBid, scoreHandForSuit, reduceAICallingPower } from "./BidEvaluator";
 
 describe("BidEvaluator", () => {
   // Hand 1: Monster Hand (Red Joker, Black Joker, Trump Ace/King/Queen/10 of Spades, side Aces)
@@ -117,6 +117,26 @@ describe("BidEvaluator", () => {
       const easyResult = evaluateBid(moderateHand, null, false, "EASY");
       expect([0, 5, 6, 7, 8, 9]).toContain(easyResult.bid);
       expect(["S", "H", "D", "C"]).toContain(easyResult.bestSuit);
+    });
+  });
+
+  describe("Authentic Cardio reduceAICallingPower", () => {
+    it("penalizes hands lacking top trump control or when opponent is near victory", () => {
+      // Weak hand without jokers or honors receives calling penalty
+      const penalty = reduceAICallingPower(weakHand, "C");
+      expect(penalty).toBeGreaterThan(0.5);
+
+      // Monster hand receives 0 penalty
+      const monsterPenalty = reduceAICallingPower(monsterHand, "S");
+      expect(monsterPenalty).toBe(0);
+
+      // Vulnerable context when opponent is near targetScore increases penalty
+      const vulnerablePenalty = reduceAICallingPower(weakHand, "C", {
+        seat: 0,
+        scores: [20, 45],
+        targetScore: 51,
+      });
+      expect(vulnerablePenalty).toBeGreaterThan(penalty);
     });
   });
 });

@@ -16,6 +16,8 @@ export interface BidEvaluation {
 }
 
 export interface BidContext {
+  scores?: [number, number];
+  targetScore?: number;
   seat?: number;
   partnerSeat?: number;
   bidderSeat?: number | null;
@@ -30,6 +32,50 @@ export interface BidContext {
  * - Scores side honors (side Aces = +0.8, side Kings = +0.4)
  * - Scores suit distribution (short suit ruffing potential)
  */
+/**
+ * Emulates the authentic Cardio.Kout.KoutBots.reduceAICallingPower logic:
+ * Evaluates the risk of double penalty and reduces aggressive calling power when:
+ * - Hand lacks top control (no Jokers and no Trump Ace/King)
+ * - Trump suit length is fragile (< 4) without a Joker
+ * - Opponent score is dangerously close to targetScore (within strike distance)
+ */
+export function reduceAICallingPower(
+  hand: Card[],
+  trumpCandidate: Suit,
+  context: BidContext = {},
+): number {
+  let reduction = 0;
+  const trumpCards = hand.filter((c) => c.suit === trumpCandidate);
+  const trumpLength = trumpCards.length;
+  const hasRedJoker = hand.some((c) => c.joker === "RED");
+  const hasBlackJoker = hand.some((c) => c.joker === "BLACK");
+  const hasTrumpAce = trumpCards.some((c) => c.rank === 14);
+  const hasTrumpKing = trumpCards.some((c) => c.rank === 13);
+
+  // 1. Lack of top trump stopper
+  if (!hasRedJoker && !hasBlackJoker && !hasTrumpAce && !hasTrumpKing) {
+    reduction += 0.35;
+  }
+
+  // 2. Fragile trump count without primary control
+  if (trumpLength < 4 && !hasRedJoker && !hasTrumpAce) {
+    reduction += 0.25;
+  }
+
+  // 3. Match vulnerability: severe penalty risk if opponents are near targetScore
+  if (context.scores && context.targetScore && context.seat !== undefined) {
+    const myTeam = context.seat % 2;
+    const opponentTeam = 1 - myTeam;
+    const oppScore = context.scores[opponentTeam];
+    const dangerThreshold = context.targetScore - 12;
+    if (oppScore >= dangerThreshold) {
+      reduction += 0.35;
+    }
+  }
+
+  return reduction;
+}
+
 export function scoreHandForSuit(hand: Card[], trumpCandidate: Suit): number {
   let score = 0;
 
@@ -131,6 +177,10 @@ export function evaluateBid(
     // MEDIUM
     expectedTricks += 0.4;
   }
+
+  // Apply authentic Cardio.Kout.KoutBots calling power reduction
+  const callingPenalty = reduceAICallingPower(hand, bestSuit, context);
+  expectedTricks = Math.max(0, expectedTricks - callingPenalty);
 
   const trumpCards = hand.filter((c) => c.suit === bestSuit);
   const trumpLength = trumpCards.length;

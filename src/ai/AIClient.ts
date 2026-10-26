@@ -13,7 +13,24 @@ import type { WorkerDecision, WorkerResponse, WorkerRequest } from "./kout-ai.wo
 
 export type { WorkerDecision, WorkerResponse, WorkerRequest };
 
-export const AI_TIMEOUT_MS = 1500;
+export const AI_TIMEOUT_MS = 2500;
+
+/**
+ * Authentic Cardio.Kout.KoutBots humanizing delays:
+ * - AICallAmountDelay: 800 - 1500ms (evaluating auction strategy)
+ * - AICallSuitDelay: 700 - 1200ms (deciding trump command)
+ * - AIPlayCardDelay: 800 - 1400ms (evaluating trick play & ISMCTS)
+ */
+export function getBotThinkingDelayMs(phase: GameState["phase"]): number {
+  if (phase === "BID") {
+    return Math.floor(800 + Math.random() * 700);
+  }
+  if (phase === "TRUMP") {
+    return Math.floor(700 + Math.random() * 500);
+  }
+  return Math.floor(800 + Math.random() * 600);
+}
+
 
 /**
  * Generates an instantaneous random legal move as a safety fallback
@@ -129,10 +146,10 @@ export class AIClient {
     difficulty: Difficulty = "MEDIUM",
     options: DecisionOptions = {},
   ): Promise<WorkerDecision> {
-    // Artificial delay (400-900ms) so bots feel natural and human
+    // Authentic humanized thinking delay so bots deliberate realistically
     const delayMs = options.skipDelay
       ? 0
-      : (options.customDelayMs ?? Math.floor(400 + Math.random() * 500));
+      : (options.customDelayMs ?? getBotThinkingDelayMs(state.phase));
 
     const delayPromise =
       delayMs > 0 ? new Promise<void>((r) => setTimeout(r, delayMs)) : Promise.resolve();
@@ -154,7 +171,13 @@ export class AIClient {
               state.highBid,
               isDealerForced,
               difficulty,
-              { seat, bidderSeat: state.bidderSeat },
+              {
+                seat,
+                bidderSeat: state.bidderSeat,
+                partnerSeat: (seat + (RULES[state.variant].seats / 2)) % RULES[state.variant].seats,
+                scores: state.scores,
+                targetScore: state.targetScore,
+              },
             );
             resolve({
               type: "BID",
