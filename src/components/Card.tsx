@@ -122,7 +122,9 @@ export const Card: React.FC<CardProps> = ({
     !isLegal ? "card-unavailable" : "",
     isSelected ? "card-selected" : "",
     className,
-  ].filter(Boolean).join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return onClick ? (
     <Button

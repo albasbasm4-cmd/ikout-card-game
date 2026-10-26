@@ -52,9 +52,11 @@ export default function App() {
     const profile = loadPlayerProfile();
     setRoomConfig({
       ...config,
-      players: config.players.map((player) => player.seatIndex === 0
-        ? { ...player, name: profile.nickname, characterId: profile.characterId }
-        : player),
+      players: config.players.map((player) =>
+        player.seatIndex === 0
+          ? { ...player, name: profile.nickname, characterId: profile.characterId }
+          : player,
+      ),
     });
     setResumedState(null);
     setActiveView("game");

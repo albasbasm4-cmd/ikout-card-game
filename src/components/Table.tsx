@@ -358,7 +358,11 @@ export const Table: React.FC<TableProps> = ({
               <div className="reference-seat-row">
                 <img
                   className="reference-portrait"
-                  src={state.players?.[seat]?.characterId ? characterPortrait(state.players[seat].characterId!) : portraits[seat % portraits.length]}
+                  src={
+                    state.players?.[seat]?.characterId
+                      ? characterPortrait(state.players[seat].characterId!)
+                      : portraits[seat % portraits.length]
+                  }
                   alt={name(seat)}
                 />
                 {bid !== undefined && state.phase === "BID" ? (
@@ -606,7 +610,11 @@ export const Table: React.FC<TableProps> = ({
         <div className={`reference-local-player ${speakingSeat === mySeat ? "seat-speaking" : ""}`}>
           <span>{name(mySeat)}</span>
           <img
-            src={state.players?.[mySeat]?.characterId ? characterPortrait(state.players[mySeat].characterId!) : portraits[mySeat % portraits.length]}
+            src={
+              state.players?.[mySeat]?.characterId
+                ? characterPortrait(state.players[mySeat].characterId!)
+                : portraits[mySeat % portraits.length]
+            }
             className="reference-portrait"
             alt={name(mySeat)}
           />

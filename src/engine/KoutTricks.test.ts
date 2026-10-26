@@ -15,7 +15,7 @@ describe("KoutTricks & Trick Playing Engine", () => {
       engine.startRound();
 
       // Bidding: Seat 1 bids 5, all others pass
-      engine.placeBid(1, 6);
+      engine.placeBid(1, 5);
       for (let s = 2; s <= 5; s++) engine.placeBid(s, 0);
       engine.placeBid(0, 0);
 
@@ -37,7 +37,7 @@ describe("KoutTricks & Trick Playing Engine", () => {
     it("validates turn and throws if out-of-turn seat plays", () => {
       const engine = new KoutGameEngine({ variant: "BO6", initialDealer: 0, seed: 5678 });
       engine.startRound();
-      engine.placeBid(1, 6);
+      engine.placeBid(1, 5);
       for (let s = 2; s <= 5; s++) engine.placeBid(s, 0);
       engine.placeBid(0, 0);
       engine.declareTrump(1, "S");
@@ -50,7 +50,7 @@ describe("KoutTricks & Trick Playing Engine", () => {
     it("rejects illegal card plays when player fails to follow led suit", () => {
       const engine = new KoutGameEngine({ variant: "BO6", initialDealer: 0, seed: 9999 });
       engine.startRound();
-      engine.placeBid(1, 6);
+      engine.placeBid(1, 5);
       for (let s = 2; s <= 5; s++) engine.placeBid(s, 0);
       engine.placeBid(0, 0);
       engine.declareTrump(1, "C");

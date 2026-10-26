@@ -45,12 +45,12 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
         isDealerForced,
         difficulty,
         {
-                seat,
-                bidderSeat: state.bidderSeat,
-                partnerSeat: (seat + (RULES[state.variant].seats / 2)) % RULES[state.variant].seats,
-                scores: state.scores,
-                targetScore: state.targetScore,
-              },
+          seat,
+          bidderSeat: state.bidderSeat,
+          partnerSeat: (seat + RULES[state.variant].seats / 2) % RULES[state.variant].seats,
+          scores: state.scores,
+          targetScore: state.targetScore,
+        },
       );
 
       decision = {

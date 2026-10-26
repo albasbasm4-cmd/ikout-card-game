@@ -1,9 +1,23 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Check, ChevronLeft, ChevronRight, Play, Square, UserRound, Volume2, X, Sparkles } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Square,
+  UserRound,
+  Volume2,
+  X,
+  Sparkles,
+} from "lucide-react";
 import type { PlayerProfile } from "../types/character";
 import { CHARACTER_IDS, characterPortrait } from "../utils/playerProfile";
 import { playTapSound } from "../utils/audio";
-import { CHARACTER_CATEGORIES, getCharacterData, type CharacterCategory } from "../data/charactersData";
+import {
+  CHARACTER_CATEGORIES,
+  getCharacterData,
+  type CharacterCategory,
+} from "../data/charactersData";
 
 interface ProfileSetupProps {
   open: boolean;
@@ -13,7 +27,13 @@ interface ProfileSetupProps {
   required?: boolean;
 }
 
-export function ProfileSetup({ open, profile, onSave, onClose, required = false }: ProfileSetupProps) {
+export function ProfileSetup({
+  open,
+  profile,
+  onSave,
+  onClose,
+  required = false,
+}: ProfileSetupProps) {
   const [nickname, setNickname] = useState(profile.nickname);
   const [characterId, setCharacterId] = useState(profile.characterId);
   const [selectedCategory, setSelectedCategory] = useState<CharacterCategory | "all">("all");
@@ -21,11 +41,15 @@ export function ProfileSetup({ open, profile, onSave, onClose, required = false 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const character = getCharacterData(characterId);
-  const filteredIds = selectedCategory === "all"
-    ? CHARACTER_IDS
-    : CHARACTER_IDS.filter((id) => getCharacterData(id).category === selectedCategory);
+  const filteredIds =
+    selectedCategory === "all"
+      ? CHARACTER_IDS
+      : CHARACTER_IDS.filter((id) => getCharacterData(id).category === selectedCategory);
 
-  const selectedIndex = Math.max(0, filteredIds.indexOf(characterId as (typeof filteredIds)[number]));
+  const selectedIndex = Math.max(
+    0,
+    filteredIds.indexOf(characterId as (typeof filteredIds)[number]),
+  );
 
   const stopAudio = () => {
     if (audioRef.current) {
@@ -110,7 +134,10 @@ export function ProfileSetup({ open, profile, onSave, onClose, required = false 
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-300/40 bg-amber-400/10 text-amber-300 shadow-lg">
             <UserRound className="w-6 h-6" />
           </div>
-          <h2 id="profile-title" className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-100">
+          <h2
+            id="profile-title"
+            className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-100"
+          >
             ملف اللاعب وشخصية الديوانية
           </h2>
           <p className="mt-1 text-xs text-amber-100/70">
@@ -128,7 +155,9 @@ export function ProfileSetup({ open, profile, onSave, onClose, required = false 
             placeholder="اكتب اسمك المستعار..."
             className="mt-1.5 w-full rounded-xl border border-amber-300/30 bg-black/40 px-4 py-2.5 text-base text-white placeholder-white/30 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-all shadow-inner"
           />
-          <span className="mt-1 block text-left text-[10px] text-amber-100/40">{nickname.length}/20 حرفاً</span>
+          <span className="mt-1 block text-left text-[10px] text-amber-100/40">
+            {nickname.length}/20 حرفاً
+          </span>
         </label>
 
         {/* Character Categories Filter */}
@@ -186,7 +215,9 @@ export function ProfileSetup({ open, profile, onSave, onClose, required = false 
               </div>
               <h3 className="mt-2 text-base font-black text-amber-100">
                 {character.name}
-                <span className="text-xs font-normal text-amber-300/80 mr-1.5">({character.title})</span>
+                <span className="text-xs font-normal text-amber-300/80 mr-1.5">
+                  ({character.title})
+                </span>
               </h3>
               <p className="text-[11px] text-amber-200/70 italic mt-0.5 max-w-[260px] mx-auto">
                 "{character.welcomeQuote}"

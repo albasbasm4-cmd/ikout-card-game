@@ -212,14 +212,10 @@ export function evaluateBid(
 
   // Invariant for bidding 8:
   const canBid8 =
-    trumpLength >= 4 &&
-    (hasAnyJoker || hasTrumpAce || hasTrumpKing) &&
-    expectedTricks >= 7.6;
+    trumpLength >= 4 && (hasAnyJoker || hasTrumpAce || hasTrumpKing) && expectedTricks >= 7.6;
 
   // Invariant for bidding 7:
-  const canBid7 =
-    (trumpLength >= 4 || (trumpLength >= 3 && hasAnyJoker)) &&
-    expectedTricks >= 6.6;
+  const canBid7 = (trumpLength >= 4 || (trumpLength >= 3 && hasAnyJoker)) && expectedTricks >= 6.6;
 
   // Invariant for bidding 6 (minimum voluntary bid):
   const canBid6 =

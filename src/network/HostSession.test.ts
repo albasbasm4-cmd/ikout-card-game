@@ -168,7 +168,7 @@ describe("HostSession & Network Protocol v1", () => {
       seq: 2,
       playerToken: token1,
       type: "BID_REQUEST",
-      payload: { bid: 6 },
+      payload: { bid: 5 },
     });
 
     await new Promise((r) => setTimeout(r, 10));
@@ -183,12 +183,12 @@ describe("HostSession & Network Protocol v1", () => {
       seq: 2,
       playerToken: token2,
       type: "BID_REQUEST",
-      payload: { bid: 6 },
+      payload: { bid: 5 },
     });
 
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(hostSession.state.highBid).toBe(6);
+    expect(hostSession.state.highBid).toBe(5);
     expect(hostSession.state.bidderSeat).toBe(1);
   });
 

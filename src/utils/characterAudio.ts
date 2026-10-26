@@ -15,9 +15,7 @@ import { loadPlayerProfile } from "./playerProfile";
 // Global map tracking which character is assigned to each seat
 let seatCharacters: Record<number, string> = {};
 
-export function registerSeatCharacters(
-  mapping: Record<number, string> | (string | undefined)[],
-) {
+export function registerSeatCharacters(mapping: Record<number, string> | (string | undefined)[]) {
   if (Array.isArray(mapping)) {
     mapping.forEach((charId, seat) => {
       if (charId) seatCharacters[seat] = charId;
@@ -59,7 +57,20 @@ export function preloadCharacterVoices() {
   ensureContext();
 
   const humanChar = loadPlayerProfile().characterId || "a1";
-  const actions = ["partner", "play", "ace", "king", "surprise", "kout", "pass", "tea", "win", "lose", "taunt", "welcome"];
+  const actions = [
+    "partner",
+    "play",
+    "ace",
+    "king",
+    "surprise",
+    "kout",
+    "pass",
+    "tea",
+    "win",
+    "lose",
+    "taunt",
+    "welcome",
+  ];
   actions.forEach((act) => {
     void loadBuffer(`/assets/ikout/audio/voices/${humanChar}/${act}.mp3`);
   });

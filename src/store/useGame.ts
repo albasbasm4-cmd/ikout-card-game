@@ -59,9 +59,18 @@ export function useGame(options: UseGameOptions = {}) {
         initialDealer: 0,
         seed: Math.floor(Math.random() * 1000000),
         players: options.initialPlayers
-          ? assignBotCharacters(options.initialPlayers.map((player) => player.seatIndex === 0
-              ? { ...player, name: loadPlayerProfile().nickname, characterId: loadPlayerProfile().characterId }
-              : player), loadPlayerProfile().characterId)
+          ? assignBotCharacters(
+              options.initialPlayers.map((player) =>
+                player.seatIndex === 0
+                  ? {
+                      ...player,
+                      name: loadPlayerProfile().nickname,
+                      characterId: loadPlayerProfile().characterId,
+                    }
+                  : player,
+              ),
+              loadPlayerProfile().characterId,
+            )
           : undefined,
       },
       options.initialState,
@@ -256,7 +265,10 @@ export function useGame(options: UseGameOptions = {}) {
     if (!engine) return;
     setSpeechBubbles({});
     const nextState = engine.startRound();
-    const players = assignBotCharacters([...(nextState.players ?? [])], loadPlayerProfile().characterId);
+    const players = assignBotCharacters(
+      [...(nextState.players ?? [])],
+      loadPlayerProfile().characterId,
+    );
     const personalizedState = engine.setPlayers(players);
     setState({ ...personalizedState });
     saveGameState(personalizedState);
@@ -276,14 +288,15 @@ export function useGame(options: UseGameOptions = {}) {
 
       const profile = loadPlayerProfile();
       const initialPlayers = assignBotCharacters(
-        options.initialPlayers ?? Array.from({ length: v === "BO6" ? 6 : 4 }, (_, seatIndex) => ({
-          seatIndex,
-          kind: seatIndex === 0 ? "HUMAN_LOCAL" as const : "AI_BOT" as const,
-          name: seatIndex === 0 ? profile.nickname : `بوت ${seatIndex + 1}`,
-          team: (seatIndex % 2) as 0 | 1,
-          connected: true,
-          ...(seatIndex === 0 ? { characterId: profile.characterId } : {}),
-        })),
+        options.initialPlayers ??
+          Array.from({ length: v === "BO6" ? 6 : 4 }, (_, seatIndex) => ({
+            seatIndex,
+            kind: seatIndex === 0 ? ("HUMAN_LOCAL" as const) : ("AI_BOT" as const),
+            name: seatIndex === 0 ? profile.nickname : `بوت ${seatIndex + 1}`,
+            team: (seatIndex % 2) as 0 | 1,
+            connected: true,
+            ...(seatIndex === 0 ? { characterId: profile.characterId } : {}),
+          })),
         profile.characterId,
       );
       const newEngine = new KoutGameEngine({

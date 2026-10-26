@@ -23,7 +23,9 @@ export const SoundboardModal: React.FC<SoundboardModalProps> = ({
   const character = getCharacterData(activeCharId);
 
   const diwaniyaPhrases = character.phrases.filter((p) => p.category === "diwaniya");
-  const reactionPhrases = character.phrases.filter((p) => p.category === "reactions" || p.category === "kout");
+  const reactionPhrases = character.phrases.filter(
+    (p) => p.category === "reactions" || p.category === "kout",
+  );
 
   const handlePhraseClick = (phraseText: string, audioUrl: string) => {
     // Play the character's authentic voice clip immediately

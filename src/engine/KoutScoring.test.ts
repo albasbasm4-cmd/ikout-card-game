@@ -165,7 +165,7 @@ describe("KoutScoring", () => {
     it("automatically triggers scoreRound and updates score when the last card of a round is played", () => {
       const engine = new KoutGameEngine({ variant: "BO6", initialDealer: 0, seed: 12345 });
       engine.startRound(12345);
-      engine.placeBid(1, 6);
+      engine.placeBid(1, 5);
       for (let s = 2; s <= 5; s++) engine.placeBid(s, 0);
       engine.placeBid(0, 0);
       engine.declareTrump(1, "H");

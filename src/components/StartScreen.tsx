@@ -8,6 +8,7 @@ import {
   Shield,
   BookOpen,
   RotateCcw,
+  User,
 } from "lucide-react";
 import { playTapSound } from "../utils/audio";
 import { useSettings } from "../store/useSettings";
@@ -15,7 +16,12 @@ import { RulesModal } from "./RulesModal";
 import { Difficulty } from "../types/kout";
 import { PlayerProfile } from "../types/character";
 import { ProfileSetup } from "./ProfileSetup";
-import { hasPlayerProfile, loadPlayerProfile, savePlayerProfile, characterName, characterPortrait } from "../utils/playerProfile";
+import {
+  hasPlayerProfile,
+  loadPlayerProfile,
+  savePlayerProfile,
+  characterName,
+} from "../utils/playerProfile";
 
 export interface GameLaunchConfig {
   variant: "BO6" | "BO4";
@@ -85,60 +91,62 @@ export const StartScreen: React.FC<StartScreenProps> = ({
             <h1 className="text-lg sm:text-2xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-100 drop-shadow">
               آي كوت الكويتية
             </h1>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-amber-300/80">جلسة ديوانية أصيلة</span>
-          </div>
-          <div className="flex items-center gap-1.5 mr-1 sm:mr-2">
-            <button
-              type="button"
-              onClick={() => {
-                playTapSound();
-                toggleSound();
-              }}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-amber-400/30 text-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-md"
-              title={settings.soundEnabled ? "كتم الصوت" : "تشغيل الصوت"}
-              aria-label="تبديل الصوت"
-            >
-              {settings.soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4 text-red-400" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                playTapSound();
-                setShowRules(true);
-              }}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-amber-400/30 text-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-md"
-              title="قوانين اللعبة"
-              aria-label="قوانين اللعبة"
-            >
-              <BookOpen className="w-4 h-4" />
-            </button>
+            <span className="text-[10px] sm:text-[11px] font-semibold text-amber-300/80">
+              جلسة ديوانية أصيلة
+            </span>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            playTapSound();
-            setShowProfileSetup(true);
-          }}
-          className="absolute left-0 top-1 flex items-center gap-1.5 rounded-2xl border border-amber-400/40 bg-neutral-900/90 px-2 py-1.5 shadow-lg backdrop-blur hover:bg-neutral-800 transition-all cursor-pointer active:scale-95 group max-w-[132px]"
-          aria-label="معلومات الحساب"
-          title="معلومات الحساب والملف الشخصي"
-        >
-          <img
-            src={characterPortrait(profile.characterId)}
-            alt={profile.nickname}
-            className="w-7 h-7 rounded-xl border border-amber-300/60 object-cover bg-neutral-800 shrink-0"
-          />
-          <div className="text-right leading-tight min-w-0">
-            <span className="block truncate text-[11px] font-black text-amber-100 group-hover:text-amber-300 transition-colors">
-              {profile.nickname}
-            </span>
-            <span className="block text-[9px] font-medium text-amber-300/70 truncate">
-              {characterName(profile.characterId)}
-            </span>
-          </div>
-        </button>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              playTapSound();
+              toggleSound();
+            }}
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-amber-400/30 text-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-md"
+            title={settings.soundEnabled ? "كتم الصوت" : "تشغيل الصوت"}
+            aria-label="تبديل الصوت"
+          >
+            {settings.soundEnabled ? (
+              <Volume2 className="w-4 h-4" />
+            ) : (
+              <VolumeX className="w-4 h-4 text-red-400" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              playTapSound();
+              setShowRules(true);
+            }}
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-amber-400/30 text-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-md"
+            title="دليل وقوانين اللعبة"
+            aria-label="دليل وقوانين اللعبة"
+          >
+            <BookOpen className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              playTapSound();
+              setShowProfileSetup(true);
+            }}
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 border border-amber-400/30 text-amber-200 flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-md overflow-hidden relative p-0.5 group"
+            title={`الملف الشخصي: ${profile.nickname}`}
+            aria-label="معلومات الحساب والملف الشخصي"
+          >
+            {profile.characterId ? (
+              <img
+                src={`/assets/ikout/characters/${profile.characterId}-face.png`}
+                alt={profile.nickname}
+                className="w-full h-full rounded-full object-cover select-none"
+              />
+            ) : (
+              <User className="w-4 h-4" />
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Main Center Area */}
@@ -156,7 +164,9 @@ export const StartScreen: React.FC<StartScreenProps> = ({
                 <RotateCcw className="w-6 h-6 stroke-[2.5]" />
                 <div className="text-center leading-tight">
                   <div>استئناف اللعبة</div>
-                  <div className="text-[11px] font-semibold text-neutral-900/80">متابعة من حيث توقفت</div>
+                  <div className="text-[11px] font-semibold text-neutral-900/80">
+                    متابعة من حيث توقفت
+                  </div>
                 </div>
               </button>
 
@@ -169,7 +179,9 @@ export const StartScreen: React.FC<StartScreenProps> = ({
                 <Play className="w-5 h-5 fill-amber-300 text-amber-300" />
                 <div className="text-center leading-tight">
                   <div>البدء من جديد</div>
-                  <div className="text-[11px] font-normal text-amber-300/70">بدء لعبة جديدة باختياراتك أدناه</div>
+                  <div className="text-[11px] font-normal text-amber-300/70">
+                    بدء لعبة جديدة باختياراتك أدناه
+                  </div>
                 </div>
               </button>
             </div>
@@ -224,7 +236,9 @@ export const StartScreen: React.FC<StartScreenProps> = ({
               }`}
             >
               <span className="text-sm sm:text-base font-black">كوت بو 4</span>
-              <span className="text-[10px] sm:text-[11px] text-amber-300/80 font-medium">4 لاعبين • رتم سريع</span>
+              <span className="text-[10px] sm:text-[11px] text-amber-300/80 font-medium">
+                4 لاعبين • رتم سريع
+              </span>
               <span className="text-[9px] sm:text-[10px] text-neutral-400">من الـ 7 إلى الأكة</span>
             </button>
           </div>
@@ -308,11 +322,6 @@ export const StartScreen: React.FC<StartScreenProps> = ({
           </button>
         )}
       </main>
-
-      {/* Footer */}
-      <footer className="relative z-10 w-full max-w-lg shrink-0 text-center pt-2 pb-1 border-t border-white/10 text-[10px] sm:text-[11px] text-amber-200/50">
-        تنسيق متوافق مع كافة الهواتف والشاشات 100% • أصوات ديوانية أصيلة
-      </footer>
 
       <ProfileSetup
         open={showProfileSetup}

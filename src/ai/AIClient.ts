@@ -31,7 +31,6 @@ export function getBotThinkingDelayMs(phase: GameState["phase"]): number {
   return Math.floor(800 + Math.random() * 600);
 }
 
-
 /**
  * Generates an instantaneous random legal move as a safety fallback
  * if the AI worker times out or fails.
@@ -174,7 +173,7 @@ export class AIClient {
               {
                 seat,
                 bidderSeat: state.bidderSeat,
-                partnerSeat: (seat + (RULES[state.variant].seats / 2)) % RULES[state.variant].seats,
+                partnerSeat: (seat + RULES[state.variant].seats / 2) % RULES[state.variant].seats,
                 scores: state.scores,
                 targetScore: state.targetScore,
               },
