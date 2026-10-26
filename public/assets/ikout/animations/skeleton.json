@@ -1,0 +1,211 @@
+{
+  "skeleton": {
+    "hash": "VYH6o/i0qqgt9GHDzgOFlGF03FE",
+    "spine": "3.3.07",
+    "width": 91.97,
+    "height": 82.24
+  },
+  "bones": [
+    { "name": "root" },
+    {
+      "name": "bone",
+      "parent": "root",
+      "length": 64.22,
+      "rotation": -81.84,
+      "x": -18.81,
+      "y": 68.73
+    },
+    {
+      "name": "right hand",
+      "parent": "root",
+      "length": 47.55,
+      "rotation": -45,
+      "x": -10.05,
+      "y": 55.16
+    },
+    {
+      "name": "bone2",
+      "parent": "right hand",
+      "length": 35.84,
+      "rotation": -1.35,
+      "x": 16.76,
+      "y": 14.39
+    }
+  ],
+  "slots": [
+    { "name": "loadinganimation_16", "bone": "right hand", "attachment": "loadinganimation_14" },
+    { "name": "loadinganimation_14", "bone": "root" },
+    { "name": "loadinganimation_12", "bone": "root" },
+    { "name": "loadinganimation_05", "bone": "root" },
+    { "name": "loadinganimation_19", "bone": "bone", "attachment": "loadinganimation_19" },
+    { "name": "loadinganimation_20", "bone": "right hand", "attachment": "loadinganimation_19" },
+    { "name": "loadinganimation_03", "bone": "bone2", "attachment": "loadinganimation_03" },
+    { "name": "loader_09", "bone": "root" },
+    { "name": "loader_06", "bone": "root" },
+    { "name": "loadinganimation_10", "bone": "bone", "attachment": "loadinganimation_10" },
+    { "name": "loader_03", "bone": "root" }
+  ],
+  "skins": {
+    "default": {
+      "loadinganimation_03": {
+        "loadinganimation_03": {
+          "x": 12.43,
+          "y": -3.48,
+          "rotation": 46.35,
+          "width": 36,
+          "height": 44
+        },
+        "loadinganimation_05": {
+          "x": 12.25,
+          "y": -3.3,
+          "rotation": 46.35,
+          "width": 37,
+          "height": 43
+        }
+      },
+      "loadinganimation_10": {
+        "loadinganimation_10": {
+          "x": 32.48,
+          "y": 4.14,
+          "rotation": 80.17,
+          "width": 60,
+          "height": 69
+        },
+        "loadinganimation_12": {
+          "x": 34.45,
+          "y": 3.8,
+          "rotation": 80.17,
+          "width": 60,
+          "height": 73
+        }
+      },
+      "loadinganimation_16": {
+        "loadinganimation_14": {
+          "x": 26.15,
+          "y": -6.82,
+          "rotation": 45,
+          "width": 52,
+          "height": 77
+        },
+        "loadinganimation_16": { "x": 25.46, "y": -2.85, "rotation": 45, "width": 57, "height": 70 }
+      },
+      "loadinganimation_19": {
+        "loadinganimation_19": {
+          "x": 46.21,
+          "y": 19.95,
+          "rotation": 80.17,
+          "width": 60,
+          "height": 56
+        }
+      },
+      "loadinganimation_20": {
+        "loadinganimation_19": {
+          "x": 38.84,
+          "y": -3.8,
+          "rotation": 30.2,
+          "width": 60,
+          "height": 56
+        }
+      }
+    }
+  },
+  "animations": {
+    "animation": {
+      "slots": {
+        "loadinganimation_03": {
+          "attachment": [
+            { "time": 0, "name": "loadinganimation_03" },
+            { "time": 1.5, "name": "loadinganimation_03" }
+          ]
+        },
+        "loadinganimation_10": {
+          "attachment": [
+            { "time": 0, "name": "loadinganimation_12" },
+            { "time": 0.4333, "name": "loadinganimation_10" },
+            { "time": 1.5, "name": "loadinganimation_12" }
+          ]
+        },
+        "loadinganimation_16": {
+          "attachment": [
+            { "time": 0, "name": "loadinganimation_16" },
+            { "time": 1.1666, "name": "loadinganimation_14" },
+            { "time": 1.5, "name": "loadinganimation_16" }
+          ]
+        }
+      },
+      "bones": {
+        "root": {
+          "rotate": [
+            { "time": 0, "angle": 0, "curve": "stepped" },
+            { "time": 1.5, "angle": 0 }
+          ],
+          "translate": [
+            { "time": 0, "x": 0, "y": 0, "curve": "stepped" },
+            { "time": 1.5, "x": 0, "y": 0 }
+          ]
+        },
+        "bone": {
+          "rotate": [
+            { "time": 0, "angle": 0 },
+            { "time": 0.5666, "angle": -7.69, "curve": [0.528, -0.67, 0.791, 0.25] },
+            { "time": 1.3666, "angle": 10.67, "curve": [0.346, 0.53, 0.643, 1] },
+            { "time": 1.5, "angle": 0 }
+          ],
+          "translate": [
+            { "time": 0, "x": 0, "y": 0, "curve": [0.643, -0.19, 0.479, 0.76] },
+            { "time": 1.1666, "x": -37.01, "y": 36.35, "curve": [0.582, 0.18, 0.75, 1] },
+            { "time": 1.5, "x": 0, "y": 0 }
+          ]
+        },
+        "right hand": {
+          "rotate": [
+            { "time": 0, "angle": 0, "curve": "stepped" },
+            { "time": 1.0333, "angle": 0 },
+            { "time": 1.3666, "angle": 19.31 },
+            { "time": 1.5, "angle": 0 }
+          ],
+          "translate": [
+            { "time": 0, "x": 0, "y": 0, "curve": "stepped" },
+            { "time": 1.5, "x": 0, "y": 0 }
+          ]
+        },
+        "bone2": {
+          "rotate": [
+            { "time": 0, "angle": 0, "curve": "stepped" },
+            { "time": 0.8333, "angle": 0 },
+            { "time": 1.2666, "angle": 24.55 },
+            { "time": 1.5, "angle": 15.19 }
+          ],
+          "translate": [
+            { "time": 0, "x": 0, "y": 0, "curve": "stepped" },
+            { "time": 1.5, "x": 0, "y": 0 }
+          ]
+        }
+      },
+      "drawOrder": [
+        {
+          "time": 0,
+          "offsets": [
+            { "slot": "loader_09", "offset": -3 },
+            { "slot": "loader_06", "offset": -3 }
+          ]
+        },
+        {
+          "time": 1.2666,
+          "offsets": [
+            { "slot": "loadinganimation_19", "offset": 4 },
+            { "slot": "loadinganimation_20", "offset": 1 },
+            { "slot": "loadinganimation_03", "offset": 1 }
+          ]
+        },
+        {
+          "time": 1.5,
+          "offsets": [
+            { "slot": "loader_09", "offset": -3 },
+            { "slot": "loader_06", "offset": -3 }
+          ]
+        }
+      ]
+    }
+  }
+}
