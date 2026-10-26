@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRoom, RoomConfig, RoomPreset } from '../store/useRoom';
 import { SeatKind, Difficulty } from '../types/kout';
 import {
@@ -78,6 +78,7 @@ export const Lobby: React.FC<LobbyProps> = ({
   const [selectedSeatForSwap, setSelectedSeatForSwap] = useState<number | null>(
     null
   );
+  useEffect(() => { const n = loadProfile().name; if (n) setPlayerName(0, n); }, []);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
   const [showJoinScreen, setShowJoinScreen] = useState<boolean>(false);
   const [roomCode] = useState<string>(() => generateRoomCode());
