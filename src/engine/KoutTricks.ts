@@ -65,10 +65,19 @@ export function declareTrump(
  * - Trick winner leads next trick
  * - Round ends after all tricks are completed (phase = 'ROUND_END')
  */
+export interface PlayCardOptions {
+  /**
+   * اللعب الحر (ضد لاعبين بشريين فقط): يسمح بنزول أي ورقة من اليد حتى لو
+   * كانت غير تابعة. الغش لا يُحتسب إلا عند البلاغ والتحقق (verifyCheatReport).
+   */
+  allowAnyCard?: boolean;
+}
+
 export function playCard(
   state: GameState,
   seat: number,
-  cardOrId: Card | string
+  cardOrId: Card | string,
+  options: PlayCardOptions = {}
 ): GameState {
   if (state.phase !== 'PLAY') {
     throw new Error(`Cannot play card during phase ${state.phase}`);
@@ -98,7 +107,7 @@ export function playCard(
   });
 
   const isLegal = legalCards.some((c) => c.id === cardId);
-  if (!isLegal) {
+  if (!isLegal && options.allowAnyCard !== true) {
     throw new Error(
       `Illegal card play for card ${cardId}. Must follow suit or obey joker lead rules.`
     );

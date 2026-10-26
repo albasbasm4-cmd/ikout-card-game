@@ -67,6 +67,7 @@ export default function App() {
             key={`${roomConfig?.variant}-${roomConfig?.targetScore}-${roomConfig?.botDifficulty}-${resumedState ? 'resumed' : 'new'}`}
             initialVariant={roomConfig?.variant}
             initialDifficulty={roomConfig?.botDifficulty}
+            initialPlayers={roomConfig?.players}
             initialState={resumedState ?? (roomConfig ? undefined : loadSavedGameState() ?? undefined)}
             onGoToLobby={() => setView('lobby')}
           />

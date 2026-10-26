@@ -4,7 +4,8 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { GameState, Card, Bid, Suit, Difficulty, TrickPlay } from '../types/kout';
+import { GameState, Card, Bid, Suit, Difficulty, TrickPlay, PlayerSlot } from '../types/kout';
+import { verifyCheatReport, type ReportedCardType } from '../rules/cheat';
 import { KoutGameEngine } from '../engine/KoutGameEngine';
 import { getLegalCards, trickWinner } from '../rules/cards';
 import { getPlayedCards } from '../engine/KoutTricks';
@@ -26,7 +27,20 @@ export interface UseGameOptions {
   difficulty?: Difficulty;
   autoStart?: boolean;
   initialState?: GameState;
+  /** تشكيلة الغرفة (من اللوبي): تحدد المقاعد البشرية مقابل البوتات. */
+  players?: PlayerSlot[];
 }
+
+export interface CheatVerdict {
+  confirmed: boolean;
+  accusedSeat: number;
+  cardType: ReportedCardType;
+  reporterSeat: number | null;
+  roundNo: number;
+}
+
+const MAX_CHEAT_REPORTS_PER_ROUND = 3;
+const CHEAT_REPORT_COOLDOWN_MS = 8000;
 
 const SUIT_ARABIC: Record<Suit, string> = {
   S: 'سبيت ♠',
@@ -61,7 +75,30 @@ export function useGame(options: UseGameOptions = {}) {
   const [state, setState] = useState<GameState>(engineRef.current.state);
 
   const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
+  const [cheatVerdict, setCheatVerdict] = useState<CheatVerdict | null>(null);
+  const cheatReportsThisRoundRef = useRef<number>(0);
+  const cheatReportRoundRef = useRef<number>(state.roundNo);
+  const lastCheatReportAtRef = useRef<number>(0);
   const isExecutingRef = useRef<boolean>(false);
+
+  // المقاعد البشرية: من تشكيلة الغرفة أو من حالة اللعبة، والافتراض مقعد واحد بشري
+  const humanSeats = useMemo<number[]>(() => {
+    const slots = options.players ?? (state.players && state.players.length ? state.players : null);
+    const humans = (slots || [])
+      .filter((p) => p.kind !== 'AI_BOT')
+      .map((p) => p.seatIndex);
+    return humans.length > 0 ? humans : [0];
+    // options.players يُقرأ مرة واحدة كإعداد أولي
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.players]);
+
+  // اللعب الحر = يوجد بشريان أو أكثر: نزول أي ورقة مسموح، والغش يُحكم به عند البلاغ فقط
+  const freePlay = humanSeats.length >= 2;
+
+  const humanSeatsRef = useRef(humanSeats);
+  humanSeatsRef.current = humanSeats;
+  const freePlayRef = useRef(freePlay);
+  freePlayRef.current = freePlay;
 
   // Smooth Trick Completion & Visual Pacing
   const [displayedTrick, setDisplayedTrick] = useState<TrickPlay[]>(state.currentTrick);
@@ -79,30 +116,62 @@ export function useGame(options: UseGameOptions = {}) {
     }
   }, [state.currentTrick]);
 
-  // Legal cards for human player (seat 0)
-  const legalCardsForHuman = useMemo(() => {
-    if (state.phase !== 'PLAY' || state.currentSeat !== 0 || isResolvingTrickRef.current) {
+  // المقعد البشري الذي عليه الدور الآن (هوت سبوت: أي مقعد بشري)
+  const activeHumanSeat = useMemo<number | null>(() => {
+    if (isResolvingTrickRef.current) return null;
+    if (state.phase === 'BID') {
+      return state.currentSeat !== null && humanSeats.includes(state.currentSeat) ? state.currentSeat : null;
+    }
+    if (state.phase === 'TRUMP') {
+      return state.bidderSeat !== null && humanSeats.includes(state.bidderSeat) ? state.bidderSeat : null;
+    }
+    if (state.phase === 'PLAY') {
+      return state.currentSeat !== null && humanSeats.includes(state.currentSeat) ? state.currentSeat : null;
+    }
+    return null;
+  }, [state, humanSeats]);
+
+  const activeHumanSeatRef = useRef<number | null>(activeHumanSeat);
+  activeHumanSeatRef.current = activeHumanSeat;
+
+  // الأوراق المسموحة للبشري صاحب الدور (null = لعب حر: كل الأوراق مسموحة)
+  const legalCardsForHuman = useMemo<Set<string> | null>(() => {
+    if (activeHumanSeat === null || state.phase !== 'PLAY' || isResolvingTrickRef.current) {
       return new Set<string>();
     }
-    const myHand = state.hands[0] || [];
+    if (freePlay) {
+      return null; // اللعب الحر ضد البشر: أي ورقة، والغش يُحكم به عند البلاغ فقط
+    }
+    const myHand = state.hands[activeHumanSeat] || [];
     const played = getPlayedCards(state.trickHistory, state.currentTrick);
     const legal = getLegalCards(myHand, state.currentTrick, state.trump, {
       playedCards: played,
       highBid: state.highBid,
     });
     return new Set(legal.map((c) => c.id));
-  }, [state]);
+  }, [state, activeHumanSeat, freePlay]);
 
   // Is human turn?
-  const isHumanTurn =
-    !isResolvingTrickRef.current &&
-    ((state.phase === 'BID' && state.currentSeat === 0) ||
-      (state.phase === 'TRUMP' && state.bidderSeat === 0) ||
-      (state.phase === 'PLAY' && state.currentSeat === 0));
+  const isHumanTurn = activeHumanSeat !== null;
+
+  // تصفير عدّاد البلاغات مع كل جولة جديدة، وإخفاء الحكم بعد ٦ ثوانٍ
+  useEffect(() => {
+    if (state.roundNo !== cheatReportRoundRef.current) {
+      cheatReportRoundRef.current = state.roundNo;
+      cheatReportsThisRoundRef.current = 0;
+      setCheatVerdict(null);
+    }
+  }, [state.roundNo]);
+
+  useEffect(() => {
+    if (!cheatVerdict) return;
+    const timer = setTimeout(() => setCheatVerdict(null), 6000);
+    return () => clearTimeout(timer);
+  }, [cheatVerdict]);
 
   // Plays a card with smooth trick completion delay
   const executePlayCardWithPacing = useCallback(
-    (seat: number, card: Card) => {
+    (seat: number, card: Card, playOptions?: { allowAnyCard?: boolean }) => {
       const engine = engineRef.current;
       if (!engine) return;
 
@@ -123,8 +192,9 @@ export function useGame(options: UseGameOptions = {}) {
 
         setDisplayedTrick(fullTrick);
         setWinningTrickPlay(winner);
+        const singleHuman = (humanSeatsRef.current || [0]).length <= 1;
         const announceMsg =
-          winner.seat === 0 ? 'أكلتها أنت! 🎉' : `أكلها ${winnerName}!`;
+          singleHuman && winner.seat === 0 ? 'أكلتها أنت! 🎉' : `أكلها ${winnerName}!`;
         setTrickWinnerAnnouncement(announceMsg);
 
         playTrickWinSound();
@@ -132,7 +202,7 @@ export function useGame(options: UseGameOptions = {}) {
 
         setTimeout(() => {
           try {
-            const nextState = engine.playCard(seat, card);
+            const nextState = engine.playCard(seat, card, playOptions);
             setState({ ...nextState });
             saveGameState(nextState);
 
@@ -152,7 +222,7 @@ export function useGame(options: UseGameOptions = {}) {
         }, 1100);
       } else {
         // Non-final card play: instant update
-        const nextState = engine.playCard(seat, card);
+        const nextState = engine.playCard(seat, card, playOptions);
         setState({ ...nextState });
         saveGameState(nextState);
       }
@@ -164,11 +234,13 @@ export function useGame(options: UseGameOptions = {}) {
   const humanPlayCard = useCallback(
     (card: Card) => {
       const engine = engineRef.current;
+      const seat = activeHumanSeatRef.current;
       if (!engine || isResolvingTrickRef.current) return;
-      if (engine.state.phase !== 'PLAY' || engine.state.currentSeat !== 0) return;
+      if (engine.state.phase !== 'PLAY' || seat === null || engine.state.currentSeat !== seat) return;
 
       try {
-        executePlayCardWithPacing(0, card);
+        // اللعب الحر ضد البشر: أي ورقة مسموحة (يتحقق منها الحكم فقط عند البلاغ)
+        executePlayCardWithPacing(seat, card, { allowAnyCard: freePlayRef.current });
       } catch (err) {
         console.error('Human playCard error:', err);
       }
@@ -178,14 +250,15 @@ export function useGame(options: UseGameOptions = {}) {
 
   const humanBid = useCallback((bid: Bid) => {
     const engine = engineRef.current;
+    const seat = activeHumanSeatRef.current;
     if (!engine) return;
-    if (engine.state.phase !== 'BID' || engine.state.currentSeat !== 0) return;
+    if (engine.state.phase !== 'BID' || seat === null || engine.state.currentSeat !== seat) return;
 
     try {
       const bubble = bid === 0 ? 'طاف' : `طلب ${bid}`;
-      setSpeechBubbles((prev) => ({ ...prev, 0: bubble }));
+      setSpeechBubbles((prev) => ({ ...prev, [seat]: bubble }));
 
-      const nextState = engine.placeBid(0, bid);
+      const nextState = engine.placeBid(seat, bid);
       setState({ ...nextState });
       saveGameState(nextState);
     } catch (err) {
@@ -195,17 +268,18 @@ export function useGame(options: UseGameOptions = {}) {
 
   const humanDeclareTrump = useCallback((suit: Suit) => {
     const engine = engineRef.current;
+    const seat = activeHumanSeatRef.current;
     if (!engine) return;
-    if (engine.state.phase !== 'TRUMP' || engine.state.bidderSeat !== 0) return;
+    if (engine.state.phase !== 'TRUMP' || seat === null || engine.state.bidderSeat !== seat) return;
 
     try {
       playTrumpSound();
       setSpeechBubbles((prev) => ({
         ...prev,
-        0: `الأمر: ${SUIT_ARABIC[suit]}`,
+        [seat]: `الأمر: ${SUIT_ARABIC[suit]}`,
       }));
 
-      const nextState = engine.declareTrump(0, suit);
+      const nextState = engine.declareTrump(seat, suit);
       setState({ ...nextState });
       saveGameState(nextState);
     } catch (err) {
@@ -262,21 +336,24 @@ export function useGame(options: UseGameOptions = {}) {
   // Human turn timeout handler (auto-plays legal move)
   const handleHumanTimeout = useCallback(() => {
     const engine = engineRef.current;
+    const seat = activeHumanSeatRef.current;
     if (!engine || isResolvingTrickRef.current) return;
     const current = engine.state;
+    if (seat === null) return;
 
-    if (current.phase === 'BID' && current.currentSeat === 0) {
+    if (current.phase === 'BID' && current.currentSeat === seat) {
       const isDealerForced =
-        current.dealer === 0 &&
+        current.dealer === seat &&
         current.bids.length === (current.variant === 'BO6' ? 5 : 3) &&
         current.bids.every((b) => b.bid === 0);
       const autoBid: Bid = isDealerForced ? 5 : 0;
       humanBid(autoBid);
-    } else if (current.phase === 'TRUMP' && current.bidderSeat === 0) {
-      const evalResult = evaluateBid(current.hands[0], null, false, difficulty);
+    } else if (current.phase === 'TRUMP' && current.bidderSeat === seat) {
+      const evalResult = evaluateBid(current.hands[seat], null, false, difficulty);
       humanDeclareTrump(evalResult.bestSuit);
-    } else if (current.phase === 'PLAY' && current.currentSeat === 0) {
-      const hand = current.hands[0] || [];
+    } else if (current.phase === 'PLAY' && current.currentSeat === seat) {
+      // المهلة تشغّل دائماً ورقة قانونية حتى مع اللعب الحر — منع تعطيل اللعبة
+      const hand = current.hands[seat] || [];
       const played = getPlayedCards(current.trickHistory, current.currentTrick);
       const legal = getLegalCards(hand, current.currentTrick, current.trump, {
         playedCards: played,
@@ -298,9 +375,11 @@ export function useGame(options: UseGameOptions = {}) {
 
     if (isResolvingTrickRef.current) return;
 
-    const isBotTurnToBid = current.phase === 'BID' && current.currentSeat !== 0;
-    const isBotTurnToTrump = current.phase === 'TRUMP' && current.bidderSeat !== 0;
-    const isBotTurnToPlay = current.phase === 'PLAY' && current.currentSeat !== 0;
+    const isHumanSeat = (seat: number | null): boolean =>
+      seat !== null && humanSeatsRef.current.includes(seat);
+    const isBotTurnToBid = current.phase === 'BID' && !isHumanSeat(current.currentSeat);
+    const isBotTurnToTrump = current.phase === 'TRUMP' && !isHumanSeat(current.bidderSeat);
+    const isBotTurnToPlay = current.phase === 'PLAY' && !isHumanSeat(current.currentSeat);
 
     if (!isBotTurnToBid && !isBotTurnToTrump && !isBotTurnToPlay) {
       setIsBotThinking(false);
@@ -366,6 +445,36 @@ export function useGame(options: UseGameOptions = {}) {
     };
   }, [state, difficulty, executePlayCardWithPacing]);
 
+  // ---- نظام البلاغ (ضد لاعبين بشريين فقط) ----
+  const canReportCheat =
+    freePlay &&
+    (state.phase === 'PLAY' || state.phase === 'ROUND_END') &&
+    cheatReportsThisRoundRef.current < MAX_CHEAT_REPORTS_PER_ROUND;
+
+  const reportCheat = useCallback((accusedSeat: number, cardType: ReportedCardType): boolean => {
+    const engine = engineRef.current;
+    if (!engine) return false;
+    if ((humanSeatsRef.current || []).length < 2) return false; // ضد البوتات لا معنى للبلاغ
+    if (engine.state.phase !== 'PLAY' && engine.state.phase !== 'ROUND_END') return false;
+    if (cheatReportsThisRoundRef.current >= MAX_CHEAT_REPORTS_PER_ROUND) return false;
+    const now = Date.now();
+    if (now - lastCheatReportAtRef.current < CHEAT_REPORT_COOLDOWN_MS) return false;
+
+    lastCheatReportAtRef.current = now;
+    cheatReportsThisRoundRef.current += 1;
+
+    // التحقق يجري على الحالة الكاملة (أوراق كل اللاعبين) — هذه هي الحقيقة
+    const confirmed = verifyCheatReport(engine.state, accusedSeat, cardType);
+    setCheatVerdict({
+      confirmed,
+      accusedSeat,
+      cardType,
+      reporterSeat: activeHumanSeatRef.current,
+      roundNo: engine.state.roundNo,
+    });
+    return confirmed;
+  }, []);
+
   return {
     state,
     difficulty,
@@ -385,6 +494,13 @@ export function useGame(options: UseGameOptions = {}) {
     startNextRound,
     startNewGame,
     handleHumanTimeout,
+    // اللعب الحر ضد البشر + نظام البلاغ
+    humanSeats,
+    freePlay,
+    activeHumanSeat,
+    canReportCheat,
+    reportCheat,
+    cheatVerdict,
   };
 }
 

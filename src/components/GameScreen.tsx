@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import type { GameState } from '../types/kout';
+import React, { useState, useEffect, useRef } from 'react';
+import type { GameState, PlayerSlot } from '../types/kout';
+import type { ReportedCardType } from '../rules/cheat';
 import { useGame } from '../store/useGame';
 import { Table } from './Table';
 import { BidPanel } from './BidPanel';
@@ -32,10 +33,12 @@ import {
   Maximize,
   Minimize,
   Users,
+  ShieldAlert,
 } from 'lucide-react';
 import { RulesModal } from './RulesModal';
 import { Button } from './ui/button';
 import { stopReferenceAudio } from '../utils/referenceAudio';
+import { CheatReportModal } from './CheatReportModal';
 
 export interface GameScreenProps {
   initialDifficulty?: Difficulty;
@@ -44,6 +47,8 @@ export interface GameScreenProps {
   className?: string;
   /** Saved game to restore exactly as it was. */
   initialState?: GameState;
+  /** تشكيلة اللاعبين من اللوبي: تحدد البشر مقابل البوتات (اللعب الحر والبلاغ). */
+  initialPlayers?: PlayerSlot[];
 }
 
 export const GameScreen: React.FC<GameScreenProps> = ({
@@ -52,6 +57,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   initialVariant = 'BO6',
   onGoToLobby,
   className = '',
+  initialPlayers,
 }) => {
   const {
     state,
@@ -71,11 +77,18 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     startNextRound,
     startNewGame,
     handleHumanTimeout,
+    humanSeats,
+    freePlay,
+    activeHumanSeat,
+    canReportCheat,
+    reportCheat,
+    cheatVerdict,
   } = useGame({
     difficulty: initialDifficulty,
     variant: initialVariant,
     autoStart: true,
     initialState,
+    players: initialPlayers,
   });
 
   const { settings, toggleSound, setBotSpeed } = useSettings();
@@ -83,6 +96,22 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [showRulesModal, setShowRulesModal] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [showCheatModal, setShowCheatModal] = useState<boolean>(false);
+  // بوابة تسليم الجهاز في اللعب الجماعي (هوت سبوت): تظهر بين دور بشري وآخر
+  const [handoffSeat, setHandoffSeat] = useState<number | null>(null);
+  const lastHumanSeatRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (freePlay && activeHumanSeat !== null && lastHumanSeatRef.current !== activeHumanSeat) {
+      lastHumanSeatRef.current = activeHumanSeat;
+      setHandoffSeat(activeHumanSeat);
+    }
+    if (!freePlay) {
+      lastHumanSeatRef.current = null;
+      if (handoffSeat !== null) setHandoffSeat(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freePlay, activeHumanSeat]);
 
   // Monitor browser fullscreen state
   useEffect(() => {
@@ -119,8 +148,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   const numSeats = isBO6 ? 6 : 4;
   const isDealerForced =
     state.phase === 'BID' &&
-    state.currentSeat === 0 &&
-    state.dealer === 0 &&
+    activeHumanSeat !== null &&
+    state.currentSeat === activeHumanSeat &&
+    state.dealer === activeHumanSeat &&
     state.bids.length === numSeats - 1 &&
     state.bids.every((b) => b.bid === 0);
 
@@ -220,6 +250,22 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         )}
       </Button>
 
+      {/* زر البلاغ عن غش — يظهر فقط في اللعب ضد لاعبين بشريين */}
+      {canReportCheat && (
+        <Button
+          type="button"
+          onClick={() => {
+            playTapSound();
+            setShowCheatModal(true);
+          }}
+          className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/75 border border-rose-400/50 text-rose-300 flex items-center justify-center shadow-lg backdrop-blur-md active:scale-95 cursor-pointer hover:bg-black/90 hover:border-rose-300"
+          aria-label="البلاغ عن غش"
+          title="البلاغ عن غش (اللعب الحر مسموح — الحكم عند البلاغ فقط)"
+        >
+          <ShieldAlert className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        </Button>
+      )}
+
       {/* Settings button */}
       <Button
         type="button"
@@ -263,19 +309,20 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         <Table
           state={state}
           mySeat={0}
+          localHandSeat={handoffSeat !== null ? -1 : activeHumanSeat ?? 0}
           onPlayCard={humanPlayCard}
           displayedTrick={displayedTrick}
           winningTrickPlay={winningTrickPlay}
           trickWinnerAnnouncement={trickWinnerAnnouncement}
           speechBubbles={speechBubbles}
-          legalCardIds={legalCardsForHuman}
+          legalCardIds={legalCardsForHuman ?? undefined}
           onSendSpeechBubble={sendSpeechBubble}
           headerControls={headerControls}
           className="w-full h-full"
         />
 
-        {/* Floating Bid Panel when in BID phase and it's human turn */}
-        {state.phase === 'BID' && state.currentSeat === 0 && (
+        {/* Floating Bid Panel when in BID phase and it's the active human's turn */}
+        {state.phase === 'BID' && activeHumanSeat !== null && state.currentSeat === activeHumanSeat && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-3 sm:p-4 reference-selection-overlay animate-in fade-in duration-200">
             <BidPanel
               currentHighBid={state.highBid}
@@ -286,14 +333,71 @@ export const GameScreen: React.FC<GameScreenProps> = ({
           </div>
         )}
 
-        {/* Floating Trump Picker when in TRUMP phase and human won the bid */}
-        {state.phase === 'TRUMP' && state.bidderSeat === 0 && (
+        {/* Floating Trump Picker when in TRUMP phase and the active human won the bid */}
+        {state.phase === 'TRUMP' && activeHumanSeat !== null && state.bidderSeat === activeHumanSeat && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-3 sm:p-4 reference-selection-overlay animate-in fade-in duration-200">
             <TrumpPicker
               currentTrump={state.trump}
               onSelectTrump={humanDeclareTrump}
             />
           </div>
+        )}
+
+        {/* لافتة الحكم على البلاغ */}
+        {cheatVerdict && (
+          <div
+            className={`absolute top-16 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-2xl border-2 shadow-2xl backdrop-blur-md text-center animate-in zoom-in-95 duration-200 ${
+              cheatVerdict.confirmed
+                ? 'bg-rose-950/95 border-rose-400'
+                : 'bg-amber-950/95 border-amber-400/70'
+            }`}
+          >
+            <p className={`text-xs sm:text-sm font-black ${cheatVerdict.confirmed ? 'text-rose-200' : 'text-amber-200'}`}>
+              {cheatVerdict.confirmed
+                ? `⚖️ غش مؤكد: ${state.players?.[cheatVerdict.accusedSeat]?.name || `لاعب ${cheatVerdict.accusedSeat + 1}`} كان عنده الورقة وما نزلها!`
+                : '⚖️ الحكم: لا يوجد غش — الورقة ما كانت عنده وقتها'}
+            </p>
+          </div>
+        )}
+
+        {/* بوابة تسليم الجهاز بين اللاعبين البشريين */}
+        {handoffSeat !== null && (
+          <div className="absolute inset-0 z-[80] bg-black/90 backdrop-blur-lg flex items-center justify-center p-4">
+            <div className="max-w-xs w-full bg-neutral-950 border-2 border-amber-400/70 rounded-3xl p-5 text-center shadow-2xl">
+              <div className="w-12 h-12 mx-auto mb-2 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-black text-xl font-black">
+                {handoffSeat + 1}
+              </div>
+              <h2 className="text-sm font-black text-amber-300 mb-1">
+                دور {state.players?.[handoffSeat]?.name || `لاعب ${handoffSeat + 1}`}
+              </h2>
+              <p className="text-[11px] text-amber-200/70 font-medium mb-3">
+                سلّم الجهاز، واضغط فقط عندما تستلم الأوراق
+              </p>
+              <Button
+                type="button"
+                onClick={() => {
+                  playTapSound();
+                  setHandoffSeat(null);
+                }}
+                className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-600 text-black font-black text-xs border border-amber-200 shadow-xl active:scale-98 cursor-pointer"
+              >
+                استلمت — اعرض أوراقي
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* نافذة البلاغ عن غش */}
+        {showCheatModal && (
+          <CheatReportModal
+            players={state.players || []}
+            seatsCount={numSeats}
+            onClose={() => setShowCheatModal(false)}
+            onSubmit={(accusedSeat: number, cardType: ReportedCardType) => {
+              reportCheat(accusedSeat, cardType);
+              setShowCheatModal(false);
+            }}
+          />
         )}
 
         {/* Round End Modal */}

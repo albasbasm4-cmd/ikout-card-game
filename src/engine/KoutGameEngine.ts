@@ -246,8 +246,12 @@ export class KoutGameEngine {
     return this._state;
   }
 
-  public playCard(seat: number, card: Card | string): GameState {
-    this._state = koutPlayCard(this._state, seat, card);
+  public playCard(
+    seat: number,
+    card: Card | string,
+    options?: { allowAnyCard?: boolean }
+  ): GameState {
+    this._state = koutPlayCard(this._state, seat, card, options);
     if (this._state.phase === 'ROUND_END') {
       this._state = scoreRound(this._state);
     }

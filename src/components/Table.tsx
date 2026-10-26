@@ -14,7 +14,7 @@ import { addXpForGame } from '../utils/xp';
 export interface TableProps {
  state?: GameState; mySeat?: number; onPlayCard?: (card: CardType) => void; onBid?: (bid: number) => void; onDeclareTrump?: (suit: Suit) => void;
  displayedTrick?: TrickPlay[]; winningTrickPlay?: TrickPlay | null; trickWinnerAnnouncement?: string | null;
- speechBubbles?: Record<number,string>; legalCardIds?: Set<string>; onSendSpeechBubble?: (message:string)=>void; headerControls?: React.ReactNode; className?: string;
+ speechBubbles?: Record<number,string>; legalCardIds?: Set<string>; onSendSpeechBubble?: (message:string)=>void; headerControls?: React.ReactNode; className?: string; localHandSeat?: number;
 }
 const CHAT_KEYS: PhraseKey[] = ['partner', 'play', 'ace', 'king', 'surprise', 'kout', 'pass-taunt', 'tea'];
 
@@ -69,7 +69,7 @@ export const MOCK_TABLE_STATE: GameState = {
   ],
 };
 
-export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat = 0, onPlayCard, displayedTrick, winningTrickPlay, trickWinnerAnnouncement, speechBubbles = {}, legalCardIds, onSendSpeechBubble, headerControls, className = '' }) => {
+export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat = 0, onPlayCard, displayedTrick, winningTrickPlay, trickWinnerAnnouncement, speechBubbles = {}, legalCardIds, onSendSpeechBubble, headerControls, className = '', localHandSeat }) => {
  const profile = useProfile();
  // Stable per-seat characters: the human's profile character, bots drawn from the restored 36.
  const seatCharacters = useMemo<Record<number, CharacterId>>(() => {
@@ -199,7 +199,9 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
    const key = contextKeyForMessage(message);
    return key ? characterPhrase(characterFor(seat), key) : message;
  };
- const myTurn = state.currentSeat === mySeat && state.phase === 'PLAY';
+ // مقعد اليد الظاهرة: افتراضاً مقعد المشاهد؛ في اللعب الجماعي (هوت سبوت) يتبع صاحب الدور
+ const handSeat = localHandSeat ?? mySeat;
+ const myTurn = state.currentSeat === handSeat && state.phase === 'PLAY';
  const name = (seat:number) => state.players?.[seat]?.name || `لاعب ${seat + 1}`;
  const active = state.phase === 'TRUMP' ? state.bidderSeat : state.currentSeat;
  return <div dir="rtl" className={`reference-game table-theme-${profile.table} card-theme-${profile.cards} ${className}`}>
@@ -241,7 +243,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
          <div className="reference-slam-symbol">{slam.kind === 'trump-ace' && slam.suit ? <SuitSvg suit={slam.suit} className="reference-slam-icon" /> : <JokerSvg isRed={slam.kind === 'joker'} className="reference-slam-joker" />}</div>
          <strong>{slam.kind === 'joker' ? 'الجيكر' : slam.kind === 'maker' ? 'الميكر' : 'أكة الحكم'}</strong>
        </motion.div>}</AnimatePresence>
-<div className="reference-local-hand"><Hand cards={state.hands[mySeat] || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" /></div>
+<div className="reference-local-hand"><Hand cards={(handSeat !== undefined ? state.hands[handSeat] : state.hands[mySeat]) || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" /></div>
      {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{CHAT_KEYS.map(key => { const phrase = characterPhrase(characterFor(mySeat), key); return <Button key={key} variant="ghost" onClick={()=>{playBubbleSound(); react(mySeat, key); onSendSpeechBubble?.(phrase); setChatOpen(false);}}>{phrase}</Button>; })}</div></div>}
    </section>
    <footer className="reference-controlbar" dir="ltr">

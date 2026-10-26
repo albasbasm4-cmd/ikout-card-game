@@ -14,6 +14,7 @@ import {
 } from './protocol';
 import { GameState, PlayerSlot, SeatKind } from '../types/kout';
 import { RULES } from '../rules/config';
+import { verifyCheatReport } from '../rules/cheat';
 
 export interface HostSessionOptions {
   engine?: KoutGameEngine;
@@ -33,6 +34,10 @@ export class HostSession {
   private hostSeq = 0;
   private unsubscribeMessages?: () => void;
   private roomCode?: string;
+  // مضاد إساءة استخدام البلاغات: حد أقصى للجولة الواحدة وفاصل زمني بين البلاغات
+  private cheatReportsThisRound = 0;
+  private cheatReportRound = -1;
+  private lastCheatReportAt = 0;
 
   constructor(transport: IHostTransport, options: HostSessionOptions = {}) {
     this.transport = transport;
@@ -96,6 +101,10 @@ export class HostSession {
       }
       case 'PLAY_CARD_REQUEST': {
         this.handlePlayCardRequest(playerToken, packet);
+        break;
+      }
+      case 'CHEAT_REPORT': {
+        this.handleCheatReport(playerToken, packet);
         break;
       }
       case 'PING': {
@@ -308,11 +317,78 @@ export class HostSession {
     }
 
     try {
-      this.engine.playCard(senderSeat, packet.payload.cardId);
+      // اللعب الحر ضد لاعبين بشريين: أي ورقة مسموحة، والغش يُحكم به فقط عبر البلاغ
+      this.engine.playCard(senderSeat, packet.payload.cardId, {
+        allowAnyCard: this.isFreePlay(),
+      });
       this.broadcastState();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       this.sendError(playerToken, 'PLAY_REJECTED', msg, packet.seq);
+    }
+  }
+
+  /** هل اللعبة ضد لاعبين بشريين (يوجد بشريان أو أكثر)؟ حينها يُفعَّل اللعب الحر. */
+  private isFreePlay(): boolean {
+    return this.humanSeatCount() >= 2;
+  }
+
+  private humanSeatCount(): number {
+    const players = this.engine.state.players || [];
+    const humans = players.filter((p) => p.kind !== 'AI_BOT').length;
+    return humans > 0 ? humans : 1;
+  }
+
+  /**
+   * بلاغ غش: يتحقق المضيف بيد المُبلَّغ عنه الكاملة وقت اللعب (لديه هو فقط الحقيقة).
+   * حد ٣ بلاغات لكل جولة وفاصل ٨ ثوانٍ بين البلاغات لمنع الإساءة.
+   */
+  private handleCheatReport(
+    playerToken: string,
+    packet: Extract<ClientPacket, { type: 'CHEAT_REPORT' }>
+  ): void {
+    const senderSeat = this.tokenToSeat.get(playerToken);
+    if (senderSeat === undefined) {
+      this.sendError(playerToken, 'NOT_JOINED', 'Must join before reporting', packet.seq);
+      return;
+    }
+
+    if (this.engine.state.phase !== 'PLAY' && this.engine.state.phase !== 'ROUND_END') {
+      this.sendError(playerToken, 'INVALID_PHASE', 'Reports are only allowed during play', packet.seq);
+      return;
+    }
+
+    if (this.cheatReportRound !== this.engine.state.roundNo) {
+      this.cheatReportRound = this.engine.state.roundNo;
+      this.cheatReportsThisRound = 0;
+    }
+    if (this.cheatReportsThisRound >= 3) {
+      this.sendError(playerToken, 'REPORT_LIMIT', 'Reached the report limit for this round', packet.seq);
+      return;
+    }
+    const now = Date.now();
+    if (now - this.lastCheatReportAt < 8000) {
+      this.sendError(playerToken, 'REPORT_COOLDOWN', 'Wait a moment before reporting again', packet.seq);
+      return;
+    }
+    this.lastCheatReportAt = now;
+    this.cheatReportsThisRound += 1;
+
+    const { accusedSeat, cardType } = packet.payload;
+    const confirmed = verifyCheatReport(this.engine.state, accusedSeat, cardType);
+
+    // الحكم يوصل لكل اللاعبين حتى يشهدوا النتيجة
+    for (const seat of this.seatToToken.keys()) {
+      this.sendPacket(this.seatToToken.get(seat) as string, {
+        type: 'CHEAT_VERDICT',
+        payload: {
+          confirmed,
+          accusedSeat,
+          cardType,
+          reporterSeat: senderSeat,
+          roundNo: this.engine.state.roundNo,
+        },
+      });
     }
   }
 
