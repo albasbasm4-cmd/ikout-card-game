@@ -7,3 +7,6 @@
 - [x] Implement reference-based table, score/control bars, extracted portraits, bid wheel, French card faces and fan; exact fidelity remains unverified at 256×144.
 - [x] Verify real bidding, trump choice and card play; all 69 tests pass.
 - [ ] Complete 100% visual/audio fidelity — blocked: original character animations, full card artwork, and isolated complete voice/effect files are unavailable; only sampled pass/card audio is wired and listening fidelity remains unverified.
+- [ ] Verify & fix reported issues (AI cardStrength args, joker lead suit, BO6 partner, bubbles for reactions, seat overlap, winning card on top, less bouncy spring, trick collection, deal animation)
+- [ ] Profile screen: choose table style + card style, saved with profile, applied in game
+- [ ] Final screenshots: profile screen + game screen
