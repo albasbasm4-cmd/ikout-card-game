@@ -116,7 +116,7 @@ export function getLegalCards(
   }
 
   const allowJokerAnytime =
-    ctx.allowJokerAnytime ?? RULES.jokerLeadRules?.allowJokerAnytime ?? false;
+    ctx.allowJokerAnytime ?? (RULES.jokerLeadRules as any)?.allowJokerAnytime ?? false;
 
   // 1. Following a trick (trick has 1 or more plays)
   if (trick.length > 0) {

@@ -14,6 +14,7 @@ import { playReferenceAudio, stopReferenceAudio } from "../utils/referenceAudio"
 import {
   playCharacterVoice,
   subscribeCharacterVoice,
+  registerSeatCharacters,
   preloadCharacterVoices,
   stopCharacterVoice,
   playEventVoice,

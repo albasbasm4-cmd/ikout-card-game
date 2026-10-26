@@ -94,7 +94,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     if (bid === 0) playEventVoice("taf", { seat: 0 });
     else if (bid >= 6)
       playEventVoice(bid === 9 ? "kout" : (`bid${bid}` as EventVoiceKey), { seat: 0 });
-    humanBid(bid);
+    humanBid(bid as any);
   };
 
   const { settings, toggleSound, setBotSpeed } = useSettings();

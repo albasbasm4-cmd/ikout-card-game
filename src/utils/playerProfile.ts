@@ -28,7 +28,7 @@ export function savePlayerProfile(profile: PlayerProfile): void {
   localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify(clean));
 }
 
-export const CHARACTER_IDS = Array.from({ length: 35 }, (_, index) => `a${index + 1}`) as const;
+export const CHARACTER_IDS = Array.from({ length: 35 }, (_, index) => `a${index + 1}`);
 
 export function characterPortrait(characterId: string): string {
   return `/assets/ikout/characters/${characterId}-face.png`;
