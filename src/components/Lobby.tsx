@@ -23,6 +23,8 @@ import {
   LogIn,
 } from 'lucide-react';
 import { QrModal } from './QrModal';
+import { ProfilePanel } from './ProfilePanel';
+import { loadProfile } from '../utils/profile';
 import { JoinScreen } from './JoinScreen';
 import { generateRoomCode } from '../network/localIp';
 
@@ -157,6 +159,8 @@ export const Lobby: React.FC<LobbyProps> = ({
               <span>الانضمام إلى غرفة</span>
             </button>
           </div>
+
+          <ProfilePanel onNameChange={name => setPlayerName(0, name)} />
 
           {/* Quick Presets Section */}
           <section className="bg-black/40 border border-amber-500/20 rounded-2xl p-3 shadow-md backdrop-blur-xs">

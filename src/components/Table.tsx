@@ -10,6 +10,7 @@ import shemagh from '../assets/gameplay/shemagh-player.png.asset.json';
 import elder from '../assets/gameplay/elder-player.png.asset.json';
 import green from '../assets/gameplay/green-player.png.asset.json';
 import stone from '../assets/gameplay/stone-clean.png.asset.json';
+import { PORTRAITS, useProfile } from '../utils/profile';
 import { playReferenceAudio, stopReferenceAudio } from '../utils/referenceAudio';
 import { playCharacterVoice, subscribeCharacterVoice, preloadCharacterVoices, stopCharacterVoice } from '../utils/characterAudio';
 import { CHARACTER_PHRASES, SPECIAL_LINES, RESULT_LINES, specialPlay, type SpecialPlay } from '../utils/gamePresentation';
@@ -72,6 +73,8 @@ export const MOCK_TABLE_STATE: GameState = {
 };
 
 export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat = 0, onPlayCard, displayedTrick, winningTrickPlay, trickWinnerAnnouncement, speechBubbles = {}, legalCardIds, onSendSpeechBubble, headerControls, className = '' }) => {
+ const profile = useProfile();
+ const portraitFor = (seat: number) => seat === mySeat ? PORTRAITS[profile.portrait] : portraits[seat % portraits.length];
  const [chatOpen, setChatOpen] = useState(false);
  const [slam, setSlam] = useState<{ id: string; kind: SpecialPlay; suit?: Suit } | null>(null);
  const [reactions, setReactions] = useState<Record<number, string>>({});
@@ -168,13 +171,13 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
  const myTurn = state.currentSeat === mySeat && state.phase === 'PLAY';
  const name = (seat:number) => state.players?.[seat]?.name || `لاعب ${seat + 1}`;
  const active = state.phase === 'TRUMP' ? state.bidderSeat : state.currentSeat;
- return <div dir="rtl" className={`reference-game ${className}`}>
+ return <div dir="rtl" className={`reference-game table-theme-${profile.table} card-theme-${profile.cards} ${className}`}>
    <header className="reference-scorebar" dir="ltr">
      <div className="reference-score team-red"><span>لنا</span><strong>{state.scores[0]}</strong><span>{state.tricksWon[0]}</span></div>
      <span className="reference-round">iKout · {state.roundNo} / {state.targetScore}</span>
      <div className="reference-score team-blue"><span>{state.tricksWon[1]}</span><strong>{state.scores[1]}</strong><span>لهم</span></div>
    </header>
-   <section className="reference-arena table-felt" aria-label="طاولة كوت" style={{ backgroundImage: `url(${stone.url})` }}>
+   <section className="reference-arena table-felt" aria-label="طاولة كوت" style={profile.table === 'stone' ? { backgroundImage: `url(${stone.url})` } : undefined}>
      <div className="reference-disc" aria-hidden="true"><div className="reference-rosette" /></div>
      <div className="reference-trump">{state.trump && <><SuitSvg suit={state.trump} className="w-5 h-5" /><strong>{state.highBid}</strong></>}</div>
      {Array.from({ length: count }, (_, seat) => {
@@ -184,7 +187,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
        return <div key={seat} className={`reference-seat seat-${count}-${relative} ${seat % 2 === mySeat % 2 ? 'seat-team' : 'seat-opponent'} ${active === seat ? 'seat-active' : ''} ${speakingSeat === seat ? 'seat-speaking' : ''}`}>
          <span className="reference-player-name">{name(seat)}</span>
          <div className="reference-seat-row">
-           <img className="reference-portrait" src={portraits[seat % portraits.length]} alt={name(seat)} />
+           <img className="reference-portrait" src={portraitFor(seat)} alt={name(seat)} />
            {bid !== undefined && state.phase === 'BID' ? <span className="reference-bid-badge">{bid || <PassHand size={18}/>}</span> : <div className="reference-opponent-hand" aria-label={`${state.hands[seat]?.length ?? 0} أوراق`}>
              {Array.from({ length: state.hands[seat]?.length ?? 0 }, (_, i) => <div key={i} className="reference-mini-back" style={{ transform: `rotate(${(i - ((state.hands[seat]?.length ?? 0) - 1) / 2) * 8}deg)` }} />)}
            </div>}
@@ -198,7 +201,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
          const relative = (play.seat - mySeat + count) % count;
          const angle = relative * Math.PI * 2 / count;
          const winnerAngle = ((winningTrickPlay?.seat ?? play.seat) - mySeat + count) % count * Math.PI * 2 / count;
-         return <motion.div key={play.card.id} className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? 'trick-winning' : ''}`} style={{ zIndex: i + 1 }} initial={reducedMotion ? false : { x: Math.sin(angle) * 240, y: Math.cos(angle) * 190, scale: 1.25, rotateX: 55, rotate: (relative % 2 ? -1 : 1) * 25, opacity: 0 }} animate={{ x: Math.sin(angle) * 70, y: Math.cos(angle) * 62, rotateX: 18, rotate: (relative % 2 ? -1 : 1) * 6, scale: 1, opacity: 1 }} exit={{ x: Math.sin(winnerAngle) * 260, y: Math.cos(winnerAngle) * 190, scale: .3, rotateX: 40, opacity: 0, transition: { duration: .35, ease: 'easeIn' } }} transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 30, mass: .7 }}><Card card={play.card} size="sm" /></motion.div>;
+         return <motion.div key={play.card.id} className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? 'trick-winning' : ''}`} style={{ zIndex: winningTrickPlay?.card.id === play.card.id ? 50 : i + 1 }} initial={reducedMotion ? false : { x: Math.sin(angle) * 240, y: Math.cos(angle) * 190, scale: 1.25, rotateX: 55, rotate: (relative % 2 ? -1 : 1) * 25, opacity: 0 }} animate={{ x: Math.sin(angle) * 70, y: Math.cos(angle) * 62, rotateX: 18, rotate: (relative % 2 ? -1 : 1) * 6, scale: 1, opacity: 1 }} exit={{ x: Math.sin(winnerAngle) * 260, y: Math.cos(winnerAngle) * 190, scale: .3, rotateX: 40, opacity: 0, transition: { duration: .35, ease: 'easeIn' } }} transition={reducedMotion ? { duration: 0 } : { duration: .3, ease: [0.16, 1, 0.3, 1] }}><Card card={play.card} size="sm" /></motion.div>;
        })}</AnimatePresence>
         {trickWinnerAnnouncement && <span className="reference-winner">{trickWinnerAnnouncement}</span>}
       </div>
@@ -213,7 +216,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
    <footer className="reference-controlbar" dir="ltr">
      <div className="reference-tools">{headerControls}<Button variant="ghost" size="icon" aria-label="تعليقات الشخصيات" title="تعليقات الشخصيات" onClick={()=>{playTapSound();setChatOpen(v=>!v);}}><MessageSquare/></Button></div>
      {bubble(mySeat) && <span className="reference-local-speech" role="status">{bubble(mySeat)}</span>}
-     <div className={`reference-local-player ${speakingSeat === mySeat ? 'seat-speaking' : ''}`}><span>{name(mySeat)}</span><img src={portraits[mySeat % portraits.length]} className="reference-portrait" alt={name(mySeat)}/></div>
+     <div className={`reference-local-player ${speakingSeat === mySeat ? 'seat-speaking' : ''}`}><span>{name(mySeat)}</span><img src={portraitFor(mySeat)} className="reference-portrait" alt={name(mySeat)}/></div>
    </footer>
  </div>;
 };

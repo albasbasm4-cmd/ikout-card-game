@@ -223,17 +223,17 @@ function chooseHeuristicCard(
     return legalCards[0];
   }
 
-  // Following a trick
+  // Following a trick. A joker lead counts as a trump lead (rules/cards.ts).
+  const ledSuit = trick[0].card.joker !== undefined ? trump ?? undefined : trick[0].card.suit;
   const currentWinningPlay = trickWinner(trick, trump);
-  const partnerSeat = (seat + 3) % 6; // In BO6 partner is opposite
-  const partnerIsWinning = currentWinningPlay.seat % 2 === myTeam;
+    const partnerIsWinning = currentWinningPlay.seat % 2 === myTeam;
 
   if (partnerIsWinning) {
     // Partner is winning: duck with lowest legal card
     const sorted = [...legalCards].sort(
       (a, b) =>
-        cardStrength(a, trump, trick[0].card.suit) -
-        cardStrength(b, trump, trick[0].card.suit)
+        cardStrength(a, trump, ledSuit) -
+        cardStrength(b, trump, ledSuit)
     );
     return sorted[0];
   }
@@ -242,18 +242,18 @@ function chooseHeuristicCard(
   const winningStrength = cardStrength(
     currentWinningPlay.card,
     trump,
-    trick[0].card.suit
+    ledSuit
   );
   const winningCards = legalCards.filter(
     (c) =>
-      cardStrength(c, trump, trick[0].card.suit) > winningStrength
+      cardStrength(c, trump, ledSuit) > winningStrength
   );
 
   if (winningCards.length > 0) {
     winningCards.sort(
       (a, b) =>
-        cardStrength(a, trump, trick[0].card.suit) -
-        cardStrength(b, trump, trick[0].card.suit)
+        cardStrength(a, trump, ledSuit) -
+        cardStrength(b, trump, ledSuit)
     );
     return winningCards[0];
   }
@@ -261,8 +261,8 @@ function chooseHeuristicCard(
   // Cannot win: discard lowest card
   const sorted = [...legalCards].sort(
     (a, b) =>
-      cardStrength(a, trump, trick[0].card.suit) -
-      cardStrength(b, trump, trick[0].card.suit)
+      cardStrength(a, trump, ledSuit) -
+      cardStrength(b, trump, ledSuit)
   );
   return sorted[0];
 }
