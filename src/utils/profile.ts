@@ -35,8 +35,8 @@ export function cardBack(theme: CardTheme): string {
   return (CARD_THEMES.find(t => t.id === theme) ?? CARD_THEMES[0]).back;
 }
 
-export interface PlayerProfile { name: string; characterId: string; table: TableTheme; cards: CardTheme }
-export const DEFAULT_PROFILE: PlayerProfile = { name: 'أنت', characterId: 'a1', table: 'classic', cards: 'authentic' };
+export interface PlayerProfile { name: string; characterId: string; table: TableTheme; cards: CardTheme; country: string | null }
+export const DEFAULT_PROFILE: PlayerProfile = { name: 'أنت', characterId: 'a1', table: 'classic', cards: 'authentic', country: 'kw' };
 const KEY = 'ikout_profile_v1';
 const listeners = new Set<(p: PlayerProfile) => void>();
 
@@ -56,6 +56,7 @@ export function loadProfile(): PlayerProfile {
       characterId,
       table: LEGACY_TABLE[raw.table ?? ''] ?? DEFAULT_PROFILE.table,
       cards: LEGACY_CARDS[raw.cards ?? ''] ?? DEFAULT_PROFILE.cards,
+      country: typeof raw.country === 'string' ? raw.country : (raw.country === null ? null : DEFAULT_PROFILE.country),
     };
     return p;
   } catch { return DEFAULT_PROFILE; }

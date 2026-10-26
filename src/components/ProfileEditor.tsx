@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { X, Save, UserCircle2 } from 'lucide-react';
 import { CARD_THEMES, CHARACTER_IDS, PlayerProfile, TABLE_THEMES, characterFace, loadProfile, saveProfile, useProfile } from '../utils/profile';
+import { MUSLIM_COUNTRIES, flagUrl } from '../utils/countries';
 import { playTapSound } from '../utils/audio';
 
 export interface ProfileEditorProps {
@@ -67,6 +68,43 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose }) => {
                 }`}
               >
                 <img src={characterFace(id)} alt={`شخصية ${id}`} loading="lazy" className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* العلم */}
+        <div className="mb-4">
+          <span className="text-xs font-bold text-amber-200/80 block mb-1.5">العلم</span>
+          <div className="grid grid-cols-6 gap-2 max-h-44 overflow-y-auto pr-1">
+            <button
+              type="button"
+              aria-pressed={draft.country === null}
+              aria-label="بدون علم"
+              onClick={() => { playTapSound(); apply({ country: null }); }}
+              className={`aspect-square rounded-2xl border-2 flex items-center justify-center bg-neutral-900 text-neutral-400 transition-all active:scale-95 cursor-pointer ${
+                draft.country === null ? 'border-amber-400 ring-2 ring-amber-400/40' : 'border-neutral-700 hover:border-amber-400/50'
+              }`}
+            >
+              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z" />
+              </svg>
+            </button>
+            {MUSLIM_COUNTRIES.map(c => (
+              <button
+                key={c.code}
+                type="button"
+                aria-pressed={draft.country === c.code}
+                title={c.name}
+                onClick={() => { playTapSound(); apply({ country: c.code }); }}
+                className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all active:scale-95 cursor-pointer flex items-center justify-center bg-neutral-900 ${
+                  draft.country === c.code
+                    ? 'border-amber-400 ring-2 ring-amber-400/40 shadow-lg'
+                    : 'border-neutral-700 hover:border-amber-400/50'
+                }`}
+              >
+                <img src={flagUrl(c.code)} alt={c.name} loading="lazy" className="w-9 h-6 object-cover rounded-[3px]" />
               </button>
             ))}
           </div>

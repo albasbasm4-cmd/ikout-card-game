@@ -603,3 +603,29 @@
 .swatch-disc { width: 64px; height: 38px; border-radius: 50%; background: radial-gradient(ellipse, var(--reference-disc-light), var(--reference-disc)); border-bottom: 5px solid var(--reference-disc-edge); box-shadow: 0 0 0 6px var(--reference-felt); margin: 6px; }
 .profile-card-swatch .playing-card { pointer-events: none; }
 @media (max-height: 430px) and (orientation: landscape) { .seat-6-1,.seat-6-5 { top:auto; bottom:132px; } }
+
+/* Home screen sky + drifting clouds (Clouds in HomeScreen.tsx) */
+.home-sky {
+  background: linear-gradient(180deg,
+    #4f7aa2 0%,
+    #6f95b5 30%,
+    #a8b4b8 55%,
+    #cfc4b0 78%,
+    #d8cfbd 100%);
+}
+.ikout-cloud {
+  position: absolute;
+  left: -240px;
+  transform: translateX(0);
+  animation-name: ikoutCloudDrift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+@keyframes ikoutCloudDrift {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(100vw + 480px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ikout-cloud { animation: none; transform: translateX(30vw); }
+}

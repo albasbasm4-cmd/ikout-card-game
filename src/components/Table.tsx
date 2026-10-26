@@ -10,6 +10,7 @@ import { CHARACTER_IDS, characterFace, tableImage, useProfile } from '../utils/p
 import { playReferenceAudio, stopReferenceAudio } from '../utils/referenceAudio';
 import { playCharacterVoice, subscribeCharacterVoice, preloadCharacterVoices, stopCharacterVoice } from '../utils/characterAudio';
 import { characterPhrase, contextKeyForMessage, specialPlay, type CharacterId, type PhraseKey, type SpecialPlay } from '../utils/gamePresentation';
+import { addXpForGame } from '../utils/xp';
 export interface TableProps {
  state?: GameState; mySeat?: number; onPlayCard?: (card: CardType) => void; onBid?: (bid: number) => void; onDeclareTrump?: (suit: Suit) => void;
  displayedTrick?: TrickPlay[]; winningTrickPlay?: TrickPlay | null; trickWinnerAnnouncement?: string | null;
@@ -184,6 +185,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
      ? state.scores[mySeat % 2] >= state.targetScore || (state.roundNo === 1 && state.highBid === 9 && state.tricksWon[mySeat % 2] === 9)
      : (madeContract ? bidderTeam : 1 - bidderTeam) === mySeat % 2;
    const resultValid = () => phaseRef.current === 'ROUND_END' || phaseRef.current === 'GAME_END';
+   if (state.phase === 'GAME_END') addXpForGame(won, state.highBid ?? 6);
    react((mySeat + 2) % count, won ? 'win' : 'lose', 'result', resultValid);
    if (!won) {
      const timer = setTimeout(() => { react((mySeat + 1) % count, 'opponent', 'result', resultValid); reactionTimers.current.delete(timer); }, 3600);
