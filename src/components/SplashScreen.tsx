@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { preloadCharacterVoices } from '../utils/characterAudio';
-import { PORTRAITS } from '../utils/profile';
+import { CHARACTER_IDS, characterFace, loadProfile } from '../utils/profile';
 
 export interface SplashScreenProps {
   onDone: () => void;
@@ -82,9 +82,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onDone, className = 
       img.onerror = () => { bump(); resolve(); };
       img.src = src;
     });
-    const images = PORTRAITS.map(loadImg);
+    const mine = loadProfile().characterId;
+    const faces = [mine, ...CHARACTER_IDS.filter(id => id !== mine).slice(0, 11)];
+    const images = faces.map(id => loadImg(characterFace(id)));
     total = images.length;
-    preloadCharacterVoices();
+    preloadCharacterVoices(loadProfile().characterId);
     // Voices decode in the background; count them into progress on a soft timer
     // so the walk still reflects real work without blocking on audio codecs.
     void Promise.allSettled(images).then(() => {

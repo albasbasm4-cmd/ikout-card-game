@@ -1,7 +1,6 @@
 import React from 'react';
 import { UserCircle2 } from 'lucide-react';
-import { CARD_THEMES, PORTRAITS, TABLE_THEMES, saveProfile, useProfile } from '../utils/profile';
-import { Card } from './Card';
+import { CARD_THEMES, CHARACTER_IDS, TABLE_THEMES, characterFace, saveProfile, useProfile } from '../utils/profile';
 
 export const ProfilePanel: React.FC<{ onNameChange?: (name: string) => void }> = ({ onNameChange }) => {
   const profile = useProfile();
@@ -14,16 +13,16 @@ export const ProfilePanel: React.FC<{ onNameChange?: (name: string) => void }> =
       </label>
       <div className="profile-field"><span>الشخصية</span>
         <div className="profile-options">
-          {PORTRAITS.map((src, i) => (
-            <button key={src + i} type="button" aria-pressed={profile.portrait === i} aria-label={`شخصية ${i + 1}`} className="profile-portrait" onClick={() => saveProfile({ portrait: i })}><img src={src} alt="" /></button>
+          {CHARACTER_IDS.map(id => (
+            <button key={id} type="button" aria-pressed={profile.characterId === id} aria-label={`شخصية ${id}`} className="profile-portrait" onClick={() => saveProfile({ characterId: id })}><img src={characterFace(id)} alt="" loading="lazy" /></button>
           ))}
         </div>
       </div>
       <div className="profile-field"><span>شكل الطاولة</span>
         <div className="profile-options">
           {TABLE_THEMES.map(t => (
-            <button key={t.id} type="button" aria-pressed={profile.table === t.id} className={`profile-table-swatch table-theme-${t.id}`} onClick={() => saveProfile({ table: t.id })}>
-              <span className="swatch-disc" /><small>{t.label}</small>
+            <button key={t.id} type="button" aria-pressed={profile.table === t.id} className="profile-table-swatch" onClick={() => saveProfile({ table: t.id })}>
+              <img src={t.image} alt="" className="swatch-disc w-9 h-9 object-cover rounded-full" /><small>{t.label}</small>
             </button>
           ))}
         </div>
@@ -31,8 +30,8 @@ export const ProfilePanel: React.FC<{ onNameChange?: (name: string) => void }> =
       <div className="profile-field"><span>تصميم الورق</span>
         <div className="profile-options">
           {CARD_THEMES.map(t => (
-            <button key={t.id} type="button" aria-pressed={profile.cards === t.id} className={`profile-card-swatch card-theme-${t.id}`} onClick={() => saveProfile({ cards: t.id })}>
-              <Card card={{ id: `prev-${t.id}`, suit: 'H', rank: 14 }} size="sm" /><small>{t.label}</small>
+            <button key={t.id} type="button" aria-pressed={profile.cards === t.id} className="profile-card-swatch" onClick={() => saveProfile({ cards: t.id })}>
+              <img src={t.back} alt="" className="w-9 h-12 object-cover rounded-md" /><small>{t.label}</small>
             </button>
           ))}
         </div>

@@ -5,8 +5,7 @@
 
 import React, { useState } from 'react';
 import { X, Save, UserCircle2 } from 'lucide-react';
-import { CARD_THEMES, PORTRAITS, TABLE_THEMES, PlayerProfile, loadProfile, saveProfile } from '../utils/profile';
-import { Card } from './Card';
+import { CARD_THEMES, CHARACTER_IDS, PlayerProfile, TABLE_THEMES, characterFace, loadProfile, saveProfile, useProfile } from '../utils/profile';
 import { playTapSound } from '../utils/audio';
 
 export interface ProfileEditorProps {
@@ -20,6 +19,7 @@ export interface ProfileEditorProps {
  * the X button in the top-left corner leaves without saving.
  */
 export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose }) => {
+  const saved = useProfile();
   const [draft, setDraft] = useState<PlayerProfile>(() => loadProfile());
 
   const apply = (partial: Partial<PlayerProfile>) => setDraft(prev => ({ ...prev, ...partial }));
@@ -49,23 +49,24 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose }) => {
           الملف الشخصي
         </h2>
 
-        {/* الصورة */}
+        {/* الشخصية */}
         <div className="mb-4">
-          <span className="text-xs font-bold text-amber-200/80 block mb-1.5">الصورة</span>
-          <div className="grid grid-cols-4 gap-2">
-            {PORTRAITS.map((src, i) => (
+          <span className="text-xs font-bold text-amber-200/80 block mb-1.5">الشخصية</span>
+          <div className="grid grid-cols-6 gap-2 max-h-56 overflow-y-auto pr-1">
+            {CHARACTER_IDS.map(id => (
               <button
-                key={src + i}
+                key={id}
                 type="button"
-                aria-pressed={draft.portrait === i}
-                onClick={() => { playTapSound(); apply({ portrait: i }); }}
+                aria-pressed={draft.characterId === id}
+                title={`شخصية ${id.replace('a', '')}`}
+                onClick={() => { playTapSound(); apply({ characterId: id }); }}
                 className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all active:scale-95 cursor-pointer ${
-                  draft.portrait === i
+                  draft.characterId === id
                     ? 'border-amber-400 ring-2 ring-amber-400/40 shadow-lg'
                     : 'border-neutral-700 hover:border-amber-400/50'
                 }`}
               >
-                <img src={src} alt={`شخصية ${i + 1}`} className="w-full h-full object-cover" />
+                <img src={characterFace(id)} alt={`شخصية ${id}`} loading="lazy" className="w-full h-full object-cover" />
               </button>
             ))}
           </div>
@@ -93,13 +94,14 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose }) => {
                 type="button"
                 aria-pressed={draft.table === t.id}
                 onClick={() => { playTapSound(); apply({ table: t.id }); }}
-                className={`py-2.5 rounded-xl border text-xs font-black transition-all active:scale-95 cursor-pointer ${
+                className={`rounded-xl border overflow-hidden transition-all active:scale-95 cursor-pointer ${
                   draft.table === t.id
-                    ? 'bg-amber-400 text-black border-amber-300 shadow-md'
-                    : 'bg-neutral-900 text-neutral-300 border-neutral-700 hover:bg-neutral-800'
+                    ? 'border-amber-400 ring-2 ring-amber-400/40 shadow-md'
+                    : 'border-neutral-700 hover:border-amber-400/50'
                 }`}
               >
-                {t.label}
+                <img src={t.image} alt={t.label} className="w-full h-16 object-cover" />
+                <span className="block py-1 text-[10px] font-black bg-black/60 text-amber-200">{t.label}</span>
               </button>
             ))}
           </div>
@@ -115,14 +117,14 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose }) => {
                 type="button"
                 aria-pressed={draft.cards === t.id}
                 onClick={() => { playTapSound(); apply({ cards: t.id }); }}
-                className={`py-2 rounded-xl border transition-all active:scale-95 cursor-pointer flex flex-col items-center gap-1 ${
+                className={`rounded-xl border overflow-hidden transition-all active:scale-95 cursor-pointer ${
                   draft.cards === t.id
-                    ? 'bg-amber-400/20 border-amber-400 ring-1 ring-amber-400/40 shadow-md'
-                    : 'bg-neutral-900 border-neutral-700 hover:bg-neutral-800'
+                    ? 'border-amber-400 ring-2 ring-amber-400/40 shadow-md'
+                    : 'border-neutral-700 hover:border-amber-400/50'
                 }`}
               >
-                <Card card={{ id: `prev-${t.id}`, suit: 'H', rank: 14 }} size="sm" />
-                <small className="text-[10px] font-bold text-amber-200">{t.label}</small>
+                <img src={t.back} alt={t.label} className="w-full h-16 object-cover" />
+                <span className="block py-1 text-[10px] font-black bg-black/60 text-amber-200">{t.label}</span>
               </button>
             ))}
           </div>

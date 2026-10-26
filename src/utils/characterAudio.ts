@@ -1,9 +1,9 @@
-import pass from '../assets/gameplay/pass-two.mp3.asset.json';
 import { loadSettings } from '../store/useSettings';
-import { CHARACTER_PHRASES, RESULT_LINES, SPECIAL_LINES, phraseKeyForWording } from './gamePresentation';
+import { phraseDataKey, type CharacterId, type PhraseKey } from './gamePresentation';
 
-const assets = import.meta.glob<{ url: string }>('../assets/voices/*.asset.json', { eager: true, import: 'default' });
-const phraseKeys = ['partner', 'play', 'ace', 'king', 'surprise', 'kout', 'pass-taunt', 'tea'];
+/** Restored per-character voice bundles live under /assets/ikout/audio/voices/<id>/<clip>.mp3. */
+const BUNDLE_BASE = '/assets/ikout/audio/voices';
+const PRELOAD_KEYS = ['welcome', 'partner', 'play', 'ace', 'king', 'surprise', 'kout', 'pass', 'tea', 'win', 'lose', 'taunt'];
 /** A voice that cannot start within this window is dropped instead of playing late. */
 export const MAX_VOICE_DELAY_MS = 250;
 
@@ -41,13 +41,13 @@ function load(src: string): Promise<AudioBuffer | null> {
   }
   return pending;
 }
-function allSources(): string[] {
-  return [pass.url, ...Object.values(assets).map(a => a.url)];
+function clipUrl(characterId: string, dataKey: string): string {
+  return `${BUNDLE_BASE}/${characterId}/${dataKey}.mp3`;
 }
-/** Decode every voice ahead of time so lines start the instant their event happens. */
-export function preloadCharacterVoices() {
+/** Decode the character's own bundle ahead of time so lines start the instant their event happens. */
+export function preloadCharacterVoices(characterId: CharacterId = 'a1') {
   if (typeof window === 'undefined') return;
-  const start = () => { allSources().forEach(src => void load(src)); };
+  const start = () => { PRELOAD_KEYS.forEach(key => void load(clipUrl(characterId, key))); };
   start();
   const unlock = () => { context(); start(); };
   window.addEventListener('pointerdown', unlock, { once: true });
@@ -59,50 +59,21 @@ export function stopCharacterVoice(token?: string) {
   current = null;
   notify(null);
 }
-export function voiceKey(message: string): string | null {
-  const index = CHARACTER_PHRASES.indexOf(message);
-  if (index >= 0) return phraseKeys[index];
-  // Per-character wording variants resolve to the same contextual audio key
-  const wordingKey = phraseKeyForWording(message);
-  if (wordingKey) {
-    if (wordingKey === 'joker' || wordingKey === 'maker' || wordingKey === 'trump-ace') return wordingKey;
-    if (wordingKey === 'win') return 'win';
-    if (wordingKey === 'lose') return 'lose';
-    if (wordingKey === 'opponent') return 'opponent-win';
-    const keyIndex = phraseKeys.indexOf(wordingKey);
-    if (keyIndex >= 0) return phraseKeys[keyIndex];
-  }
-  for (const [key, line] of Object.entries(SPECIAL_LINES)) if (message === line) return key;
-  if (message === RESULT_LINES.win) return 'win';
-  if (message === RESULT_LINES.lose) return 'lose';
-  if (message === RESULT_LINES.opponent) return 'opponent-win';
-  const bid = /^طلب ([5-9])$/.exec(message);
-  if (bid) return `bid${bid[1]}`;
-  if (message.startsWith('الأمر:')) {
-    if (message.includes('هاص')) return 'H';
-    if (message.includes('سبيت')) return 'S';
-    if (message.includes('ديمن')) return 'D';
-    if (message.includes('كلفس')) return 'C';
-  }
-  return null;
-}
-export function voiceSource(message: string): string | undefined {
-  if (message === 'طاف') return pass.url;
-  const key = voiceKey(message);
-  return key ? assets[`../assets/voices/${key}.mp3.asset.json`]?.url : undefined;
+export function voiceSource(characterId: CharacterId, key: PhraseKey): string {
+  return clipUrl(characterId, phraseDataKey(key));
 }
 /**
- * Plays a line for a seat. `token` ties the voice to its cause (e.g. a card id);
- * `isStillValid` is re-checked right before sound starts so stale lines are skipped.
+ * Plays a situation line from the character's own restored bundle for a seat.
+ * `token` ties the voice to its cause (e.g. a card id); `isStillValid` is
+ * re-checked right before sound starts so stale lines are skipped.
  */
-export function playCharacterVoice(message: string, seat: number, token: string | null = null, isStillValid: () => boolean = () => true) {
+export function playCharacterVoice(characterId: CharacterId, key: PhraseKey, seat: number, token: string | null = null, isStillValid: () => boolean = () => true) {
   if (typeof window === 'undefined' || !loadSettings().soundEnabled) return;
-  const src = voiceSource(message);
-  if (!src) return;
+  const src = voiceSource(characterId, key);
   const requested = performance.now();
   const startBuffer = (buf: AudioBuffer) => {
     const c = context();
-    if (!c || !isStillValid() || performance.now() - requested > MAX_VOICE_DELAY_MS) { if (import.meta.env.DEV) logVoice({ message, token, dropped: true, delay: Math.round(performance.now() - requested) }); return; }
+    if (!c || !isStillValid() || performance.now() - requested > MAX_VOICE_DELAY_MS) { if (import.meta.env.DEV) logVoice({ key, token, dropped: true, delay: Math.round(performance.now() - requested) }); return; }
     stopCharacterVoice();
     const node = c.createBufferSource();
     const gain = c.createGain();
@@ -113,7 +84,7 @@ export function playCharacterVoice(message: string, seat: number, token: string 
     node.onended = () => { if (current === entry) { current = null; notify(null); } };
     current = entry;
     node.start();
-    if (import.meta.env.DEV) logVoice({ message, token, delay: Math.round(performance.now() - requested), cards: document.querySelectorAll('.reference-trick-card').length, phase: document.querySelector('.reference-game') ? 'table' : 'other' });
+    if (import.meta.env.DEV) logVoice({ characterId, key, token, delay: Math.round(performance.now() - requested), cards: document.querySelectorAll('.reference-trick-card').length, phase: document.querySelector('.reference-game') ? 'table' : 'other' });
     notify(seat);
   };
   const ready = buffers.get(src);

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Card as CardType, Suit } from '../types/kout';
 import { Button } from './ui/button';
+import { cardBack, useProfile } from '../utils/profile';
 
-const assets = import.meta.glob<{ url: string }>('../assets/cards/*.asset.json', { eager: true, import: 'default' });
 const suitNames: Record<Suit, string> = { S: 'spades', H: 'hearts', C: 'clubs', D: 'diamonds' };
 export const SUIT_COLORS: Record<Suit, { text: string; fill: string; name: string }> = {
   S: { text: 'text-card-ink', fill: 'var(--card-ink)', name: 'سبيت' },
@@ -22,13 +22,12 @@ export function SuitSvg({ suit, className = 'w-4 h-4' }: { suit: Suit; className
 }
 export function JokerSvg({ isRed, className }: { isRed: boolean; className?: string }) { return <span className={`${className} ${isRed ? 'text-card-red' : 'text-card-ink'}`}>★</span>; }
 export const Card: React.FC<CardProps> = ({ card, faceUp = true, isLegal = true, isSelected = false, size = 'md', onClick, className = '', style }) => {
+  const { cards: cardsTheme } = useProfile();
   const rank = card.rank;
   const rankName = rank === 14 ? 'ace' : rank === 13 ? 'king' : rank === 12 ? 'queen' : rank === 11 ? 'jack' : String(rank);
-  const name = card.joker ? `${card.joker.toLowerCase()}_joker` : card.suit && rank ? `${rankName}_of_${suitNames[card.suit]}` : '';
-  const asset = assets[`../assets/cards/${name}.png.asset.json`];
   const label = card.joker ? (card.joker === 'RED' ? 'الجيكر' : 'الميكر') : `${rankName} ${card.suit ? SUIT_COLORS[card.suit].name : ''}`;
   const rankLabel = rank === 14 ? 'A' : rank === 13 ? 'K' : rank === 12 ? 'Q' : rank === 11 ? 'J' : String(rank ?? '');
-  const content = !faceUp ? <div className="card-back-pattern" /> : card.joker ? <div className={`reference-joker ${card.joker === 'RED' ? 'text-card-red' : 'text-card-ink'}`}><span>JOKER</span><svg viewBox="0 0 100 100" aria-label={label}><path fill="currentColor" d="M50 0 56 22 68 5 68 27 85 15 77 36 98 32 82 48 100 55 78 61 92 78 70 73 73 95 57 79 50 100 43 79 27 95 30 73 8 78 22 61 0 55 18 48 2 32 23 36 15 15 32 27 32 5 44 22Z"/><path fill="var(--card-paper)" d="M32 38h9v25h-9zm17 0h9v25h-9zm17 0h9v25h-9z"/></svg></div> : rank && rank >= 11 && rank <= 13 && asset ? <img src={asset.url} alt={label} draggable={false} className="h-full w-full" /> : card.suit ? <div className={`reference-card-face ${SUIT_COLORS[card.suit].text}`}><div className="reference-card-corner"><strong>{rankLabel}</strong><SuitSvg suit={card.suit}/></div><SuitSvg suit={card.suit} className="reference-card-pip"/></div> : <span>{label}</span>;
+  const content = !faceUp ? <img src={cardBack(cardsTheme)} alt="" draggable={false} className="h-full w-full object-cover rounded-[inherit]" /> : card.joker ? <div className={`reference-joker ${card.joker === 'RED' ? 'text-card-red' : 'text-card-ink'}`}><span>JOKER</span><svg viewBox="0 0 100 100" aria-label={label}><path fill="currentColor" d="M50 0 56 22 68 5 68 27 85 15 77 36 98 32 82 48 100 55 78 61 92 78 70 73 73 95 57 79 50 100 43 79 27 95 30 73 8 78 22 61 0 55 18 48 2 32 23 36 15 15 32 27 32 5 44 22Z"/><path fill="var(--card-paper)" d="M32 38h9v25h-9zm17 0h9v25h-9zm17 0h9v25h-9z"/></svg></div> : card.suit ? <div className={`reference-card-face ${SUIT_COLORS[card.suit].text}`}><div className="reference-card-corner"><strong>{rankLabel}</strong><SuitSvg suit={card.suit}/></div><SuitSvg suit={card.suit} className="reference-card-pip"/></div> : <span>{label}</span>;
   const classes = `playing-card playing-card-${size} ${!faceUp ? 'playing-card-back' : ''} ${!isLegal ? 'card-unavailable' : ''} ${isSelected ? 'card-selected' : ''} ${className}`;
   return onClick ? <Button variant="ghost" onClick={onClick} aria-label={label} aria-disabled={!isLegal} style={style} className={classes}>{content}</Button> : <div style={style} className={classes}>{content}</div>;
 };

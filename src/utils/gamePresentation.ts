@@ -1,4 +1,5 @@
 import type { Card, Suit } from '../types/kout';
+import { getCharacterData } from '../data/charactersData';
 
 export type SpecialPlay = 'joker' | 'maker' | 'trump-ace';
 export function specialPlay(card: Card, trump?: Suit | null): SpecialPlay | null {
@@ -8,17 +9,10 @@ export function specialPlay(card: Card, trump?: Suit | null): SpecialPlay | null
 }
 
 /**
- * The four table characters, matching PORTRAITS order:
- * elder (الشايب), shemagh (الشماغ), green (الأخضرار), glasses (النظارة).
+ * Every table character is one of the 36 restored authentic characters
+ * (a1..a36); the human picks theirs in the profile, bots get the rest.
  */
-export type CharacterId = 'elder' | 'shemagh' | 'green' | 'glasses';
-export const CHARACTERS: CharacterId[] = ['elder', 'shemagh', 'green', 'glasses'];
-export const CHARACTER_NAMES: Record<CharacterId, string> = {
-  elder: 'الشايب',
-  shemagh: 'الشماغ',
-  green: 'الأخضرار',
-  glasses: 'النظارة',
-};
+export type CharacterId = string;
 
 /** Base lines kept for the local human player and as defaults. */
 export const CHARACTER_PHRASES = [
@@ -38,103 +32,30 @@ export const RESULT_LINES = {
 
 /** Every situation that can trigger a spoken line. */
 export type PhraseKey =
+  | 'welcome'
   | 'partner' | 'play' | 'ace' | 'king' | 'surprise' | 'kout' | 'pass-taunt' | 'tea'
   | SpecialPlay | 'win' | 'lose' | 'opponent';
 
 /**
- * Per-character wording for each situation. Each character says the same event
- * with its own words (and its own dialect flavor), so the bubble text matches
- * the spoken audio context while the wording differs between characters.
+ * Maps each situation to the character's own clip in the restored voice
+ * bundles (/assets/ikout/audio/voices/<id>/<clip>.mp3). Situations without a
+ * dedicated restored clip reuse the closest one so bubble text always equals
+ * the spoken audio.
  */
-export const CHARACTER_VARIANTS: Record<PhraseKey, Record<CharacterId, string>> = {
-  'partner': {
-    elder: 'كفو والله يا شريكي، زين قلت!',
-    shemagh: 'يا هلا يا معي، كفوك!',
-    green: 'شريكي الحلو، عاد انت!',
-    glasses: 'معك شريك يفهم، كفو!',
-  },
-  'play': {
-    elder: 'هات يا وليد، العب!',
-    shemagh: 'العب الله يعطيك!',
-    green: 'طلع الورقة يا راجل!',
-    glasses: 'دورك، العب براحتك!',
-  },
-  'ace': {
-    elder: 'وين الأكلة؟ جيبها!',
-    shemagh: 'الأكة وين يا جماعة؟!',
-    green: 'الديدة وين؟ طلعوها!',
-    glasses: 'الأكلة عند مين؟ هاتوها!',
-  },
-  'king': {
-    elder: 'الشايب نزل، خذو بالكم!',
-    shemagh: 'الحاكمة نزلت على الديوانية!',
-    green: 'الوالي جا، ودّوه لمعي!',
-    glasses: 'الحاكم في الوسط، راقبوا!',
-  },
-  'surprise': {
-    elder: 'يا ساتر يا ربي!',
-    shemagh: 'استغفر الله العظيم!',
-    green: 'لا حول ولا قوة إلا بالله!',
-    glasses: 'هذا مستحيل يا جماعة!',
-  },
-  'kout': {
-    elder: 'كوت بوستة، انتصرنا!',
-    shemagh: 'كوت بوستة يا رجال!',
-    green: 'بوستة كوت، خذوها!',
-    glasses: 'كوت بوستة، قدرناها!',
-  },
-  'pass-taunt': {
-    elder: 'طاف يا رجال، ما كو ندى',
-    shemagh: 'طاف، الورقة مو زينة',
-    green: 'طاف ما عندي شيء',
-    glasses: 'طاف، خيرها بغيرها',
-  },
-  'tea': {
-    elder: 'استكانة شاي ونيّة زينة',
-    shemagh: 'جيبوا شاي، الجولة طويلة',
-    green: 'شاي هيل يا جمعة!',
-    glasses: 'أنا على شاي، الورق برأسك',
-  },
-  'joker': {
-    elder: 'الجيكر نزل! وسّعوا له!',
-    shemagh: 'الجوكر هاج! تحسبوه!',
-    green: 'الجوكر على الطاولة، خلاص!',
-    glasses: 'الجوكر دخل، لا أحد يتحرك!',
-  },
-  'maker': {
-    elder: 'الميكر بيدك لا تقول ما حذّرتك!',
-    shemagh: 'هذا الميكر، قوموا له!',
-    green: 'الميكر نزل، عادكم تعرفون!',
-    glasses: 'الميكر! حذّرتكم قبل!',
-  },
-  'trump-ace': {
-    elder: 'أكة الحكم نزلت! كفو!',
-    shemagh: 'الأكة بالحكم! كفيتكم!',
-    green: 'الديدة على الحكم، تكفون!',
-    glasses: 'أكة الحكم! ما عليه كلام!',
-  },
-  'win': {
-    elder: 'كفو يا ذيب، فزنا!',
-    shemagh: 'فزنا يا جماعة، مبروك!',
-    green: 'خذناها، الحمد لله!',
-    glasses: 'فوز مستحق يا شباب!',
-  },
-  'lose': {
-    elder: 'ما شاء الله عليهم، نعوضها',
-    shemagh: 'خسرنا هاي، بالجولة الجاية',
-    green: 'الأول مرة والآخرة جاية',
-    glasses: 'نقصنا هاي الجولة، نعيد الكرة',
-  },
-  'opponent': {
-    elder: 'ها يا معوّد، خلّك من الورق واشرب شاي!',
-    shemagh: 'يا وين يا شاطر، هذا زمنك؟',
-    green: 'ورقك شين اليوم يا صاحبي!',
-    glasses: 'خذها مني، الورق ما يرحم!',
-  },
+const PHRASE_DATA_KEY: Record<PhraseKey, string> = {
+  welcome: 'welcome',
+  partner: 'partner', play: 'play', ace: 'ace', king: 'king', surprise: 'surprise',
+  kout: 'kout', 'pass-taunt': 'pass', tea: 'tea',
+  win: 'win', lose: 'lose', opponent: 'taunt',
+  joker: 'kout', maker: 'surprise', 'trump-ace': 'ace',
 };
+export function phraseDataKey(key: PhraseKey): string {
+  return PHRASE_DATA_KEY[key];
+}
 
 /** Base-key wording fallbacks keyed the same way. */
 const BASE_PHRASES: Record<PhraseKey, string> = {
+  welcome: 'هلا بالربع، اليوم اللعب على أصوله!',
   partner: CHARACTER_PHRASES[0], play: CHARACTER_PHRASES[1], ace: CHARACTER_PHRASES[2],
   king: CHARACTER_PHRASES[3], surprise: CHARACTER_PHRASES[4], kout: CHARACTER_PHRASES[5],
   'pass-taunt': CHARACTER_PHRASES[6], tea: CHARACTER_PHRASES[7],
@@ -142,20 +63,33 @@ const BASE_PHRASES: Record<PhraseKey, string> = {
   win: RESULT_LINES.win, lose: RESULT_LINES.lose, opponent: RESULT_LINES.opponent,
 };
 
-/** Returns the character's own wording for a situation. */
+/** Returns the character's own wording for a situation (falls back to the base line). */
 export function characterPhrase(character: CharacterId | null | undefined, key: PhraseKey): string {
-  if (!character) return BASE_PHRASES[key];
-  return CHARACTER_VARIANTS[key]?.[character] ?? BASE_PHRASES[key];
+  const dataKey = PHRASE_DATA_KEY[key];
+  const found = character ? getCharacterData(character).phrases.find(p => p.id === dataKey) : undefined;
+  return found?.text ?? BASE_PHRASES[key];
 }
 
-/** Maps any wording (base or character variant) back to its audio key. */
-const WORDING_TO_KEY = new Map<string, PhraseKey>();
-for (const key of Object.keys(BASE_PHRASES) as PhraseKey[]) {
-  WORDING_TO_KEY.set(BASE_PHRASES[key], key);
-  for (const line of Object.values(CHARACTER_VARIANTS[key])) WORDING_TO_KEY.set(line, key);
+/** Maps a canonical engine/chat message back to its situation key. */
+export function contextKeyForMessage(message: string): PhraseKey | null {
+  if (!message) return null;
+  const baseIndex = CHARACTER_PHRASES.indexOf(message);
+  if (baseIndex >= 0) {
+    return (['partner', 'play', 'ace', 'king', 'surprise', 'kout', 'pass-taunt', 'tea'] as PhraseKey[])[baseIndex];
+  }
+  if (message === 'طاف') return 'pass-taunt';
+  if (/^طلب [5-9]$/.test(message)) return 'opponent';
+  if (message.startsWith('الأمر:')) return 'play';
+  for (const [key, line] of Object.entries(SPECIAL_LINES)) if (message === line) return key as PhraseKey;
+  if (message === RESULT_LINES.win) return 'win';
+  if (message === RESULT_LINES.lose) return 'lose';
+  if (message === RESULT_LINES.opponent) return 'opponent';
+  return null;
 }
+
+/** Backwards-compatible alias for the previous wording lookup. */
 export function phraseKeyForWording(phrase: string): PhraseKey | null {
-  return WORDING_TO_KEY.get(phrase) ?? null;
+  return contextKeyForMessage(phrase);
 }
 
 export function commitsCardDrag(offsetY: number, legal: boolean, myTurn: boolean): boolean {

@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { ProfileEditor } from './ProfileEditor';
-import { useProfile, PORTRAITS } from '../utils/profile';
+import { useProfile, characterFace } from '../utils/profile';
 import { playTapSound } from '../utils/audio';
 
 export interface HomeScreenProps {
@@ -55,7 +55,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, className 
         className="absolute top-4 left-4 z-20 flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full bg-black/70 border border-amber-400/40 shadow-xl backdrop-blur-md active:scale-95 cursor-pointer hover:border-amber-300"
       >
         <span className="w-9 h-9 rounded-full overflow-hidden border border-amber-400/50 bg-neutral-800 shrink-0">
-          <HomeAvatar index={profile.portrait} name={profile.name} />
+          <HomeAvatar characterId={profile.characterId} name={profile.name} />
         </span>
         <span className="text-[11px] font-black text-amber-200">{profile.name || 'أنت'}</span>
       </button>
@@ -100,10 +100,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, className 
   );
 };
 
-/** Small avatar resolved at render time from the saved portraits list. */
-const HomeAvatar: React.FC<{ index: number; name: string }> = ({ index, name }) => {
-  const src = PORTRAITS[index] ?? PORTRAITS[0];
-  return src ? <img src={src} alt={name} className="w-full h-full object-cover" /> : <span className="text-amber-300 text-xs font-black">{name?.[0] || 'أ'}</span>;
+/** Small avatar resolved from the player's chosen character face. */
+const HomeAvatar: React.FC<{ characterId: string; name: string }> = ({ characterId, name }) => {
+  return <img src={characterFace(characterId)} alt={name} className="w-full h-full object-cover" />;
 };
 
 export default HomeScreen;
