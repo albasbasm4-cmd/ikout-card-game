@@ -47,11 +47,18 @@ export function declareTrump(
     );
   }
 
+  // RULES.firstTrickLeadByRightOfBidder: the player to the bidder's right leads
+  // the first trick and the Hakam/Malzoum bidder plays LAST in the first trick.
+  const numSeats = RULES[state.variant].seats;
+  const firstTrickLeader = RULES.firstTrickLeadByRightOfBidder
+    ? (state.bidderSeat + 1) % numSeats
+    : state.bidderSeat;
+
   return {
     ...state,
     trump: suit,
     phase: 'PLAY',
-    currentSeat: state.bidderSeat, // Bid winner leads the first trick
+    currentSeat: firstTrickLeader,
     version: state.version + 1,
   };
 }

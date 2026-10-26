@@ -49,25 +49,71 @@ export function cardStrength(
  * Determines the winning TrickPlay of a completed or in-progress trick.
  * Leading a Joker counts as leading the trump suit.
  */
+/** Context-aware strength for a card as played inside a trick (Joker rules). */
+function trickStrength(
+  card: Card,
+  trump: Suit | null,
+  ledSuit: Suit | null,
+  ctx: { isLead: boolean; trumpAceBefore: boolean }
+): number {
+  if (card.joker !== undefined) {
+    // A Joker played FIRST on the table becomes a Spade (RULES.jokerLeadAsSpade):
+    // any Spade or Hakam card can take it. As a Spade it is the weakest Spade.
+    if (ctx.isLead && RULES.jokerLeadAsSpade) {
+      return 100; // Spade tier with rank 0
+    }
+    // The Black Joker played after the Hakam Ace becomes Hakam: beats every
+    // trump below the Ace, loses to the Hakam Ace and to the Red Joker.
+    // The Red Joker stays the strongest card in the game.
+    if (
+      card.joker === 'BLACK' &&
+      ctx.trumpAceBefore &&
+      RULES.jokerBecomesHakamAfterTrumpAce
+    ) {
+      return 850;
+    }
+    return card.joker === 'RED' ? 1000 : 800;
+  }
+  return cardStrength(card, trump, ledSuit);
+}
+
 export function trickWinner(plays: TrickPlay[], trump: Suit | null): TrickPlay {
   if (plays.length === 0) {
     throw new Error('Cannot determine trick winner of empty trick');
   }
 
   const leadPlay = plays[0];
-  // Jokers count as trump; if a joker is led, the led suit is trump
-  const ledSuit =
-    leadPlay.card.joker !== undefined ? trump : (leadPlay.card.suit ?? null);
+  const jokerLeads = leadPlay.card.joker !== undefined;
+  // A led Joker becomes a Spade (RULES.jokerLeadAsSpade); otherwise it counts
+  // as leading the trump suit (legacy behavior).
+  const ledSuit = jokerLeads
+    ? (RULES.jokerLeadAsSpade ? ('S' as Suit) : trump)
+    : (leadPlay.card.suit ?? null);
 
   let bestPlay = leadPlay;
-  let maxStrength = cardStrength(leadPlay.card, trump, ledSuit);
+  let maxStrength = trickStrength(leadPlay.card, trump, ledSuit, {
+    isLead: true,
+    trumpAceBefore: false,
+  });
 
+  let trumpAceBefore = false;
   for (let i = 1; i < plays.length; i++) {
     const play = plays[i];
-    const strength = cardStrength(play.card, trump, ledSuit);
+    const strength = trickStrength(play.card, trump, ledSuit, {
+      isLead: false,
+      trumpAceBefore,
+    });
     if (strength > maxStrength) {
       maxStrength = strength;
       bestPlay = play;
+    }
+    if (
+      trump &&
+      play.card.suit === trump &&
+      play.card.rank === 14 &&
+      !play.card.joker
+    ) {
+      trumpAceBefore = true;
     }
   }
 
@@ -125,9 +171,14 @@ export function getLegalCards(
   // 1. Following a trick (trick has 1 or more plays)
   if (trick.length > 0) {
     const leadCard = trick[0].card;
-    // Jokers count as trump
+    // When a Joker leads it becomes a Spade (RULES.jokerLeadAsSpade), so
+    // followers follow Spade; otherwise a led Joker counts as leading trump.
     const ledSuit =
-      leadCard.joker !== undefined ? trump : (leadCard.suit ?? null);
+      leadCard.joker !== undefined
+        ? (RULES.jokerLeadAsSpade
+            ? (RULES.jokerLeadFollowSuit === 'SPADE' ? ('S' as Suit) : trump)
+            : trump)
+        : (leadCard.suit ?? null);
 
     if (ledSuit) {
       let matchingCards: Card[];

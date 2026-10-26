@@ -31,6 +31,15 @@ export const TARGET_SCORES = [51, 71, 101] as const;
 export const RULES = {
   turnDirection: 'COUNTER_CLOCKWISE' as TurnDirection,
   targets: TARGET_SCORES,
+  // ---- Configurable rule flags (documented in docs/REQUIREMENTS.md) ----
+  // First trick: the player to the bidder's right leads; the Hakam/Malzoum bidder plays last
+  firstTrickLeadByRightOfBidder: true,
+  // A Joker played FIRST on the table becomes a Spade: any Spade or Hakam card can take it
+  jokerLeadAsSpade: true,
+  // What followers must play when a Joker leads (ambiguous in the source app; SPADE = follow the Joker's new suit)
+  jokerLeadFollowSuit: 'SPADE' as 'SPADE' | 'HAKAM',
+  // A Joker played after the Hakam Ace becomes Hakam: beats every trump below the Ace, loses to the Ace
+  jokerBecomesHakamAfterTrumpAce: true,
   BO6: {
     variant: 'BO6' as const,
     seats: 6,

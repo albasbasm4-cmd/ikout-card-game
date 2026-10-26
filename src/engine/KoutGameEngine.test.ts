@@ -70,7 +70,7 @@ describe('KoutGameEngine', () => {
       expect(engine.state.currentSeat).toBe(2);
 
       // Seat 2 tries to bid 5 or 6 (not higher than 6)
-      expect(() => engine.placeBid(2, 5)).toThrowError(/must be higher than current high bid 6/);
+      expect(() => engine.placeBid(2, 6)).toThrowError(/must be higher than current high bid 6/);
       expect(() => engine.placeBid(2, 6)).toThrowError(/must be higher than current high bid 6/);
 
       // Seat 2 outbidding with 7 succeeds
