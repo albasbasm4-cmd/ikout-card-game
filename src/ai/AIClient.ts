@@ -40,7 +40,8 @@ export function generateFallbackDecision(
     }
 
     const legalBids: Bid[] = [0]; // Pass
-    const minBid = Math.max(5, (state.highBid ?? 4) + 1);
+    // Voluntary bids start at 6; 5 is only for the forced dealer (Malzom)
+    const minBid = Math.max(6, (state.highBid ?? 5) + 1);
     for (let b = minBid; b <= cardsPerPlayer; b++) {
       legalBids.push(b as Bid);
     }

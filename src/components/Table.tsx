@@ -13,14 +13,16 @@ import stone from '../assets/gameplay/stone-clean.png.asset.json';
 import { PORTRAITS, useProfile } from '../utils/profile';
 import { playReferenceAudio, stopReferenceAudio } from '../utils/referenceAudio';
 import { playCharacterVoice, subscribeCharacterVoice, preloadCharacterVoices, stopCharacterVoice } from '../utils/characterAudio';
-import { CHARACTER_PHRASES, SPECIAL_LINES, RESULT_LINES, specialPlay, type SpecialPlay } from '../utils/gamePresentation';
+import { characterPhrase, type CharacterId, type PhraseKey, specialPlay } from '../utils/gamePresentation';
+import { CHARACTER_PHRASES } from '../utils/gamePresentation';
 export interface TableProps {
  state?: GameState; mySeat?: number; onPlayCard?: (card: CardType) => void; onBid?: (bid: number) => void; onDeclareTrump?: (suit: Suit) => void;
  displayedTrick?: TrickPlay[]; winningTrickPlay?: TrickPlay | null; trickWinnerAnnouncement?: string | null;
  speechBubbles?: Record<number,string>; legalCardIds?: Set<string>; onSendSpeechBubble?: (message:string)=>void; headerControls?: React.ReactNode; className?: string;
 }
-const portraits = [elder.url, shemagh.url, elder.url, green.url, elder.url, shemagh.url];
+const CHARACTERS_BY_SEAT: CharacterId[] = ['elder', 'shemagh', 'green', 'glasses'];
 export const KUWAITI_PHRASES = CHARACTER_PHRASES;
+
 export const MOCK_TABLE_STATE: GameState = {
   variant: 'BO6',
   hands: [
@@ -74,7 +76,8 @@ export const MOCK_TABLE_STATE: GameState = {
 
 export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat = 0, onPlayCard, displayedTrick, winningTrickPlay, trickWinnerAnnouncement, speechBubbles = {}, legalCardIds, onSendSpeechBubble, headerControls, className = '' }) => {
  const profile = useProfile();
- const portraitFor = (seat: number) => seat === mySeat ? PORTRAITS[profile.portrait] : portraits[seat % portraits.length];
+ const portraitFor = (seat: number) => seat === mySeat ? PORTRAITS[profile.portrait] : PORTRAITS[seat % PORTRAITS.length];
+ const characterFor = (seat: number): CharacterId => seat === mySeat ? CHARACTERS_BY_SEAT[profile.portrait % CHARACTERS_BY_SEAT.length] : CHARACTERS_BY_SEAT[seat % PORTRAITS.length];
  const [chatOpen, setChatOpen] = useState(false);
  const [slam, setSlam] = useState<{ id: string; kind: SpecialPlay; suit?: Suit } | null>(null);
  const [reactions, setReactions] = useState<Record<number, string>>({});
@@ -93,6 +96,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
  const bubblesRef = useRef(speechBubbles);
  bubblesRef.current = speechBubbles;
  const reactionCause = useRef<Record<number, string>>({});
+ const kingSpokenRef = useRef(false);
  const react = (seat: number, message: string, token: string | null = null, valid: () => boolean = () => true) => {
    setReactions(current => ({ ...current, [seat]: message }));
    if (token) reactionCause.current[seat] = token; else delete reactionCause.current[seat];
@@ -117,7 +121,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
  }, [speechBubbles]);
  useEffect(() => {
    if (previousRound.current !== state.roundNo || (state.phase === 'BID' && state.bids.length === 0)) {
-     seenPlays.current.clear(); previousRound.current = state.roundNo;
+     seenPlays.current.clear(); kingSpokenRef.current = false; previousRound.current = state.roundNo;
      setReactions({}); setSlam(null); resultPlayed.current = null;
    }
    visibleCards.current = new Set(trick.map(play => play.card.id));
@@ -130,7 +134,6 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
      }
    }
    const onTable = (id: string) => () => visibleCards.current.has(id);
-   let kingSpoken = false;
    for (const play of trick) {
      if (seenPlays.current.has(play.card.id)) continue;
      seenPlays.current.add(play.card.id);
@@ -138,15 +141,15 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
      if (kind) {
        setSlam({ id: play.card.id, kind, suit: play.card.suit });
        playReferenceAudio('trump');
-       react(play.seat, SPECIAL_LINES[kind], `card-${play.card.id}`, onTable(play.card.id));
+       react(play.seat, characterPhrase(characterFor(play.seat), kind as PhraseKey), `card-${play.card.id}`, onTable(play.card.id));
        const timer = setTimeout(() => {
          setSlam(current => current?.id === play.card.id ? null : current);
          reactionTimers.current.delete(timer);
        }, 1100);
        reactionTimers.current.add(timer);
-     } else if (play.card.rank === 13 && !play.card.joker && play.seat !== mySeat && !kingSpoken) {
-       kingSpoken = true;
-       react(play.seat, CHARACTER_PHRASES[3], `card-${play.card.id}`, onTable(play.card.id));
+     } else if (play.card.rank === 13 && !play.card.joker && play.seat !== mySeat && !kingSpokenRef.current) {
+       kingSpokenRef.current = true;
+       react(play.seat, characterPhrase(characterFor(play.seat), 'king'), `card-${play.card.id}`, onTable(play.card.id));
      }
    }
  }, [trick, state.trump, state.roundNo, state.phase]);
@@ -161,9 +164,9 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
      ? state.scores[mySeat % 2] >= state.targetScore || (state.roundNo === 1 && state.highBid === 9 && state.tricksWon[mySeat % 2] === 9)
      : (madeContract ? bidderTeam : 1 - bidderTeam) === mySeat % 2;
    const resultValid = () => phaseRef.current === 'ROUND_END' || phaseRef.current === 'GAME_END';
-   react((mySeat + 2) % count, won ? RESULT_LINES.win : RESULT_LINES.lose, 'result', resultValid);
+   react((mySeat + 2) % count, won ? characterPhrase(characterFor((mySeat + 2) % count), 'win') : characterPhrase(characterFor((mySeat + 2) % count), 'lose'), 'result', resultValid);
    if (!won) {
-     const timer = setTimeout(() => { react((mySeat + 1) % count, RESULT_LINES.opponent, 'result', resultValid); reactionTimers.current.delete(timer); }, 3600);
+     const timer = setTimeout(() => { react((mySeat + 1) % count, characterPhrase(characterFor((mySeat + 1) % count), 'opponent'), 'result', resultValid); reactionTimers.current.delete(timer); }, 3600);
      reactionTimers.current.add(timer);
    }
  }, [state.phase, state.roundNo]);

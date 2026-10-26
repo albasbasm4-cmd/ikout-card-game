@@ -123,7 +123,8 @@ export class KoutGameEngine {
    * - Validates phase is 'BID'
    * - Validates turn (seat === currentSeat)
    * - Validates bid is higher than current highBid (unless pass = 0)
-   * - Enforces forced bid (Malzom): if all pass, dealer must bid 5
+   * - Voluntary bids are 6..9; 5 is reserved for the forced dealer (Malzom)
+   * - Enforces forced bid (Malzom): if all pass, dealer must bid at least 5
    * - Moves turn counter-clockwise or concludes auction to 'TRUMP' phase
    * - Increments version and returns new state object
    */
@@ -163,6 +164,10 @@ export class KoutGameEngine {
     if (effectiveBid !== 0) {
       if (effectiveBid < 5 || effectiveBid > 9) {
         throw new Error(`Invalid bid ${effectiveBid}. Valid bids are 0 (pass) or 5..9`);
+      }
+      const minVoluntary = allOthersPassed ? 5 : 6;
+      if (effectiveBid < minVoluntary) {
+        throw new Error(`Invalid bid ${effectiveBid}. Minimum bid is ${minVoluntary} (5 is Malzom only)`);
       }
 
       if (this._state.highBid !== null && effectiveBid <= this._state.highBid) {

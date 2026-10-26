@@ -1,6 +1,6 @@
 import pass from '../assets/gameplay/pass-two.mp3.asset.json';
 import { loadSettings } from '../store/useSettings';
-import { CHARACTER_PHRASES, RESULT_LINES, SPECIAL_LINES } from './gamePresentation';
+import { CHARACTER_PHRASES, RESULT_LINES, SPECIAL_LINES, phraseKeyForWording } from './gamePresentation';
 
 const assets = import.meta.glob<{ url: string }>('../assets/voices/*.asset.json', { eager: true, import: 'default' });
 const phraseKeys = ['partner', 'play', 'ace', 'king', 'surprise', 'kout', 'pass-taunt', 'tea'];
@@ -62,6 +62,16 @@ export function stopCharacterVoice(token?: string) {
 export function voiceKey(message: string): string | null {
   const index = CHARACTER_PHRASES.indexOf(message);
   if (index >= 0) return phraseKeys[index];
+  // Per-character wording variants resolve to the same contextual audio key
+  const wordingKey = phraseKeyForWording(message);
+  if (wordingKey) {
+    if (wordingKey === 'joker' || wordingKey === 'maker' || wordingKey === 'trump-ace') return wordingKey;
+    if (wordingKey === 'win') return 'win';
+    if (wordingKey === 'lose') return 'lose';
+    if (wordingKey === 'opponent') return 'opponent-win';
+    const keyIndex = phraseKeys.indexOf(wordingKey);
+    if (keyIndex >= 0) return phraseKeys[keyIndex];
+  }
   for (const [key, line] of Object.entries(SPECIAL_LINES)) if (message === line) return key;
   if (message === RESULT_LINES.win) return 'win';
   if (message === RESULT_LINES.lose) return 'lose';

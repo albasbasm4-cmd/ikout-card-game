@@ -23,6 +23,7 @@ export interface RoundScoreResult {
  * Computes the scoring outcome for the completed round based on RULES.SCORING
  */
 export function computeRoundResult(state: GameState): RoundScoreResult {
+  // 5 is the Malzom (forced dealer) bid
   const highBid = (state.highBid ?? 5) as Exclude<Bid, 0>;
   const bidderSeat = state.bidderSeat ?? 0;
 
@@ -41,7 +42,7 @@ export function computeRoundResult(state: GameState): RoundScoreResult {
   const scoringTable = (RULES as unknown as { SCORING?: typeof SCORING }).SCORING || SCORING;
   const scoreConfig = scoringTable[highBid] || {
     successPoints: highBid,
-    failPenalty: highBid,
+    failPenalty: highBid * 2,
     kaboutBonus: highBid * 2,
     description: `طلب ${highBid}`,
   };

@@ -65,11 +65,11 @@ describe('BidEvaluator', () => {
   });
 
   describe('Sample Hand 2: Moderate Hand', () => {
-    it('identifies Hearts as best suit and bids 5 or 6 on opening', () => {
+    it('identifies Hearts as best suit and bids 6 or passes on opening', () => {
       const evalResult = evaluateBid(moderateHand, null, false, 'MEDIUM');
 
       expect(evalResult.bestSuit).toBe('H');
-      expect([5, 6]).toContain(evalResult.bid);
+      expect([0, 6]).toContain(evalResult.bid);
     });
 
     it('passes if current high bid is higher than hand potential (e.g. 7)', () => {
@@ -110,7 +110,7 @@ describe('BidEvaluator', () => {
 
     it('EASY produces a valid Bid or pass (0 or 5..9)', () => {
       const easyResult = evaluateBid(moderateHand, null, false, 'EASY');
-      expect([0, 5, 6, 7, 8, 9]).toContain(easyResult.bid);
+      expect([0, 6, 7, 8, 9]).toContain(easyResult.bid);
       expect(['S', 'H', 'D', 'C']).toContain(easyResult.bestSuit);
     });
   });

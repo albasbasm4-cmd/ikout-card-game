@@ -95,7 +95,7 @@ export function scoreHandForSuit(hand: Card[], trumpCandidate: Suit): number {
  *     - MEDIUM: Standard balanced bidding
  *     - EXPERT: Stricter thresholds (risk-averse) and accounts for partner position
  * - Enforces forced dealer bid (Malzom: minimum 5) if isDealerForced is true
- * - Returns Bid (0 for pass, 5..9) and bestSuit
+ * - Returns Bid (0 for pass, 6..9 voluntary; 5 only as forced Malzom) and bestSuit
  */
 export function evaluateBid(
   hand: Card[],
@@ -146,7 +146,6 @@ export function evaluateBid(
     else if (expectedTricks >= 7.8) rawBid = 8;
     else if (expectedTricks >= 6.8) rawBid = 7;
     else if (expectedTricks >= 5.8) rawBid = 6;
-    else if (expectedTricks >= 4.9) rawBid = 5;
     else rawBid = 0;
   } else if (difficulty === 'EASY') {
     // Looser thresholds for Easy
@@ -155,7 +154,6 @@ export function evaluateBid(
     else if (rounded >= 8) rawBid = 8;
     else if (rounded >= 7) rawBid = 7;
     else if (rounded >= 6) rawBid = 6;
-    else if (rounded >= 5) rawBid = 5;
     else rawBid = 0;
   } else {
     // Medium thresholds
@@ -163,7 +161,6 @@ export function evaluateBid(
     else if (expectedTricks >= 7.5) rawBid = 8;
     else if (expectedTricks >= 6.5) rawBid = 7;
     else if (expectedTricks >= 5.5) rawBid = 6;
-    else if (expectedTricks >= 4.7) rawBid = 5;
     else rawBid = 0;
   }
 

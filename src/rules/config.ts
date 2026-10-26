@@ -64,7 +64,8 @@ export const RULES = {
 
 /**
  * Scoring chart for Kout (success vs failure points per bid).
- * TODO: verify with user - exact regional Kuwaiti tournament scoring rules vs casual variants
+ * Rules: voluntary bids are 6..9; 5 exists only as the forced dealer (ملزوم).
+ * Success pays the bid value; failure pays DOUBLE the bid; Kabout (sweep) pays 2x.
  * In traditional Kout:
  * - If bidding team makes at least their bid: they receive points equal to the bid (or trick difference).
  * - If bidding team fails (e.g., gets stopped or opponents take majority/undermine bid):
@@ -82,31 +83,31 @@ export const SCORING: Record<
 > = {
   5: {
     successPoints: 5,
-    failPenalty: 5,
+    failPenalty: 10,
     kaboutBonus: 10,
-    description: 'طلب ٥ أكَلات',
+    description: 'ملزوم ٥ (إجباري)',
   },
   6: {
     successPoints: 6,
-    failPenalty: 6,
+    failPenalty: 12,
     kaboutBonus: 12,
     description: 'طلب ٦ أكَلات',
   },
   7: {
     successPoints: 7,
-    failPenalty: 7,
+    failPenalty: 14,
     kaboutBonus: 14,
     description: 'طلب ٧ أكَلات',
   },
   8: {
     successPoints: 8,
-    failPenalty: 8,
+    failPenalty: 16,
     kaboutBonus: 16,
     description: 'طلب ٨ أكَلات',
   },
   9: {
     successPoints: 9,
-    failPenalty: 9,
+    failPenalty: 18,
     kaboutBonus: 18,
     description: 'طلب ٩ أكَلات (كبوت كامل)',
   },

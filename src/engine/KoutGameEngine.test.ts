@@ -99,7 +99,7 @@ describe('KoutGameEngine', () => {
     it('increments state version and returns a new state object on each action', () => {
       const engine = new KoutGameEngine({ variant: 'BO6', initialDealer: 0 });
       const s0 = engine.startRound();
-      const s1 = engine.placeBid(1, 5);
+      const s1 = engine.placeBid(1, 6);
 
       expect(s1).not.toBe(s0);
       expect(s1.version).toBe(s0.version + 1);
@@ -107,6 +107,12 @@ describe('KoutGameEngine', () => {
   });
 
   describe('Forced Bid (Malzom) Rules', () => {
+    it('rejects a voluntary bid of 5 (Malzom only)', () => {
+      const engine = new KoutGameEngine({ variant: 'BO6', initialDealer: 0 });
+      engine.startRound();
+      expect(() => engine.placeBid(1, 5)).toThrowError(/Minimum bid is 6/);
+    });
+
     it('forces dealer to bid 5 (Malzom) when all other 5 players pass', () => {
       const engine = new KoutGameEngine({ variant: 'BO6', initialDealer: 0 });
       engine.startRound(); // dealer is 0, first bidder is 1
@@ -150,7 +156,7 @@ describe('KoutGameEngine', () => {
       const engine = new KoutGameEngine({ variant: 'BO6', initialDealer: 0 });
       engine.startRound();
 
-      engine.placeBid(1, 5); // Seat 1 bids 5
+      engine.placeBid(1, 6); // Seat 1 bids 6
       engine.placeBid(2, 0); // Seat 2 passes
       engine.placeBid(3, 0); // Seat 3 passes
       engine.placeBid(4, 0); // Seat 4 passes
@@ -158,7 +164,7 @@ describe('KoutGameEngine', () => {
 
       // Dealer can pass normally because not all passed
       const finalState = engine.placeBid(0, 0);
-      expect(finalState.highBid).toBe(5);
+      expect(finalState.highBid).toBe(6);
       expect(finalState.bidderSeat).toBe(1);
       expect(finalState.phase).toBe('TRUMP');
       expect(finalState.currentSeat).toBe(1); // Seat 1 won the auction
