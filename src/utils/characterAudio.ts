@@ -1,9 +1,8 @@
 import { loadSettings } from '../store/useSettings';
-import { phraseDataKey, type CharacterId, type PhraseKey } from './gamePresentation';
+import { voiceFor, voiceSet, type CharacterId, type PhraseKey, type VoiceClip } from './gamePresentation';
 
 /** Restored per-character voice bundles live under /assets/ikout/audio/voices/<id>/<clip>.mp3. */
 const BUNDLE_BASE = '/assets/ikout/audio/voices';
-const PRELOAD_KEYS = ['welcome', 'partner', 'play', 'ace', 'king', 'surprise', 'kout', 'pass', 'tea', 'win', 'lose', 'taunt'];
 /** A voice that cannot start within this window is dropped instead of playing late. */
 export const MAX_VOICE_DELAY_MS = 250;
 
@@ -41,13 +40,19 @@ function load(src: string): Promise<AudioBuffer | null> {
   }
   return pending;
 }
-function clipUrl(characterId: string, dataKey: string): string {
-  return `${BUNDLE_BASE}/${characterId}/${dataKey}.mp3`;
+function clipUrl(characterId: string, file: string): string {
+  return `${BUNDLE_BASE}/${characterId}/${file}`;
 }
-/** Decode the character's own bundle ahead of time so lines start the instant their event happens. */
+/** Decode every verified clip of the character ahead of time so lines start the instant their event happens. */
 export function preloadCharacterVoices(characterId: CharacterId = 'a1') {
   if (typeof window === 'undefined') return;
-  const start = () => { PRELOAD_KEYS.forEach(key => void load(clipUrl(characterId, key))); };
+  const set = voiceSet(characterId);
+  const files = new Set<string>();
+  for (const value of Object.values(set)) {
+    if (Array.isArray(value)) value.forEach(clip => files.add(clip.file));
+    else if (value) files.add((value as VoiceClip).file);
+  }
+  const start = () => { files.forEach(file => void load(clipUrl(characterId, file))); };
   start();
   const unlock = () => { context(); start(); };
   window.addEventListener('pointerdown', unlock, { once: true });
@@ -59,21 +64,16 @@ export function stopCharacterVoice(token?: string) {
   current = null;
   notify(null);
 }
-export function voiceSource(characterId: CharacterId, key: PhraseKey): string {
-  return clipUrl(characterId, phraseDataKey(key));
+export function voiceSource(characterId: CharacterId, clip: VoiceClip): string {
+  return clipUrl(characterId, clip.file);
 }
-/**
- * Plays a situation line from the character's own restored bundle for a seat.
- * `token` ties the voice to its cause (e.g. a card id); `isStillValid` is
- * re-checked right before sound starts so stale lines are skipped.
- */
-export function playCharacterVoice(characterId: CharacterId, key: PhraseKey, seat: number, token: string | null = null, isStillValid: () => boolean = () => true) {
+function playClip(characterId: CharacterId, clip: VoiceClip, seat: number, token: string | null, isStillValid: () => boolean) {
   if (typeof window === 'undefined' || !loadSettings().soundEnabled) return;
-  const src = voiceSource(characterId, key);
+  const src = voiceSource(characterId, clip);
   const requested = performance.now();
   const startBuffer = (buf: AudioBuffer) => {
     const c = context();
-    if (!c || !isStillValid() || performance.now() - requested > MAX_VOICE_DELAY_MS) { if (import.meta.env.DEV) logVoice({ key, token, dropped: true, delay: Math.round(performance.now() - requested) }); return; }
+    if (!c || !isStillValid() || performance.now() - requested > MAX_VOICE_DELAY_MS) { if (import.meta.env.DEV) logVoice({ key: clip.file, token, dropped: true, delay: Math.round(performance.now() - requested) }); return; }
     stopCharacterVoice();
     const node = c.createBufferSource();
     const gain = c.createGain();
@@ -84,12 +84,27 @@ export function playCharacterVoice(characterId: CharacterId, key: PhraseKey, sea
     node.onended = () => { if (current === entry) { current = null; notify(null); } };
     current = entry;
     node.start();
-    if (import.meta.env.DEV) logVoice({ characterId, key, token, delay: Math.round(performance.now() - requested), cards: document.querySelectorAll('.reference-trick-card').length, phase: document.querySelector('.reference-game') ? 'table' : 'other' });
+    if (import.meta.env.DEV) logVoice({ characterId, key: clip.file, token, delay: Math.round(performance.now() - requested), cards: document.querySelectorAll('.reference-trick-card').length, phase: document.querySelector('.reference-game') ? 'table' : 'other' });
     notify(seat);
   };
   const ready = buffers.get(src);
   if (ready) { startBuffer(ready); return; }
   void load(src).then(buf => { if (buf) startBuffer(buf); });
+}
+/**
+ * Plays the situation line from the character's own verified bundle. The clip
+ * comes from the transcription-verified manifest, so audio matches the text.
+ * `token` ties the voice to its cause (e.g. a card id); `isStillValid` is
+ * re-checked right before sound starts so stale lines are skipped.
+ */
+export function playCharacterVoice(characterId: CharacterId, key: PhraseKey, seat: number, token: string | null = null, isStillValid: () => boolean = () => true) {
+  const clip = voiceFor(characterId, key);
+  if (!clip) return;
+  playClip(characterId, clip, seat, token, isStillValid);
+}
+/** Plays one exact verified clip (chat panel buttons, soundboard). */
+export function playCharacterClip(characterId: CharacterId, clip: VoiceClip, seat: number, token: string | null = null, isStillValid: () => boolean = () => true) {
+  playClip(characterId, clip, seat, token, isStillValid);
 }
 
 function logVoice(entry: Record<string, unknown>) {

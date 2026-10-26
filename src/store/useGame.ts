@@ -42,13 +42,6 @@ export interface CheatVerdict {
 const MAX_CHEAT_REPORTS_PER_ROUND = 3;
 const CHEAT_REPORT_COOLDOWN_MS = 8000;
 
-const SUIT_ARABIC: Record<Suit, string> = {
-  S: 'سبيت ♠',
-  H: 'هاص ♥',
-  D: 'ديمن ♦',
-  C: 'كلفس ♣',
-};
-
 export function useGame(options: UseGameOptions = {}) {
   const [difficulty, setDifficulty] = useState<Difficulty>(options.difficulty ?? 'MEDIUM');
   const [variant, setVariant] = useState<'BO6' | 'BO4'>(options.initialState?.variant ?? options.variant ?? 'BO6');
@@ -255,7 +248,7 @@ export function useGame(options: UseGameOptions = {}) {
     if (engine.state.phase !== 'BID' || seat === null || engine.state.currentSeat !== seat) return;
 
     try {
-      const bubble = bid === 0 ? 'طاف' : `طلب ${bid}`;
+      const bubble = bid === 0 ? 'pass' : `bid:${bid}`;
       setSpeechBubbles((prev) => ({ ...prev, [seat]: bubble }));
 
       const nextState = engine.placeBid(seat, bid);
@@ -276,7 +269,7 @@ export function useGame(options: UseGameOptions = {}) {
       playTrumpSound();
       setSpeechBubbles((prev) => ({
         ...prev,
-        [seat]: `الأمر: ${SUIT_ARABIC[suit]}`,
+        [seat]: `trump:${suit}`,
       }));
 
       const nextState = engine.declareTrump(seat, suit);
@@ -408,7 +401,7 @@ export function useGame(options: UseGameOptions = {}) {
         }
 
         if (decision.type === 'BID' && currentEngineState.phase === 'BID') {
-          const bubble = decision.bid === 0 ? 'طاف' : `طلب ${decision.bid}`;
+          const bubble = decision.bid === 0 ? 'pass' : `bid:${decision.bid}`;
           setSpeechBubbles((prev) => ({ ...prev, [activeSeat]: bubble }));
 
           const next = engine.placeBid(activeSeat, decision.bid);
@@ -418,7 +411,7 @@ export function useGame(options: UseGameOptions = {}) {
           playTrumpSound();
           setSpeechBubbles((prev) => ({
             ...prev,
-            [activeSeat]: `الأمر: ${SUIT_ARABIC[decision.suit]}`,
+            [activeSeat]: `trump:${decision.suit}`,
           }));
 
           const next = engine.declareTrump(activeSeat, decision.suit);

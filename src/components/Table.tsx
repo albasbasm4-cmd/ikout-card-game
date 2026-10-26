@@ -8,15 +8,14 @@ import { Button } from './ui/button';
 import { playBubbleSound, playTapSound } from '../utils/audio';
 import { CHARACTER_IDS, characterFace, tableImage, useProfile } from '../utils/profile';
 import { playReferenceAudio, stopReferenceAudio } from '../utils/referenceAudio';
-import { playCharacterVoice, subscribeCharacterVoice, preloadCharacterVoices, stopCharacterVoice } from '../utils/characterAudio';
-import { characterPhrase, contextKeyForMessage, specialPlay, type CharacterId, type PhraseKey, type SpecialPlay } from '../utils/gamePresentation';
+import { playCharacterVoice, playCharacterClip, subscribeCharacterVoice, preloadCharacterVoices, stopCharacterVoice } from '../utils/characterAudio';
+import { characterPhrase, contextKeyForMessage, specialPlay, voiceSet, type CharacterId, type PhraseKey, type SpecialPlay } from '../utils/gamePresentation';
 import { addXpForGame } from '../utils/xp';
 export interface TableProps {
  state?: GameState; mySeat?: number; onPlayCard?: (card: CardType) => void; onBid?: (bid: number) => void; onDeclareTrump?: (suit: Suit) => void;
  displayedTrick?: TrickPlay[]; winningTrickPlay?: TrickPlay | null; trickWinnerAnnouncement?: string | null;
  speechBubbles?: Record<number,string>; legalCardIds?: Set<string>; onSendSpeechBubble?: (message:string)=>void; headerControls?: React.ReactNode; className?: string; localHandSeat?: number;
 }
-const CHAT_KEYS: PhraseKey[] = ['partner', 'play', 'ace', 'king', 'surprise', 'kout', 'pass-taunt', 'tea'];
 
 export const MOCK_TABLE_STATE: GameState = {
   variant: 'BO6',
@@ -103,8 +102,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
  const bubblesRef = useRef(speechBubbles);
  bubblesRef.current = speechBubbles;
  const reactionCause = useRef<Record<number, string>>({});
- const kingSpokenRef = useRef(false);
- const react = (seat: number, key: PhraseKey, token: string | null = null, valid: () => boolean = () => true) => {
+  const react = (seat: number, key: PhraseKey, token: string | null = null, valid: () => boolean = () => true) => {
    const message = characterPhrase(characterFor(seat), key);
    setReactions(current => ({ ...current, [seat]: message }));
    if (token) reactionCause.current[seat] = token; else delete reactionCause.current[seat];
@@ -134,6 +132,22 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
  useEffect(() => {
    for (const [seat, message] of Object.entries(speechBubbles)) {
      if (message && previousSpeech.current[Number(seat)] !== message) {
+       const clipCode = /^clip:(.+)$/.exec(message);
+       if (clipCode) {
+         const character = characterFor(Number(seat));
+         const clip = voiceSet(character).chat.find(c => c.file === clipCode[1]);
+         if (clip) {
+           setReactions(current => ({ ...current, [Number(seat)]: clip.text }));
+           reactionCause.current[Number(seat)] = `bubble-${seat}`;
+           playCharacterClip(character, clip, Number(seat), `bubble-${seat}`, () => bubblesRef.current[Number(seat)] === message);
+           const timer = setTimeout(() => {
+             setReactions(current => { const next = { ...current }; delete next[Number(seat)]; return next; });
+             reactionTimers.current.delete(timer);
+           }, 3400);
+           reactionTimers.current.add(timer);
+         }
+         continue;
+       }
        const key = contextKeyForMessage(message);
        if (key) react(Number(seat), key, `bubble-${seat}`, () => bubblesRef.current[Number(seat)] === message);
      }
@@ -142,7 +156,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
  }, [speechBubbles]);
  useEffect(() => {
    if (previousRound.current !== state.roundNo || (state.phase === 'BID' && state.bids.length === 0)) {
-     seenPlays.current.clear(); kingSpokenRef.current = false; previousRound.current = state.roundNo;
+     seenPlays.current.clear(); previousRound.current = state.roundNo;
      setReactions({}); setSlam(null); resultPlayed.current = null;
    }
    visibleCards.current = new Set(trick.map(play => play.card.id));
@@ -168,9 +182,6 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
          reactionTimers.current.delete(timer);
        }, 1100);
        reactionTimers.current.add(timer);
-     } else if (play.card.rank === 13 && !play.card.joker && play.seat !== mySeat && !kingSpokenRef.current) {
-       kingSpokenRef.current = true;
-       react(play.seat, 'king', `card-${play.card.id}`, onTable(play.card.id));
      }
    }
  }, [trick, state.trump, state.roundNo, state.phase]);
@@ -196,6 +207,8 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
    if (reactions[seat]) return reactions[seat];
    const message = speechBubbles[seat];
    if (!message) return undefined;
+   const clipCode = /^clip:(.+)$/.exec(message);
+   if (clipCode) return voiceSet(characterFor(seat)).chat.find(c => c.file === clipCode[1])?.text ?? message;
    const key = contextKeyForMessage(message);
    return key ? characterPhrase(characterFor(seat), key) : message;
  };
@@ -244,7 +257,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
          <strong>{slam.kind === 'joker' ? 'الجيكر' : slam.kind === 'maker' ? 'الميكر' : 'أكة الحكم'}</strong>
        </motion.div>}</AnimatePresence>
 <div className="reference-local-hand"><Hand cards={(handSeat !== undefined ? state.hands[handSeat] : state.hands[mySeat]) || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" /></div>
-     {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{CHAT_KEYS.map(key => { const phrase = characterPhrase(characterFor(mySeat), key); return <Button key={key} variant="ghost" onClick={()=>{playBubbleSound(); react(mySeat, key); onSendSpeechBubble?.(phrase); setChatOpen(false);}}>{phrase}</Button>; })}</div></div>}
+     {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{voiceSet(characterFor(mySeat)).chat.map(clip => <Button key={clip.file} variant="ghost" onClick={()=>{playBubbleSound(); setReactions(current => ({ ...current, [mySeat]: clip.text })); playCharacterClip(characterFor(mySeat), clip, mySeat); onSendSpeechBubble?.(`clip:${clip.file}`); setChatOpen(false);}}>{clip.text}</Button>)}</div></div>}
    </section>
    <footer className="reference-controlbar" dir="ltr">
      <div className="reference-tools">{headerControls}<Button variant="ghost" size="icon" aria-label="تعليقات الشخصيات" title="تعليقات الشخصيات" onClick={()=>{playTapSound();setChatOpen(v=>!v);}}><MessageSquare/></Button></div>

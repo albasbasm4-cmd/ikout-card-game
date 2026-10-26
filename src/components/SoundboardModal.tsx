@@ -3,6 +3,8 @@ import { X, Volume2, Sparkles } from "lucide-react";
 import { playTapSound } from "../utils/audio";
 import { getCharacterData } from "../data/charactersData";
 import { characterPortrait, loadPlayerProfile } from "../utils/playerProfile";
+import { voiceSource } from "../utils/characterAudio";
+import { voiceSet, type VoiceClip } from "../utils/gamePresentation";
 
 export interface SoundboardModalProps {
   isOpen: boolean;
@@ -22,10 +24,28 @@ export const SoundboardModal: React.FC<SoundboardModalProps> = ({
   const activeCharId = characterId || loadPlayerProfile().characterId || "a1";
   const character = getCharacterData(activeCharId);
 
-  const diwaniyaPhrases = character.phrases.filter((p) => p.category === "diwaniya");
-  const reactionPhrases = character.phrases.filter(
-    (p) => p.category === "reactions" || p.category === "kout",
-  );
+  // Verified clips only: every line here was transcribed from the character's
+  // own restored audio, so the label always matches what is played.
+  const set = voiceSet(activeCharId);
+  const diwaniyaPhrases = set.chat.map((clip) => ({
+    id: clip.file,
+    label: clip.text,
+    audioUrl: voiceSource(activeCharId, clip),
+  }));
+  const situations: Array<[string, VoiceClip | undefined]> = [
+    ["نداء المزايدة", set.bid6], ["سبعة", set.bid7], ["ثمانية", set.bid8],
+    ["طاف", set.pass], ["ملزوم", set.malzoom],
+    ["أمر كلبس", set.suitC], ["أمر ديمان", set.suitD], ["أمر سبيت", set.suitS], ["أمر حس", set.suitH],
+    ["الميكر", set.maker], ["الجيكر", set.joker], ["أكة", set.ace],
+    ["ترحيب", set.welcome], ["فوز", set.win], ["خسارة", set.lose],
+  ];
+  const reactionPhrases = situations
+    .filter(([, clip]) => !!clip)
+    .map(([label, clip]) => ({
+      id: clip!.file,
+      label: `${label}: ${clip!.text}`,
+      audioUrl: voiceSource(activeCharId, clip!),
+    }));
 
   const handlePhraseClick = (phraseText: string, audioUrl: string) => {
     // Play the character's authentic voice clip immediately
@@ -98,7 +118,7 @@ export const SoundboardModal: React.FC<SoundboardModalProps> = ({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => handlePhraseClick(item.text, item.audioUrl)}
+                  onClick={() => handlePhraseClick(item.label, item.audioUrl)}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800/80 hover:bg-amber-600/30 border border-amber-500/20 hover:border-amber-400/60 transition-all text-right group cursor-pointer active:scale-95 shadow-sm"
                 >
                   <span className="text-xs font-semibold text-neutral-100 group-hover:text-amber-300 transition-colors truncate">
@@ -121,7 +141,7 @@ export const SoundboardModal: React.FC<SoundboardModalProps> = ({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => handlePhraseClick(item.text, item.audioUrl)}
+                  onClick={() => handlePhraseClick(item.label, item.audioUrl)}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800/80 hover:bg-amber-600/30 border border-amber-500/20 hover:border-amber-400/60 transition-all text-right group cursor-pointer active:scale-95 shadow-sm"
                 >
                   <span className="text-xs font-semibold text-neutral-100 group-hover:text-amber-300 transition-colors truncate">

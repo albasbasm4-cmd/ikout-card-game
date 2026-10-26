@@ -35,19 +35,15 @@ export function generateFallbackDecision(
       state.bids.length === numSeats - 1 &&
       state.bids.every((b) => b.bid === 0);
 
-    if (isDealerForced) {
-      return { type: 'BID', bid: 5, bestSuit: randomSuit };
-    }
-
-    const legalBids: Bid[] = [0]; // Pass
-    // Voluntary bids start at 6; 5 is only for the forced dealer (Malzom)
-    const minBid = Math.max(6, (state.highBid ?? 5) + 1);
-    for (let b = minBid; b <= cardsPerPlayer; b++) {
-      legalBids.push(b as Bid);
-    }
-
-    const chosenBid = legalBids[Math.floor(Math.random() * legalBids.length)];
-    return { type: 'BID', bid: chosenBid, bestSuit: randomSuit };
+    // Sane evaluation instead of a random number: a timed-out bot must never
+    // claim 8 or 9 with a weak hand (this caused bots walking contracts
+    // they could never make).
+    const evalResult = evaluateBid(
+      state.hands[seat] || [],
+      state.highBid,
+      isDealerForced
+    );
+    return { type: 'BID', bid: evalResult.bid, bestSuit: evalResult.bestSuit };
   }
 
   if (state.phase === 'TRUMP') {
