@@ -311,7 +311,9 @@ export const Table: React.FC<TableProps> = ({
       </header>
       <section className="reference-arena table-felt" aria-label="طاولة كوت">
         <div className="reference-disc" aria-hidden="true">
-          <div className="reference-rosette" />
+          <div className="reference-rosette">
+            <div className="reference-table-emblem" />
+          </div>
         </div>
         <AnimatePresence>
           {trumpSlam && (
