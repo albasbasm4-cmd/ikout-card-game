@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import shemagh from '../assets/gameplay/shemagh-player.png.asset.json';
 import elder from '../assets/gameplay/elder-player.png.asset.json';
 import green from '../assets/gameplay/green-player.png.asset.json';
+import glasses from '../assets/reference/glasses.png.asset.json';
 
-export const PORTRAITS = [elder.url, shemagh.url, green.url];
+export const PORTRAITS = [elder.url, shemagh.url, green.url, glasses.url];
 export type TableTheme = 'stone' | 'wood' | 'night';
 export type CardTheme = 'classic' | 'royal' | 'night';
 export const TABLE_THEMES: { id: TableTheme; label: string }[] = [

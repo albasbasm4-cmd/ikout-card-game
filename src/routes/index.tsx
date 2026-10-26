@@ -19,8 +19,8 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   return (
-    <ClientOnly fallback={<div className="table-felt min-h-screen" />}>
-      <Suspense fallback={<div className="table-felt min-h-screen" />}>
+    <ClientOnly fallback={<div className="min-h-screen bg-black" />}>
+      <Suspense fallback={<div className="min-h-screen bg-black" />}>
         <IkoutApp />
       </Suspense>
     </ClientOnly>
