@@ -16,3 +16,4 @@
 - Gameplay-reference media and sampled effects use asset pointers; referenceAudio owns interruptible client playback, while Table handles visual motion without changing engine timing or rules.
 - Static generated Gulf Arabic lines use asset pointers and characterAudio owns single-voice playback and speaking-seat notifications; presentation effects stay separate from engine decisions to preserve gameplay and offline operation.
 - Hand interactions preview on first tap and commit on second tap or a legal upward drag; ResizeObserver sizes the fan to the available phone width to prevent clipped cards.
+- Player profile (name, portrait, table theme, card theme) lives in src/utils/profile.ts (localStorage + listeners); themes apply as CSS classes on .reference-game so game logic never depends on looks.
