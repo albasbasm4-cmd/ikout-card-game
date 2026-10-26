@@ -155,6 +155,22 @@ export function useGame(options: UseGameOptions = {}) {
         playTrickWinSound();
         triggerHaptic("medium");
 
+        // Contextual voice reaction based on who won the trick
+        const myTeam = 0;
+        const winnerTeam = winner.seat % 2;
+        const partnerSeat = 2; // In 4-player, 2 is partner of 0
+
+        // If partner won a big trick, player or partner praises
+        if (winner.seat === partnerSeat && Math.random() < 0.6) {
+          playEventVoice("partner", { seat: 0 });
+        } else if (winnerTeam !== myTeam && Math.random() < 0.45) {
+          // Opponent taunt or surprise
+          playEventVoice("surprise", { seat: 0 });
+          if (Math.random() < 0.5) {
+            playEventVoice("taunt", { seat: winner.seat });
+          }
+        }
+
         setTimeout(() => {
           try {
             const nextState = engine.playCard(seat, card);
@@ -175,8 +191,11 @@ export function useGame(options: UseGameOptions = {}) {
                   : (made ? bidderTeam : 1 - bidderTeam) === myTeam;
               if (iWon) {
                 playWinSound();
+                playEventVoice("win", { seat: 0 });
+                setTimeout(() => playEventVoice("taunt", { seat: 0 }), 1400);
               } else {
                 playLoseSound();
+                playEventVoice("lose", { seat: 0 });
               }
             }
           } finally {
