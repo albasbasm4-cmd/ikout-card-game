@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GameState, Card, Suit, TrickPlay, Difficulty } from "../types/kout";
-import { RULES } from "../rules/config";
-import { buildDeck, shuffle } from "../rules/deck";
-import { getLegalCards, trickWinner, cardStrength } from "../rules/cards";
-import { getPlayedCards } from "../engine/KoutTricks";
+import { GameState, Card, Suit, TrickPlay, Difficulty } from '../types/kout';
+import { RULES } from '../rules/config';
+import { buildDeck, shuffle } from '../rules/deck';
+import { getLegalCards, trickWinner, cardStrength } from '../rules/cards';
+import { getPlayedCards } from '../engine/KoutTricks';
 
 export interface ChooseCardOptions {
   iterations?: number;
@@ -22,7 +22,7 @@ export interface ChooseCardOptions {
 export function inferPlayerVoids(
   trickHistory: TrickPlay[][],
   numSeats: number,
-  trump: Suit | null,
+  trump: Suit | null
 ): Map<number, Set<Suit>> {
   const voids = new Map<number, Set<Suit>>();
   for (let s = 0; s < numSeats; s++) {
@@ -32,7 +32,8 @@ export function inferPlayerVoids(
   for (const trick of trickHistory) {
     if (trick.length === 0) continue;
     const leadCard = trick[0].card;
-    const ledSuit = leadCard.joker !== undefined ? trump : (leadCard.suit ?? null);
+    const ledSuit =
+      leadCard.joker !== undefined ? trump : (leadCard.suit ?? null);
     if (!ledSuit) continue;
 
     for (let i = 1; i < trick.length; i++) {
@@ -61,7 +62,10 @@ export function inferPlayerVoids(
  * Determinizes hidden hands of opponents by distributing unseen cards
  * while respecting inferred void constraints whenever possible.
  */
-export function determinizeHands(state: GameState, observerSeat: number): Card[][] {
+export function determinizeHands(
+  state: GameState,
+  observerSeat: number
+): Card[][] {
   const numSeats = RULES[state.variant].seats;
   const voids = inferPlayerVoids(state.trickHistory, numSeats, state.trump);
 
@@ -151,12 +155,15 @@ function simulateRollout(
   initialTricksWon: [number, number],
   allPlayedCards: Card[],
   highBid: number | null,
-  numSeats: number,
+  numSeats: number
 ): [number, number] {
   const hands = initialHands.map((h) => [...h]);
   let trick = [...currentTrick];
   let seat = currentSeat;
-  const tricksWon: [number, number] = [initialTricksWon[0], initialTricksWon[1]];
+  const tricksWon: [number, number] = [
+    initialTricksWon[0],
+    initialTricksWon[1],
+  ];
   const played = [...allPlayedCards];
 
   while (hands.some((h) => h.length > 0)) {
@@ -196,7 +203,7 @@ function chooseHeuristicCard(
   legalCards: Card[],
   trick: TrickPlay[],
   trump: Suit | null,
-  seat: number,
+  seat: number
 ): Card {
   if (legalCards.length === 1) return legalCards[0];
 
@@ -204,22 +211,11 @@ function chooseHeuristicCard(
 
   // Leading a trick
   if (trick.length === 0) {
-    // 1. If holding an Ace in a non-trump suit, lead it to cash an early trick
-    const nonTrumpAces = legalCards.filter(
-      (c) => c.suit !== trump && c.rank === 14 && c.joker === undefined,
+    // Prefer leading non-trump low cards to probe suits
+    const nonTrumps = legalCards.filter(
+      (c) => c.suit !== trump && c.joker === undefined
     );
-    if (nonTrumpAces.length > 0) {
-      return nonTrumpAces[0];
-    }
-
-    // 2. Prefer leading safe medium/low cards in non-trump suits
-    const nonTrumps = legalCards.filter((c) => c.suit !== trump && c.joker === undefined);
     if (nonTrumps.length > 0) {
-      const lowNonTrumps = nonTrumps.filter((c) => (c.rank ?? 0) <= 10);
-      if (lowNonTrumps.length > 0) {
-        lowNonTrumps.sort((a, b) => (b.rank ?? 0) - (a.rank ?? 0));
-        return lowNonTrumps[0];
-      }
       nonTrumps.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
       return nonTrumps[0];
     }
@@ -227,50 +223,49 @@ function chooseHeuristicCard(
     return legalCards[0];
   }
 
-  // Following a trick
+  // Following a trick. A joker lead counts as a trump lead (rules/cards.ts).
+  const ledSuit = trick[0].card.joker !== undefined ? trump ?? undefined : trick[0].card.suit;
   const currentWinningPlay = trickWinner(trick, trump);
-  const partnerIsWinning = currentWinningPlay.seat % 2 === myTeam;
+    const partnerIsWinning = currentWinningPlay.seat % 2 === myTeam;
 
   if (partnerIsWinning) {
-    // Partner is winning: duck with lowest legal card to preserve winning power
+    // Partner is winning: duck with lowest legal card
     const sorted = [...legalCards].sort(
       (a, b) =>
-        cardStrength(a, trump, trick[0].card.suit) - cardStrength(b, trump, trick[0].card.suit),
+        cardStrength(a, trump, ledSuit) -
+        cardStrength(b, trump, ledSuit)
     );
     return sorted[0];
   }
 
-  // Opponent is winning: try to take with the cheapest winning card
-  const winningStrength = cardStrength(currentWinningPlay.card, trump, trick[0].card.suit);
+  // Opponent is winning: try to take with lowest winning card
+  const winningStrength = cardStrength(
+    currentWinningPlay.card,
+    trump,
+    ledSuit
+  );
   const winningCards = legalCards.filter(
-    (c) => cardStrength(c, trump, trick[0].card.suit) > winningStrength,
+    (c) =>
+      cardStrength(c, trump, ledSuit) > winningStrength
   );
 
   if (winningCards.length > 0) {
     winningCards.sort(
       (a, b) =>
-        cardStrength(a, trump, trick[0].card.suit) - cardStrength(b, trump, trick[0].card.suit),
+        cardStrength(a, trump, ledSuit) -
+        cardStrength(b, trump, ledSuit)
     );
     return winningCards[0];
   }
 
-  // Cannot win: discard lowest non-trump card if possible
-  const nonTrumpCards = legalCards.filter((c) => c.suit !== trump && c.joker === undefined);
-  if (nonTrumpCards.length > 0) {
-    nonTrumpCards.sort(
-      (a, b) =>
-        cardStrength(a, trump, trick[0].card.suit) - cardStrength(b, trick[0].card.suit, trump),
-    );
-    return nonTrumpCards[0];
-  }
-
+  // Cannot win: discard lowest card
   const sorted = [...legalCards].sort(
     (a, b) =>
-      cardStrength(a, trump, trick[0].card.suit) - cardStrength(b, trump, trick[0].card.suit),
+      cardStrength(a, trump, ledSuit) -
+      cardStrength(b, trump, ledSuit)
   );
   return sorted[0];
 }
-
 
 /**
  * Selects the best card to play using Information Set Monte Carlo Tree Search (ISMCTS):
@@ -279,7 +274,11 @@ function chooseHeuristicCard(
  * - Respects timeBudgetMs or max iterations
  * - Easy = 0 (heuristic), Medium = 150, Expert = 500+
  */
-export function chooseCard(state: GameState, seat: number, opts: ChooseCardOptions = {}): Card {
+export function chooseCard(
+  state: GameState,
+  seat: number,
+  opts: ChooseCardOptions = {}
+): Card {
   const hand = state.hands[seat] || [];
   const playedCards = getPlayedCards(state.trickHistory, state.currentTrick);
   const legalCards = getLegalCards(hand, state.currentTrick, state.trump, {
@@ -298,8 +297,8 @@ export function chooseCard(state: GameState, seat: number, opts: ChooseCardOptio
   // Resolve iterations based on difficulty or explicit option
   let iterations = opts.iterations;
   if (iterations === undefined) {
-    if (opts.difficulty === "EASY") iterations = 0;
-    else if (opts.difficulty === "EXPERT") iterations = 500;
+    if (opts.difficulty === 'EASY') iterations = 0;
+    else if (opts.difficulty === 'EXPERT') iterations = 500;
     else iterations = 150;
   }
 
@@ -357,11 +356,17 @@ export function chooseCard(state: GameState, seat: number, opts: ChooseCardOptio
 
     // 3. Apply selected card to root state copy
     const simHands = determinizedHands.map((h, s) =>
-      s === seat ? h.filter((c) => c.id !== selectedAction.id) : [...h],
+      s === seat ? h.filter((c) => c.id !== selectedAction.id) : [...h]
     );
-    const simTrick: TrickPlay[] = [...state.currentTrick, { seat, card: selectedAction }];
+    const simTrick: TrickPlay[] = [
+      ...state.currentTrick,
+      { seat, card: selectedAction },
+    ];
     const simPlayed = [...playedCards, selectedAction];
-    const simTricksWon: [number, number] = [state.tricksWon[0], state.tricksWon[1]];
+    const simTricksWon: [number, number] = [
+      state.tricksWon[0],
+      state.tricksWon[1],
+    ];
 
     let nextSeat = (seat + 1) % numSeats;
     let nextTrick = simTrick;
@@ -383,7 +388,7 @@ export function chooseCard(state: GameState, seat: number, opts: ChooseCardOptio
       simTricksWon,
       simPlayed,
       state.highBid,
-      numSeats,
+      numSeats
     );
 
     // 5. Reward: tricks won by player's team
@@ -392,10 +397,13 @@ export function chooseCard(state: GameState, seat: number, opts: ChooseCardOptio
     const normalizedReward = teamTricks / totalTricks;
 
     // 6. Backpropagation
-    actionVisits.set(selectedAction.id, (actionVisits.get(selectedAction.id) || 0) + 1);
+    actionVisits.set(
+      selectedAction.id,
+      (actionVisits.get(selectedAction.id) || 0) + 1
+    );
     actionRewards.set(
       selectedAction.id,
-      (actionRewards.get(selectedAction.id) || 0) + normalizedReward,
+      (actionRewards.get(selectedAction.id) || 0) + normalizedReward
     );
   }
 

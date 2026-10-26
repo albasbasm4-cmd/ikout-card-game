@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Card, Suit } from "../types/kout";
-import { RULES } from "./config";
+import { Card, Suit } from '../types/kout';
+import { RULES } from './config';
 
-const SUITS: Suit[] = ["S", "H", "D", "C"];
+const SUITS: Suit[] = ['S', 'H', 'D', 'C'];
 
 /**
  * 32-bit mulberry32 seeded pseudo-random number generator
@@ -24,7 +24,7 @@ export function mulberry32(seed: number): () => number {
 /**
  * Builds the complete deck for either BO6 (54 cards) or BO4 (32 cards)
  */
-export function buildDeck(variant: "BO6" | "BO4"): Card[] {
+export function buildDeck(variant: 'BO6' | 'BO4'): Card[] {
   const cards: Card[] = [];
   const config = RULES[variant];
 
@@ -42,12 +42,12 @@ export function buildDeck(variant: "BO6" | "BO4"): Card[] {
   // Jokers for BO6
   if (config.hasJokers) {
     cards.push({
-      id: "JOKER-RED",
-      joker: "RED",
+      id: 'JOKER-RED',
+      joker: 'RED',
     });
     cards.push({
-      id: "JOKER-BLACK",
-      joker: "BLACK",
+      id: 'JOKER-BLACK',
+      joker: 'BLACK',
     });
   }
 
@@ -83,7 +83,7 @@ export interface DealResult {
  * For BO6: 6 seats, 9 cards each = 54 cards
  * For BO4: 4 seats, 8 cards each = 32 cards
  */
-export function deal(variant: "BO6" | "BO4", seed?: number): DealResult {
+export function deal(variant: 'BO6' | 'BO4', seed?: number): DealResult {
   const config = RULES[variant];
   const unshuffled = buildDeck(variant);
   const shuffledDeck = shuffle(unshuffled, seed);

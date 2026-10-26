@@ -7,15 +7,9 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "iKout - كوت بوستة" },
-      {
-        name: "description",
-        content: "لعبة كوت بوستة كويتية كاملة مع ذكاء اصطناعي وأصوات خليجية وغرف لعب",
-      },
+      { name: "description", content: "العب كوت بوستة بقواعدها المخصصة، وشخصياتها وطاولتها الحجرية، مع مزايدة ولعب فردي وجماعي." },
       { property: "og:title", content: "iKout - كوت بوستة" },
-      {
-        property: "og:description",
-        content: "لعبة كوت بوستة كويتية كاملة مع ذكاء اصطناعي وأصوات خليجية وغرف لعب",
-      },
+      { property: "og:description", content: "العب كوت بوستة بقواعدها المخصصة، وشخصياتها وطاولتها الحجرية، مع مزايدة ولعب فردي وجماعي." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

@@ -77,22 +77,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      {
-        name: "viewport",
-        content:
-          "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover",
-      },
+      { name: "viewport", content: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" },
       { name: "theme-color", content: "#072a1e" },
       { title: "iKout - كوت بوستة" },
-      {
-        name: "description",
-        content: "لعبة كوت بوستة كويتية كاملة مع ذكاء اصطناعي وأصوات خليجية وغرف لعب",
-      },
-      { property: "og:title", content: "iKout - كوت بوستة" },
-      {
-        property: "og:description",
-        content: "لعبة كوت بوستة كويتية كاملة مع ذكاء اصطناعي وأصوات خليجية وغرف لعب",
-      },
+      { name: "description", content: "لعبة كوت بوستة" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
@@ -104,10 +92,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap",
-      },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),

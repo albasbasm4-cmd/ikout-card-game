@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
-import { Smartphone, RefreshCw, X, Play } from "lucide-react";
-import { playTapSound } from "../utils/audio";
+import React, { useState, useEffect } from 'react';
+import { Smartphone, RefreshCw, X, Play } from 'lucide-react';
+import { playTapSound } from '../utils/audio';
 
 export interface RotatePromptProps {
   onDismiss?: () => void;
@@ -17,18 +17,18 @@ export const RotatePrompt: React.FC<RotatePromptProps> = ({ onDismiss }) => {
 
   useEffect(() => {
     const checkOrientation = () => {
-      if (typeof window === "undefined") return;
+      if (typeof window === 'undefined') return;
       const portrait = window.innerHeight > window.innerWidth && window.innerWidth < 768;
       setIsPortrait(portrait);
     };
 
     checkOrientation();
-    window.addEventListener("resize", checkOrientation);
-    window.addEventListener("orientationchange", checkOrientation);
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
 
     return () => {
-      window.removeEventListener("resize", checkOrientation);
-      window.removeEventListener("orientationchange", checkOrientation);
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
     };
   }, []);
 
@@ -38,11 +38,11 @@ export const RotatePrompt: React.FC<RotatePromptProps> = ({ onDismiss }) => {
       if (document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen();
       }
-      if (screen.orientation && "lock" in screen.orientation) {
-        await (screen.orientation as any).lock("landscape");
+      if (screen.orientation && 'lock' in screen.orientation) {
+        await (screen.orientation as any).lock('landscape');
       }
     } catch (err) {
-      console.log("Orientation lock not supported or user gesture needed:", err);
+      console.log('Orientation lock not supported or user gesture needed:', err);
     }
   };
 
@@ -62,6 +62,7 @@ export const RotatePrompt: React.FC<RotatePromptProps> = ({ onDismiss }) => {
       className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-300"
     >
       <div className="relative w-full max-w-sm bg-neutral-950 border-2 border-amber-400/80 rounded-3xl p-6 shadow-[0_0_50px_rgba(251,191,36,0.25)] flex flex-col items-center">
+        
         {/* Animated Phone Rotation Graphic */}
         <div className="relative w-24 h-24 mb-4 flex items-center justify-center">
           <div className="absolute inset-0 rounded-full border-2 border-dashed border-amber-400/40 animate-spin [animation-duration:8s]" />
@@ -75,10 +76,11 @@ export const RotatePrompt: React.FC<RotatePromptProps> = ({ onDismiss }) => {
         </div>
 
         {/* Text Instructions */}
-        <h3 className="text-lg font-black text-amber-300 mb-1.5">يرجى تدوير جهازك للوضع الأفقي</h3>
+        <h3 className="text-lg font-black text-amber-300 mb-1.5">
+          يرجى تدوير جهازك للوضع الأفقي
+        </h3>
         <p className="text-xs text-amber-200/80 leading-relaxed mb-5 font-medium">
-          لعبة كوت بوستة صُممت لتعمل بكامل الشاشة في الوضع العرضي (Landscape) لتمنحك تجربة جلسة
-          الديوانية الحقيقية وتوزيع الأوراق بوضوح تام.
+          لعبة كوت بوستة صُممت لتعمل بكامل الشاشة في الوضع العرضي (Landscape) لتمنحك تجربة جلسة الديوانية الحقيقية وتوزيع الأوراق بوضوح تام.
         </p>
 
         {/* Action Buttons */}

@@ -3,18 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
-import type { GameState, PlayerSlot } from "../types/kout";
-import { useGame } from "../store/useGame";
-import { Table } from "./Table";
-import { BidPanel } from "./BidPanel";
-import { TrumpPicker } from "./TrumpPicker";
-import { ScoreBoard } from "./ScoreBoard";
-import { TurnTimer } from "./TurnTimer";
-import { Card as CardType, Difficulty, Suit } from "../types/kout";
-import { strings } from "../i18n/ar";
-import { useSettings } from "../store/useSettings";
-import { playTapSound } from "../utils/audio";
+import React, { useState, useEffect } from 'react';
+import type { GameState } from '../types/kout';
+import { useGame } from '../store/useGame';
+import { Table } from './Table';
+import { BidPanel } from './BidPanel';
+import { TrumpPicker } from './TrumpPicker';
+import { ScoreBoard } from './ScoreBoard';
+import { TurnTimer } from './TurnTimer';
+import { Card as CardType, Difficulty, Suit } from '../types/kout';
+import { strings } from '../i18n/ar';
+import { useSettings } from '../store/useSettings';
+import { playWinSound, playLoseSound, playTrickWinSound, playTapSound } from '../utils/audio';
 import {
   Trophy,
   RotateCcw,
@@ -32,34 +32,26 @@ import {
   Maximize,
   Minimize,
   Users,
-  Home,
-} from "lucide-react";
-import { RulesModal } from "./RulesModal";
-import { Button } from "./ui/button";
-import { stopReferenceAudio } from "../utils/referenceAudio";
-import { playEventVoice, type EventVoiceKey } from "../utils/characterAudio";
+} from 'lucide-react';
+import { RulesModal } from './RulesModal';
+import { Button } from './ui/button';
+import { stopReferenceAudio } from '../utils/referenceAudio';
 
 export interface GameScreenProps {
   initialDifficulty?: Difficulty;
-  initialVariant?: "BO6" | "BO4";
-  initialTargetScore?: number;
+  initialVariant?: 'BO6' | 'BO4';
   onGoToLobby?: () => void;
-  onBackToStart?: () => void;
   className?: string;
   /** Saved game to restore exactly as it was. */
   initialState?: GameState;
-  initialPlayers?: PlayerSlot[];
 }
 
 export const GameScreen: React.FC<GameScreenProps> = ({
   initialState,
-  initialPlayers,
-  initialDifficulty = "MEDIUM",
-  initialVariant = "BO6",
-  initialTargetScore = 51,
+  initialDifficulty = 'MEDIUM',
+  initialVariant = 'BO6',
   onGoToLobby,
-  onBackToStart,
-  className = "",
+  className = '',
 }) => {
   const {
     state,
@@ -79,23 +71,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     startNextRound,
     startNewGame,
     handleHumanTimeout,
-    reportCheat,
-    hasRemoteHuman,
   } = useGame({
     difficulty: initialDifficulty,
     variant: initialVariant,
-    targetScore: initialTargetScore,
     autoStart: true,
     initialState,
-    initialPlayers,
   });
-
-  const handleBid = (bid: number) => {
-    if (bid === 0) playEventVoice("taf", { seat: 0 });
-    else if (bid >= 6)
-      playEventVoice(bid === 9 ? "kout" : (`bid${bid}` as EventVoiceKey), { seat: 0 });
-    humanBid(bid as any);
-  };
 
   const { settings, toggleSound, setBotSpeed } = useSettings();
   const [showScoreboardModal, setShowScoreboardModal] = useState<boolean>(false);
@@ -108,9 +89,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     const onFsChange = () => {
       setIsFullscreen(Boolean(document.fullscreenElement));
     };
-    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener('fullscreenchange', onFsChange);
     return () => {
-      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener('fullscreenchange', onFsChange);
     };
   }, []);
 
@@ -121,8 +102,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         if (document.documentElement.requestFullscreen) {
           await document.documentElement.requestFullscreen();
         }
-        if (screen.orientation && "lock" in screen.orientation) {
-          (screen.orientation as any).lock("landscape").catch(() => {});
+        if (screen.orientation && 'lock' in screen.orientation) {
+          (screen.orientation as any).lock('landscape').catch(() => {});
         }
       } else {
         if (document.exitFullscreen) {
@@ -130,14 +111,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         }
       }
     } catch (err) {
-      console.warn("Fullscreen error:", err);
+      console.warn('Fullscreen error:', err);
     }
   };
 
-  const isBO6 = state.variant === "BO6";
+  const isBO6 = state.variant === 'BO6';
   const numSeats = isBO6 ? 6 : 4;
   const isDealerForced =
-    state.phase === "BID" &&
+    state.phase === 'BID' &&
     state.currentSeat === 0 &&
     state.dealer === 0 &&
     state.bids.length === numSeats - 1 &&
@@ -149,6 +130,19 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     state.scores[0] >= targetScore ||
     (state.roundNo === 1 && state.highBid === 9 && state.tricksWon[0] === 9);
 
+  // Play audio on round end and game end
+  useEffect(() => {
+    if (state.phase === 'ROUND_END') {
+      playTrickWinSound(settings.soundEnabled);
+    } else if (state.phase === 'GAME_END') {
+      if (isTeam0Winner) {
+        playWinSound(settings.soundEnabled);
+      } else {
+        playLoseSound(settings.soundEnabled);
+      }
+    }
+  }, [state.phase, isTeam0Winner, settings.soundEnabled]);
+
   // Integrated Top Controls for Table Header
   const headerControls = (
     <div className="flex items-center gap-1 sm:gap-1.5 pointer-events-auto">
@@ -159,10 +153,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             key={`${state.phase}-${state.currentSeat}-${state.version}`}
             durationSeconds={20}
             onTimeout={handleHumanTimeout}
-            onUrge={() => {
-              // Bot urges player: "العب يا معوّد!"
-              sendSpeechBubble("العب يا معوّد!", 1);
-            }}
             size={30}
           />
         </div>
@@ -173,8 +163,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         type="button"
         onClick={handleToggleFullscreen}
         className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/75 border border-amber-400/40 text-amber-300 flex items-center justify-center shadow-lg backdrop-blur-md active:scale-95 cursor-pointer hover:bg-black/90 hover:border-amber-300"
-        aria-label={isFullscreen ? "تصغير الشاشة" : "ملء الشاشة"}
-        title={isFullscreen ? "تصغير الشاشة" : "ملء الشاشة"}
+        aria-label={isFullscreen ? 'تصغير الشاشة' : 'ملء الشاشة'}
+        title={isFullscreen ? 'تصغير الشاشة' : 'ملء الشاشة'}
       >
         {isFullscreen ? (
           <Minimize className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300" />
@@ -244,22 +234,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
       </Button>
 
-      {/* Return to Start Screen Button */}
-      {onBackToStart && (
-        <Button
-          type="button"
-          onClick={() => {
-            playTapSound();
-            onBackToStart();
-          }}
-          className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/75 border border-amber-400/40 text-amber-300 flex items-center justify-center shadow-lg backdrop-blur-md active:scale-95 cursor-pointer hover:bg-black/90 hover:border-amber-300"
-          aria-label="القائمة الرئيسية"
-          title="القائمة الرئيسية"
-        >
-          <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300" />
-        </Button>
-      )}
-
       {/* Return to Lobby Button */}
       {onGoToLobby && (
         <Button
@@ -283,6 +257,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
       dir="rtl"
       className={`w-screen h-[100dvh] bg-neutral-950 text-amber-50 select-none overflow-hidden ${className}`}
     >
+
       <div className="relative w-full h-full flex flex-col overflow-hidden">
         {/* Main Interactive Table Component with Integrated Header Controls */}
         <Table
@@ -296,32 +271,33 @@ export const GameScreen: React.FC<GameScreenProps> = ({
           legalCardIds={legalCardsForHuman}
           onSendSpeechBubble={sendSpeechBubble}
           headerControls={headerControls}
-          canCheatReport={hasRemoteHuman}
-          onCheatReport={reportCheat}
           className="w-full h-full"
         />
 
         {/* Floating Bid Panel when in BID phase and it's human turn */}
-        {state.phase === "BID" && state.currentSeat === 0 && (
+        {state.phase === 'BID' && state.currentSeat === 0 && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-3 sm:p-4 reference-selection-overlay animate-in fade-in duration-200">
             <BidPanel
               currentHighBid={state.highBid}
               isDealerForced={isDealerForced}
               maxBid={isBO6 ? 9 : 8}
-              onBid={handleBid}
+              onBid={humanBid}
             />
           </div>
         )}
 
         {/* Floating Trump Picker when in TRUMP phase and human won the bid */}
-        {state.phase === "TRUMP" && state.bidderSeat === 0 && (
+        {state.phase === 'TRUMP' && state.bidderSeat === 0 && (
           <div className="absolute inset-0 z-50 flex items-center justify-center p-3 sm:p-4 reference-selection-overlay animate-in fade-in duration-200">
-            <TrumpPicker currentTrump={state.trump} onSelectTrump={humanDeclareTrump} />
+            <TrumpPicker
+              currentTrump={state.trump}
+              onSelectTrump={humanDeclareTrump}
+            />
           </div>
         )}
 
         {/* Round End Modal */}
-        {state.phase === "ROUND_END" && (
+        {state.phase === 'ROUND_END' && (
           <div className="absolute inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
             <div className="w-full max-w-sm max-h-[90vh] overflow-y-auto bg-neutral-950 border-2 border-amber-500/60 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-black mb-2 shadow-xl">
@@ -332,12 +308,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                 نهاية الجولة {state.roundNo}
               </h2>
               <p className="text-xs text-amber-200/70 mt-0.5 font-medium">
-                طلب {state.highBid} بواسطة{" "}
+                طلب {state.highBid} بواسطة{' '}
                 <span className="font-bold text-white">
-                  {state.bidderSeat === 0
-                    ? "أنت"
-                    : state.players?.[state.bidderSeat ?? 0]?.name ||
-                      `لاعب ${(state.bidderSeat ?? 0) + 1}`}
+                  {state.bidderSeat === 0 ? 'أنت' : state.players?.[state.bidderSeat ?? 0]?.name || `لاعب ${(state.bidderSeat ?? 0) + 1}`}
                 </span>
               </p>
 
@@ -385,42 +358,38 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         )}
 
         {/* Game End Modal */}
-        {state.phase === "GAME_END" && (
+        {state.phase === 'GAME_END' && (
           <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-3 sm:p-4">
             <div className="w-full max-w-sm max-h-[90vh] overflow-y-auto bg-neutral-950 border-2 border-amber-400 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
               <div
                 className={`w-14 h-14 sm:w-16 sm:h-16 rounded-3xl flex items-center justify-center mb-2.5 shadow-2xl ${
                   isTeam0Winner
-                    ? "bg-gradient-to-br from-amber-400 to-amber-600 text-black border-2 border-amber-200"
-                    : "bg-gradient-to-br from-rose-700 to-rose-900 text-white border-2 border-rose-400"
+                    ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-black border-2 border-amber-200'
+                    : 'bg-gradient-to-br from-rose-700 to-rose-900 text-white border-2 border-rose-400'
                 }`}
               >
                 <Trophy className="w-8 h-8 sm:w-10 sm:h-10 fill-current" />
               </div>
 
               <h2 className="text-xl sm:text-2xl font-black text-amber-300">
-                {isTeam0Winner ? "كفو يا ذيب! مبروك الفوز 🏆" : "حظ أوفر للجولة القادمة!"}
+                {isTeam0Winner ? 'كفو يا ذيب! مبروك الفوز 🏆' : 'حظ أوفر للجولة القادمة!'}
               </h2>
               <p className="text-xs text-amber-200/80 mt-1 font-medium">
                 {isTeam0Winner
-                  ? "فاز فريقك بالمباراة وبلغ الهدف بنجاح!"
-                  : "فاز الفريق الخصم بهذه المباراة."}
+                  ? 'فاز فريقك بالمباراة وبلغ الهدف بنجاح!'
+                  : 'فاز الفريق الخصم بهذه المباراة.'}
               </p>
 
               {/* Final Scores */}
               <div className="w-full bg-black/60 border border-amber-400/30 rounded-2xl p-3 my-3 flex items-center justify-around">
                 <div className="text-center">
                   <span className="text-[11px] text-emerald-300 block font-bold">لنا (فريقك)</span>
-                  <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                    {state.scores[0]}
-                  </span>
+                  <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">{state.scores[0]}</span>
                 </div>
                 <span className="text-xl font-black text-amber-400/60">:</span>
                 <div className="text-center">
                   <span className="text-[11px] text-rose-300 block font-bold">لهم (الخصم)</span>
-                  <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">
-                    {state.scores[1]}
-                  </span>
+                  <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">{state.scores[1]}</span>
                 </div>
               </div>
 
@@ -491,7 +460,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   مستوى ذكاء البوتات (AI):
                 </label>
                 <div className="grid grid-cols-3 gap-1.5">
-                  {(["EASY", "MEDIUM", "EXPERT"] as Difficulty[]).map((d) => (
+                  {(['EASY', 'MEDIUM', 'EXPERT'] as Difficulty[]).map((d) => (
                     <Button
                       key={d}
                       type="button"
@@ -501,11 +470,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                       }}
                       className={`py-2 rounded-xl text-xs font-black border transition-all cursor-pointer ${
                         difficulty === d
-                          ? "bg-amber-400 text-black border-amber-300 shadow-md"
-                          : "bg-neutral-900 text-neutral-300 border-neutral-800 hover:bg-neutral-800"
+                          ? 'bg-amber-400 text-black border-amber-300 shadow-md'
+                          : 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:bg-neutral-800'
                       }`}
                     >
-                      {d === "EASY" ? "سهل" : d === "MEDIUM" ? "متوسط" : "خبير"}
+                      {d === 'EASY' ? 'سهل' : d === 'MEDIUM' ? 'متوسط' : 'خبير'}
                     </Button>
                   ))}
                 </div>
@@ -518,9 +487,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                 </label>
                 <div className="grid grid-cols-3 gap-1.5">
                   {[
-                    { id: "SLOW", label: "هادئ" },
-                    { id: "NORMAL", label: "عادي" },
-                    { id: "FAST", label: "سريع" },
+                    { id: 'SLOW', label: 'هادئ' },
+                    { id: 'NORMAL', label: 'عادي' },
+                    { id: 'FAST', label: 'سريع' },
                   ].map((s) => (
                     <Button
                       key={s.id}
@@ -531,8 +500,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                       }}
                       className={`py-2 rounded-xl text-xs font-black border transition-all cursor-pointer ${
                         settings.botSpeed === s.id
-                          ? "bg-amber-400 text-black border-amber-300 shadow-md"
-                          : "bg-neutral-900 text-neutral-300 border-neutral-800 hover:bg-neutral-800"
+                          ? 'bg-amber-400 text-black border-amber-300 shadow-md'
+                          : 'bg-neutral-900 text-neutral-300 border-neutral-800 hover:bg-neutral-800'
                       }`}
                     >
                       {s.label}
@@ -566,7 +535,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   type="button"
                   onClick={() => {
                     playTapSound();
-                    startNewGame("BO6");
+                    startNewGame('BO6');
                     setShowSettingsModal(false);
                   }}
                   className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-xs font-black text-amber-200 border border-amber-400/40 cursor-pointer"
@@ -577,7 +546,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   type="button"
                   onClick={() => {
                     playTapSound();
-                    startNewGame("BO4");
+                    startNewGame('BO4');
                     setShowSettingsModal(false);
                   }}
                   className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-xs font-black text-amber-200 border border-amber-400/40 cursor-pointer"
@@ -604,7 +573,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         )}
 
         {/* Rules & Guide Modal */}
-        <RulesModal isOpen={showRulesModal} onClose={() => setShowRulesModal(false)} />
+        <RulesModal
+          isOpen={showRulesModal}
+          onClose={() => setShowRulesModal(false)}
+        />
+
       </div>
     </div>
   );

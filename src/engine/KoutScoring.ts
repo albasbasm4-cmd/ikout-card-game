@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GameState, Bid } from "../types/kout";
-import { RULES, SCORING } from "../rules/config";
+import { GameState, Bid } from '../types/kout';
+import { RULES, SCORING } from '../rules/config';
 
 export interface RoundScoreResult {
   bidderTeam: 0 | 1;
@@ -24,7 +24,6 @@ export interface RoundScoreResult {
  */
 export function computeRoundResult(state: GameState): RoundScoreResult {
   const highBid = (state.highBid ?? 5) as Exclude<Bid, 0>;
-  const bidPoints = state.doubledBid ?? state.highBid ?? 0;
   const bidderSeat = state.bidderSeat ?? 0;
 
   const bidderTeam: 0 | 1 =
@@ -40,22 +39,12 @@ export function computeRoundResult(state: GameState): RoundScoreResult {
 
   const made = bidderTricks >= highBid;
   const scoringTable = (RULES as unknown as { SCORING?: typeof SCORING }).SCORING || SCORING;
-  const baseConfig = scoringTable[highBid] || {
+  const scoreConfig = scoringTable[highBid] || {
     successPoints: highBid,
-    failPenalty: highBid * 2,
+    failPenalty: highBid,
     kaboutBonus: highBid * 2,
     description: `طلب ${highBid}`,
   };
-
-  const isDoubled = state.contractDoubled || state.doubledBid != null;
-  const scoreConfig = isDoubled
-    ? {
-        successPoints: bidPoints,
-        failPenalty: bidPoints * 2,
-        kaboutBonus: bidPoints * 2,
-        description: `طلب ${highBid} (دبل ${bidPoints})`,
-      }
-    : baseConfig;
 
   // Instant win on successful 9 (Bawan / باوان) in round 1
   const isBawan = state.roundNo === 1 && highBid === 9 && made;
@@ -127,7 +116,7 @@ export function scoreRound(state: GameState): GameState {
     state.scores[1] + (result.awardedTeam === 1 ? result.pointsAdded : 0),
   ];
 
-  const nextPhase = result.gameWinner !== null ? "GAME_END" : "ROUND_END";
+  const nextPhase = result.gameWinner !== null ? 'GAME_END' : 'ROUND_END';
 
   // Rotate dealer counter-clockwise for next round
   const nextDealer = (state.dealer + 1) % numSeats;

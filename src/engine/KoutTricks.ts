@@ -3,16 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GameState, Card, Suit, TrickPlay, Phase } from "../types/kout";
-import { RULES } from "../rules/config";
-import { getLegalCards, trickWinner } from "../rules/cards";
+import { GameState, Card, Suit, TrickPlay, Phase } from '../types/kout';
+import { RULES } from '../rules/config';
+import { getLegalCards, trickWinner } from '../rules/cards';
 
 /**
  * Returns all cards that have been played in past tricks and the current trick
  */
 export function getPlayedCards(
   trickHistory: TrickPlay[][],
-  currentTrick: TrickPlay[] = [],
+  currentTrick: TrickPlay[] = []
 ): Card[] {
   const cards: Card[] = [];
   for (const trick of trickHistory) {
@@ -32,27 +32,26 @@ export function getPlayedCards(
  * - Phase transitions to 'PLAY'
  * - Bid winner leads the first trick
  */
-export function declareTrump(state: GameState, seat: number, suit: Suit): GameState {
-  if (state.phase !== "TRUMP") {
+export function declareTrump(
+  state: GameState,
+  seat: number,
+  suit: Suit
+): GameState {
+  if (state.phase !== 'TRUMP') {
     throw new Error(`Cannot declare trump during phase ${state.phase}`);
   }
 
   if (seat !== state.bidderSeat) {
     throw new Error(
-      `Only the winning bidder (seat ${state.bidderSeat}) can declare trump (received seat ${seat})`,
+      `Only the winning bidder (seat ${state.bidderSeat}) can declare trump (received seat ${seat})`
     );
   }
-
-  const numSeats = RULES[state.variant].seats;
-  // Authentic Kout rule: winning bidder does NOT lead trick 1;
-  // the player to the bidder's right (bidderSeat + 1) leads trick 1, making the bidder play last.
-  const firstLeadSeat = (state.bidderSeat! + 1) % numSeats;
 
   return {
     ...state,
     trump: suit,
-    phase: "PLAY",
-    currentSeat: firstLeadSeat,
+    phase: 'PLAY',
+    currentSeat: state.bidderSeat, // Bid winner leads the first trick
     version: state.version + 1,
   };
 }
@@ -61,22 +60,27 @@ export function declareTrump(state: GameState, seat: number, suit: Suit): GameSt
  * Plays a card for a player seat:
  * - Validates phase is 'PLAY'
  * - Validates player turn (seat === currentSeat)
- * - Validates card is held in hand
- * - Human player has full freedom to play any card in hand; bot legality validated via getLegalCards
+ * - Validates card is held in hand and is legal according to getLegalCards
  * - Resolves trick with trickWinner when all players have played
  * - Trick winner leads next trick
  * - Round ends after all tricks are completed (phase = 'ROUND_END')
  */
-export function playCard(state: GameState, seat: number, cardOrId: Card | string): GameState {
-  if (state.phase !== "PLAY") {
+export function playCard(
+  state: GameState,
+  seat: number,
+  cardOrId: Card | string
+): GameState {
+  if (state.phase !== 'PLAY') {
     throw new Error(`Cannot play card during phase ${state.phase}`);
   }
 
   if (seat !== state.currentSeat) {
-    throw new Error(`Not seat ${seat}'s turn to play (expected seat ${state.currentSeat})`);
+    throw new Error(
+      `Not seat ${seat}'s turn to play (expected seat ${state.currentSeat})`
+    );
   }
 
-  const cardId = typeof cardOrId === "string" ? cardOrId : cardOrId.id;
+  const cardId = typeof cardOrId === 'string' ? cardOrId : cardOrId.id;
   const playerHand = state.hands[seat] || [];
   const cardIndex = playerHand.findIndex((c) => c.id === cardId);
 
@@ -86,26 +90,23 @@ export function playCard(state: GameState, seat: number, cardOrId: Card | string
 
   const playedCard = playerHand[cardIndex];
 
-  // Validate legality: human player has complete freedom to play any card; bots follow rules
-  const isHuman = seat === 0 || state.players?.[seat]?.kind === "HUMAN_LOCAL";
-  if (!isHuman) {
-    const allPlayedCards = getPlayedCards(state.trickHistory, state.currentTrick);
-    const legalCards = getLegalCards(playerHand, state.currentTrick, state.trump, {
-      playedCards: allPlayedCards,
-      highBid: state.highBid,
-    });
+  // Validate legality using rules
+  const allPlayedCards = getPlayedCards(state.trickHistory, state.currentTrick);
+  const legalCards = getLegalCards(playerHand, state.currentTrick, state.trump, {
+    playedCards: allPlayedCards,
+    highBid: state.highBid,
+  });
 
-    const isLegal = legalCards.some((c) => c.id === cardId);
-    if (!isLegal) {
-      throw new Error(
-        `Illegal card play for card ${cardId}. Must follow suit or obey joker lead rules.`,
-      );
-    }
+  const isLegal = legalCards.some((c) => c.id === cardId);
+  if (!isLegal) {
+    throw new Error(
+      `Illegal card play for card ${cardId}. Must follow suit or obey joker lead rules.`
+    );
   }
 
   // Remove card from player hand
   const nextHands = state.hands.map((hand, idx) =>
-    idx === seat ? hand.filter((_, i) => i !== cardIndex) : hand,
+    idx === seat ? hand.filter((_, i) => i !== cardIndex) : hand
   );
 
   const nextPlay: TrickPlay = { seat, card: playedCard };
@@ -135,17 +136,20 @@ export function playCard(state: GameState, seat: number, cardOrId: Card | string
       ? state.players[winnerSeat].team
       : ((winnerSeat % 2) as 0 | 1);
 
-  const nextTricksWon: [number, number] = [state.tricksWon[0], state.tricksWon[1]];
+  const nextTricksWon: [number, number] = [
+    state.tricksWon[0],
+    state.tricksWon[1],
+  ];
   nextTricksWon[winnerTeam] = (nextTricksWon[winnerTeam] || 0) + 1;
 
   const nextTrickHistory = [...state.trickHistory, nextTrick];
   const isRoundOver = nextTrickHistory.length === cardsPerPlayer;
 
-  let nextPhase: Phase = "PLAY";
-  const nextSeat = winnerSeat; // Winner leads next trick
+  let nextPhase: Phase = 'PLAY';
+  let nextSeat = winnerSeat; // Winner leads next trick
 
   if (isRoundOver) {
-    nextPhase = "ROUND_END";
+    nextPhase = 'ROUND_END';
   }
 
   return {

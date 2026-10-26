@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GameState, Card, Suit, Bid, PlayerSlot } from "../types/kout";
+import { GameState, Card, Suit, Bid, PlayerSlot } from '../types/kout';
 
 export const PROTOCOL_VERSION = 1;
 
@@ -19,7 +19,7 @@ export interface MaskedCard {
 
 export type ClientHandCard = Card | MaskedCard;
 
-export interface ClientGameState extends Omit<GameState, "hands"> {
+export interface ClientGameState extends Omit<GameState, 'hands'> {
   hands: ClientHandCard[][];
   mySeat: number;
 }
@@ -50,23 +50,12 @@ export interface PingPayload {
   timestamp: number;
 }
 
-export type ReportedCardType = Suit | "JOKER" | "MAKER";
-
-export interface CheatReportPayload {
-  accusedSeat: number;
-  cardType: ReportedCardType;
-}
-
-export interface CheatVerdictPayload {
-  reporterSeat: number;
-  accusedSeat: number;
-  cardType: ReportedCardType;
-  confirmed: boolean;
-  doubledBid: number | null; // قيمة الحكم بعد الدبل إذا تأكد البلاغ
-}
-
 export type ClientPacketType =
-  "JOIN" | "BID_REQUEST" | "TRUMP_REQUEST" | "PLAY_CARD_REQUEST" | "PING" | "CHEAT_REPORT";
+  | 'JOIN'
+  | 'BID_REQUEST'
+  | 'TRUMP_REQUEST'
+  | 'PLAY_CARD_REQUEST'
+  | 'PING';
 
 export interface BaseClientPacket<TType extends ClientPacketType, TPayload> {
   v: number;
@@ -76,20 +65,18 @@ export interface BaseClientPacket<TType extends ClientPacketType, TPayload> {
   payload: TPayload;
 }
 
-export type JoinPacket = BaseClientPacket<"JOIN", JoinPayload>;
-export type BidRequestPacket = BaseClientPacket<"BID_REQUEST", BidRequestPayload>;
-export type TrumpRequestPacket = BaseClientPacket<"TRUMP_REQUEST", TrumpRequestPayload>;
-export type PlayCardRequestPacket = BaseClientPacket<"PLAY_CARD_REQUEST", PlayCardRequestPayload>;
-export type PingPacket = BaseClientPacket<"PING", PingPayload>;
-export type CheatReportPacket = BaseClientPacket<"CHEAT_REPORT", CheatReportPayload>;
+export type JoinPacket = BaseClientPacket<'JOIN', JoinPayload>;
+export type BidRequestPacket = BaseClientPacket<'BID_REQUEST', BidRequestPayload>;
+export type TrumpRequestPacket = BaseClientPacket<'TRUMP_REQUEST', TrumpRequestPayload>;
+export type PlayCardRequestPacket = BaseClientPacket<'PLAY_CARD_REQUEST', PlayCardRequestPayload>;
+export type PingPacket = BaseClientPacket<'PING', PingPayload>;
 
 export type ClientPacket =
   | JoinPacket
   | BidRequestPacket
   | TrumpRequestPacket
   | PlayCardRequestPacket
-  | PingPacket
-  | CheatReportPacket;
+  | PingPacket;
 
 // -------------------------------------------------------------
 // Host Message Packets (Host -> Client)
@@ -118,7 +105,10 @@ export interface PongPayload {
 }
 
 export type HostPacketType =
-  "CLIENT_STATE_UPDATE" | "SEAT_UPDATE" | "ERROR" | "PONG" | "CHEAT_VERDICT";
+  | 'CLIENT_STATE_UPDATE'
+  | 'SEAT_UPDATE'
+  | 'ERROR'
+  | 'PONG';
 
 export interface BaseHostPacket<TType extends HostPacketType, TPayload> {
   v: number;
@@ -128,17 +118,16 @@ export interface BaseHostPacket<TType extends HostPacketType, TPayload> {
   payload: TPayload;
 }
 
-export type ClientStateUpdatePacket = BaseHostPacket<
-  "CLIENT_STATE_UPDATE",
-  ClientStateUpdatePayload
->;
-export type SeatUpdatePacket = BaseHostPacket<"SEAT_UPDATE", SeatUpdatePayload>;
-export type ErrorPacket = BaseHostPacket<"ERROR", ErrorPayload>;
-export type PongPacket = BaseHostPacket<"PONG", PongPayload>;
-export type CheatVerdictPacket = BaseHostPacket<"CHEAT_VERDICT", CheatVerdictPayload>;
+export type ClientStateUpdatePacket = BaseHostPacket<'CLIENT_STATE_UPDATE', ClientStateUpdatePayload>;
+export type SeatUpdatePacket = BaseHostPacket<'SEAT_UPDATE', SeatUpdatePayload>;
+export type ErrorPacket = BaseHostPacket<'ERROR', ErrorPayload>;
+export type PongPacket = BaseHostPacket<'PONG', PongPayload>;
 
 export type HostPacket =
-  ClientStateUpdatePacket | SeatUpdatePacket | ErrorPacket | PongPacket | CheatVerdictPacket;
+  | ClientStateUpdatePacket
+  | SeatUpdatePacket
+  | ErrorPacket
+  | PongPacket;
 
 /**
  * Filters a GameState snapshot for a specific seat:

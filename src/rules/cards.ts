@@ -3,17 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Card, Suit, Bid, TrickPlay } from "../types/kout";
-import { RULES } from "./config";
+import { Card, Suit, Bid, TrickPlay } from '../types/kout';
+import { RULES } from './config';
 
 /**
  * Calculates card strength in the context of the current trick and trump suit.
  * Order:
  * Red Joker > Trump Ace > Black Joker > trump K..2 > led suit A..2 > others 0
  */
-export function cardStrength(card: Card, trump: Suit | null, ledSuit?: Suit | null): number {
+export function cardStrength(
+  card: Card,
+  trump: Suit | null,
+  ledSuit?: Suit | null
+): number {
   // Red Joker: Highest card in the game
-  if (card.joker === "RED") {
+  if (card.joker === 'RED') {
     return 1000;
   }
 
@@ -23,17 +27,17 @@ export function cardStrength(card: Card, trump: Suit | null, ledSuit?: Suit | nu
   }
 
   // Black Joker: Beats all remaining trumps and all plain suits
-  if (card.joker === "BLACK") {
+  if (card.joker === 'BLACK') {
     return 800;
   }
 
   // Trump K..2 (ranks 13 down to 2)
-  if (trump && card.suit === trump && typeof card.rank === "number") {
+  if (trump && card.suit === trump && typeof card.rank === 'number') {
     return 700 + card.rank;
   }
 
   // Led suit A..2 (ranks 14 down to 2)
-  if (ledSuit && card.suit === ledSuit && typeof card.rank === "number") {
+  if (ledSuit && card.suit === ledSuit && typeof card.rank === 'number') {
     return 100 + card.rank;
   }
 
@@ -47,12 +51,13 @@ export function cardStrength(card: Card, trump: Suit | null, ledSuit?: Suit | nu
  */
 export function trickWinner(plays: TrickPlay[], trump: Suit | null): TrickPlay {
   if (plays.length === 0) {
-    throw new Error("Cannot determine trick winner of empty trick");
+    throw new Error('Cannot determine trick winner of empty trick');
   }
 
   const leadPlay = plays[0];
   // Jokers count as trump; if a joker is led, the led suit is trump
-  const ledSuit = leadPlay.card.joker !== undefined ? trump : (leadPlay.card.suit ?? null);
+  const ledSuit =
+    leadPlay.card.joker !== undefined ? trump : (leadPlay.card.suit ?? null);
 
   let bestPlay = leadPlay;
   let maxStrength = cardStrength(leadPlay.card, trump, ledSuit);
@@ -72,18 +77,23 @@ export function trickWinner(plays: TrickPlay[], trump: Suit | null): TrickPlay {
 export interface LegalCardContext {
   playedCards?: Card[];
   highBid?: Bid | null;
-  allowJokerAnytime?: boolean;
-  allowAnyCard?: boolean;
 }
 
 /**
  * Checks if Trump A, K, Q, J have all been played previously
  */
-export function areTrumpHonorsPlayed(trump: Suit | null, playedCards: Card[] = []): boolean {
+export function areTrumpHonorsPlayed(
+  trump: Suit | null,
+  playedCards: Card[] = []
+): boolean {
   if (!trump) return false;
   const honorRanks = new Set([14, 13, 12, 11]);
   for (const card of playedCards) {
-    if (card.suit === trump && typeof card.rank === "number" && honorRanks.has(card.rank)) {
+    if (
+      card.suit === trump &&
+      typeof card.rank === 'number' &&
+      honorRanks.has(card.rank)
+    ) {
       honorRanks.delete(card.rank);
     }
   }
@@ -95,56 +105,45 @@ export function areTrumpHonorsPlayed(trump: Suit | null, playedCards: Card[] = [
  *
  * Rules:
  * - Must follow led suit if possible (jokers count as trump).
- * - If allowJokerAnytime is true: Jokers can be played at any time.
- * - If allowAnyCard is true: all cards in hand are legal.
  * - If void, any card.
- * - When leading: a Joker may lead only if honors played, bid >= 8, hand has nothing else,
- *   or allowJokerAnytime is true.
+ * - When leading: a Joker may lead only if:
+ *     (a) trump A,K,Q,J all played, or
+ *     (b) bid 8 -> Red Joker only, bid 9 -> both, or
+ *     (c) hand has nothing else.
+ * - Read flags from RULES.
  */
 export function getLegalCards(
   hand: Card[],
   trick: TrickPlay[],
   trump: Suit | null,
-  ctx: LegalCardContext = {},
+  ctx: LegalCardContext = {}
 ): Card[] {
   if (hand.length === 0) {
     return [];
   }
 
-  if (ctx.allowAnyCard) {
-    return [...hand];
-  }
-
-  const allowJokerAnytime =
-    ctx.allowJokerAnytime ?? (RULES.jokerLeadRules as any)?.allowJokerAnytime ?? false;
-
   // 1. Following a trick (trick has 1 or more plays)
   if (trick.length > 0) {
     const leadCard = trick[0].card;
     // Jokers count as trump
-    const ledSuit = leadCard.joker !== undefined ? trump : (leadCard.suit ?? null);
+    const ledSuit =
+      leadCard.joker !== undefined ? trump : (leadCard.suit ?? null);
 
     if (ledSuit) {
       let matchingCards: Card[];
 
       if (ledSuit === trump) {
         // When trump is led, trump-suited cards and jokers all follow trump
-        const matchingCards = hand.filter((c) => c.suit === trump || c.joker !== undefined);
-        if (matchingCards.length > 0) {
-          return matchingCards;
-        }
+        matchingCards = hand.filter(
+          (c) => c.suit === trump || c.joker !== undefined
+        );
       } else {
-        // Plain suit led:
-        const suitCards = hand.filter((c) => c.suit === ledSuit);
-        if (suitCards.length > 0) {
-          // If player has cards of the led suit, they must follow suit
-          // If allowJokerAnytime is true, they also have the option to play a joker
-          const jokers = allowJokerAnytime ? hand.filter((c) => c.joker !== undefined) : [];
-          return [...suitCards, ...jokers];
-        }
-        // Player has NO cards of the led suit (void in led suit):
-        // Player is free to play ANY card from their hand (not forced to play Jokers/Makers)
-        return [...hand];
+        // Plain suit led: only cards of that suit follow
+        matchingCards = hand.filter((c) => c.suit === ledSuit);
+      }
+
+      if (matchingCards.length > 0) {
+        return matchingCards;
       }
     }
 
@@ -160,7 +159,8 @@ export function getLegalCards(
   const trumpHonorsPlayed = areTrumpHonorsPlayed(trump, ctx.playedCards);
 
   // Read flags from RULES
-  const allowFirstTrick = RULES.jokerLeadRules?.allowJokerLeadFirstTrick ?? true;
+  const allowFirstTrick =
+    RULES.jokerLeadRules?.allowJokerLeadFirstTrick ?? true;
   const isFirstTrick = (ctx.playedCards?.length ?? 0) === 0;
   const flagAllowsLead = allowFirstTrick || !isFirstTrick;
 
@@ -169,11 +169,6 @@ export function getLegalCards(
   return hand.filter((card) => {
     // Non-joker cards can always lead
     if (card.joker === undefined) {
-      return true;
-    }
-
-    // Free joker play allowed
-    if (allowJokerAnytime) {
       return true;
     }
 
@@ -193,11 +188,11 @@ export function getLegalCards(
     }
 
     // (b) bid 8 -> Red Joker only, bid 9 -> both Red & Black Joker
-    if (card.joker === "RED") {
+    if (card.joker === 'RED') {
       return bid >= 8;
     }
 
-    if (card.joker === "BLACK") {
+    if (card.joker === 'BLACK') {
       return bid >= 9;
     }
 
@@ -212,7 +207,7 @@ export function getLegalCards(
  * 3. Inside each suit: sorted descending by rank (Ace down to 2)
  */
 export function sortHandCards(cards: Card[], trump?: Suit | null): Card[] {
-  const defaultSuits: Suit[] = ["S", "H", "C", "D"];
+  const defaultSuits: Suit[] = ['S', 'H', 'C', 'D'];
   const orderedSuits: Suit[] = trump
     ? [trump, ...defaultSuits.filter((s) => s !== trump)]
     : defaultSuits;
@@ -229,14 +224,14 @@ export function sortHandCards(cards: Card[], trump?: Suit | null): Card[] {
     if (a.joker && !b.joker) return -1;
     if (!a.joker && b.joker) return 1;
     if (a.joker && b.joker) {
-      if (a.joker === "RED" && b.joker === "BLACK") return -1;
-      if (a.joker === "BLACK" && b.joker === "RED") return 1;
+      if (a.joker === 'RED' && b.joker === 'BLACK') return -1;
+      if (a.joker === 'BLACK' && b.joker === 'RED') return 1;
       return 0;
     }
 
     // 2. Suit grouping
-    const weightA = a.suit ? (suitOrderMap[a.suit] ?? 0) : 0;
-    const weightB = b.suit ? (suitOrderMap[b.suit] ?? 0) : 0;
+    const weightA = a.suit ? suitOrderMap[a.suit] ?? 0 : 0;
+    const weightB = b.suit ? suitOrderMap[b.suit] ?? 0 : 0;
 
     if (weightA !== weightB) {
       return weightB - weightA;

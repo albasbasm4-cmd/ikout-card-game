@@ -1,224 +1,117 @@
-import { loadSettings } from "../store/useSettings";
-import {
-  ensureContext,
-  installAudioUnlock,
-  isBufferReady,
-  playBuffer,
-  getBuffer,
-  loadBuffer,
-  stopVoiceByToken,
-} from "./gameAudio";
-import { gameAudioPreloaded } from "./gameAudioBindings";
-import { CHARACTER_PHRASES, RESULT_LINES, SPECIAL_LINES } from "./gamePresentation";
-import { loadPlayerProfile } from "./playerProfile";
+import pass from '../assets/gameplay/pass-two.mp3.asset.json';
+import { loadSettings } from '../store/useSettings';
+import { CHARACTER_PHRASES, RESULT_LINES, SPECIAL_LINES } from './gamePresentation';
 
-// Global map tracking which character is assigned to each seat
-let seatCharacters: Record<number, string> = {};
+const assets = import.meta.glob<{ url: string }>('../assets/voices/*.asset.json', { eager: true, import: 'default' });
+const phraseKeys = ['partner', 'play', 'ace', 'king', 'surprise', 'kout', 'pass-taunt', 'tea'];
+/** A voice that cannot start within this window is dropped instead of playing late. */
+export const MAX_VOICE_DELAY_MS = 250;
 
-export function registerSeatCharacters(mapping: Record<number, string> | (string | undefined)[]) {
-  if (Array.isArray(mapping)) {
-    mapping.forEach((charId, seat) => {
-      if (charId) seatCharacters[seat] = charId;
-    });
-  } else {
-    seatCharacters = { ...seatCharacters, ...mapping };
-  }
-}
-
-export function getSeatCharacterId(seat: number): string {
-  if (seatCharacters[seat]) return seatCharacters[seat];
-  if (seat === 0) return loadPlayerProfile().characterId || "a1";
-  return `a${((seat * 3) % 29) + 1}`;
-}
-
-const phraseKeys = ["partner", "play", "ace", "king", "surprise", "kout", "pass-taunt", "tea"];
-export const MAX_VOICE_DELAY_MS = 300;
-const COLD_LOAD_GRACE_MS = 500;
-
+let ctx: AudioContext | null = null;
+const buffers = new Map<string, AudioBuffer>();
+const loading = new Map<string, Promise<AudioBuffer | null>>();
+let current: { stop: () => void; token: string | null } | null = null;
 let activeSeat: number | null = null;
 const listeners = new Set<(seat: number | null) => void>();
-const notify = (seat: number | null) => {
-  activeSeat = seat;
-  listeners.forEach((l) => l(seat));
-};
 
+function notify(seat: number | null) { activeSeat = seat; listeners.forEach(listener => listener(seat)); }
 export function subscribeCharacterVoice(listener: (seat: number | null) => void) {
   listeners.add(listener);
   listener(activeSeat);
-  return () => {
-    listeners.delete(listener);
-  };
+  return () => { listeners.delete(listener); };
 }
-
+function context(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (!ctx) {
+    const C = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!C) return null;
+    ctx = new C();
+  }
+  if (ctx.state === 'suspended') void ctx.resume();
+  return ctx;
+}
+function load(src: string): Promise<AudioBuffer | null> {
+  const cached = buffers.get(src);
+  if (cached) return Promise.resolve(cached);
+  let pending = loading.get(src);
+  if (!pending) {
+    const c = context();
+    pending = !c ? Promise.resolve(null) : fetch(src).then(r => r.arrayBuffer()).then(b => c.decodeAudioData(b)).then(buf => { buffers.set(src, buf); return buf; }).catch(() => null);
+    loading.set(src, pending);
+  }
+  return pending;
+}
+function allSources(): string[] {
+  return [pass.url, ...Object.values(assets).map(a => a.url)];
+}
+/** Decode every voice ahead of time so lines start the instant their event happens. */
 export function preloadCharacterVoices() {
-  if (typeof window === "undefined") return;
-  gameAudioPreloaded();
-  installAudioUnlock();
-  ensureContext();
-
-  const humanChar = loadPlayerProfile().characterId || "a1";
-  const actions = [
-    "partner",
-    "play",
-    "ace",
-    "king",
-    "surprise",
-    "kout",
-    "pass",
-    "tea",
-    "win",
-    "lose",
-    "taunt",
-    "welcome",
-  ];
-  actions.forEach((act) => {
-    void loadBuffer(`/assets/ikout/audio/voices/${humanChar}/${act}.mp3`);
-  });
+  if (typeof window === 'undefined') return;
+  const start = () => { allSources().forEach(src => void load(src)); };
+  start();
+  const unlock = () => { context(); start(); };
+  window.addEventListener('pointerdown', unlock, { once: true });
 }
-
 export function stopCharacterVoice(token?: string) {
-  stopVoiceByToken(token ?? "");
+  if (!current) return;
+  if (token !== undefined && current.token !== token) return;
+  current.stop();
+  current = null;
+  notify(null);
 }
-
 export function voiceKey(message: string): string | null {
   const index = CHARACTER_PHRASES.indexOf(message);
   if (index >= 0) return phraseKeys[index];
   for (const [key, line] of Object.entries(SPECIAL_LINES)) if (message === line) return key;
-  if (message === RESULT_LINES.win || message.includes("مبروك الفوز") || message.includes("كفو يا ذيب")) return "win";
-  if (message === RESULT_LINES.lose || message.includes("نعوضها") || message.includes("الجولة الجاية")) return "lose";
-  if (message === RESULT_LINES.opponent || message.includes("خلّك من الورق")) return "taunt";
+  if (message === RESULT_LINES.win) return 'win';
+  if (message === RESULT_LINES.lose) return 'lose';
+  if (message === RESULT_LINES.opponent) return 'opponent-win';
   const bid = /^طلب ([5-9])$/.exec(message);
-  if (bid) return bid[1] === "9" ? "kout" : null;
-  if (message === "كوت" || message === "كوت بوستة!" || message === "طلب 9") return "kout";
-  if (message.startsWith("الأمر:")) {
-    if (message.includes("هاص")) return "H";
-    if (message.includes("سبيت")) return "S";
-    if (message.includes("ديمن")) return "D";
-    if (message.includes("كلفس")) return "C";
+  if (bid) return `bid${bid[1]}`;
+  if (message.startsWith('الأمر:')) {
+    if (message.includes('هاص')) return 'H';
+    if (message.includes('سبيت')) return 'S';
+    if (message.includes('ديمن')) return 'D';
+    if (message.includes('كلفس')) return 'C';
   }
   return null;
 }
-
-export function voiceSource(message: string, seat: number = 0): string | undefined {
-  const charId = getSeatCharacterId(seat);
-
-  if (message === "طاف" || message === "طاف يا رجال") {
-    return `/assets/ikout/audio/voices/${charId}/pass.mp3`;
-  }
-
+export function voiceSource(message: string): string | undefined {
+  if (message === 'طاف') return pass.url;
   const key = voiceKey(message);
-  if (!key) return undefined;
-
-  // Suit calls and general jokers
-  if (key === "H") return "/assets/ikout/audio/hearts.mp3";
-  if (key === "S") return "/assets/ikout/audio/spades.mp3";
-  if (key === "D") return "/assets/ikout/audio/diamonds.mp3";
-  if (key === "C") return "/assets/ikout/audio/clubs.mp3";
-  if (key === "joker" || key === "maker") return "/assets/ikout/audio/joker.mp3";
-  if (key === "trump-ace") return `/assets/ikout/audio/voices/${charId}/ace.mp3`;
-
-  // Character specific phrase binding
-  const actionFile = key === "pass-taunt" ? "pass" : key;
-  return `/assets/ikout/audio/voices/${charId}/${actionFile}.mp3`;
+  return key ? assets[`../assets/voices/${key}.mp3.asset.json`]?.url : undefined;
 }
-
-export function playCharacterVoice(
-  message: string,
-  seat: number,
-  token: string | null = null,
-  isStillValid: () => boolean = () => true,
-) {
-  if (typeof window === "undefined" || !loadSettings().soundEnabled) return;
-  gameAudioPreloaded();
-  const src = voiceSource(message, seat);
+/**
+ * Plays a line for a seat. `token` ties the voice to its cause (e.g. a card id);
+ * `isStillValid` is re-checked right before sound starts so stale lines are skipped.
+ */
+export function playCharacterVoice(message: string, seat: number, token: string | null = null, isStillValid: () => boolean = () => true) {
+  if (typeof window === 'undefined' || !loadSettings().soundEnabled) return;
+  const src = voiceSource(message);
   if (!src) return;
-
   const requested = performance.now();
-  const warm = isBufferReady(src);
-
-  const start = (buf: AudioBuffer) => {
-    const elapsed = performance.now() - requested;
-    if (elapsed > (warm ? MAX_VOICE_DELAY_MS : COLD_LOAD_GRACE_MS) || !isStillValid()) {
-      return;
-    }
-    playBuffer(src, {
-      channel: "voice",
-      volume: 0.95,
-      token,
-      isStillValid,
-      onEnd: () => notify(null),
-    });
+  const startBuffer = (buf: AudioBuffer) => {
+    const c = context();
+    if (!c || !isStillValid() || performance.now() - requested > MAX_VOICE_DELAY_MS) { if (import.meta.env.DEV) logVoice({ message, token, dropped: true, delay: Math.round(performance.now() - requested) }); return; }
+    stopCharacterVoice();
+    const node = c.createBufferSource();
+    const gain = c.createGain();
+    gain.gain.value = 0.9;
+    node.buffer = buf;
+    node.connect(gain).connect(c.destination);
+    const entry = { token, stop: () => { node.onended = null; try { node.stop(); } catch { /* already stopped */ } } };
+    node.onended = () => { if (current === entry) { current = null; notify(null); } };
+    current = entry;
+    node.start();
+    if (import.meta.env.DEV) logVoice({ message, token, delay: Math.round(performance.now() - requested), cards: document.querySelectorAll('.reference-trick-card').length, phase: document.querySelector('.reference-game') ? 'table' : 'other' });
     notify(seat);
   };
-
-  if (warm) {
-    const b = getBuffer(src);
-    if (b) start(b);
-    return;
-  }
-  void loadBuffer(src).then((buf) => {
-    if (buf) start(buf);
-  });
+  const ready = buffers.get(src);
+  if (ready) { startBuffer(ready); return; }
+  void load(src).then(buf => { if (buf) startBuffer(buf); });
 }
 
-export type EventVoiceKey =
-  | "joker"
-  | "maker"
-  | "ace"
-  | "king"
-  | "partner"
-  | "surprise"
-  | "taunt"
-  | "win"
-  | "lose"
-  | "H"
-  | "S"
-  | "D"
-  | "C"
-  | "bid6"
-  | "bid7"
-  | "bid8"
-  | "kout"
-  | "taf";
-
-export function eventVoiceSource(key: EventVoiceKey, seat = 0): string | undefined {
-  const charId = getSeatCharacterId(seat);
-  if (key === "taf") return `/assets/ikout/audio/voices/${charId}/pass.mp3`;
-  if (key === "H") return "/assets/ikout/audio/hearts.mp3";
-  if (key === "S") return "/assets/ikout/audio/spades.mp3";
-  if (key === "D") return "/assets/ikout/audio/diamonds.mp3";
-  if (key === "C") return "/assets/ikout/audio/clubs.mp3";
-  if (key === "joker" || key === "maker") return "/assets/ikout/audio/joker.mp3";
-  if (["ace", "king", "partner", "surprise", "taunt", "win", "lose", "kout"].includes(key)) {
-    return `/assets/ikout/audio/voices/${charId}/${key}.mp3`;
-  }
-  return undefined;
-}
-
-export function playEventVoice(
-  key: EventVoiceKey,
-  opts: {
-    seat?: number;
-    token?: string | null;
-    isStillValid?: () => boolean;
-    onEnd?: () => void;
-  } = {},
-) {
-  if (typeof window === "undefined" || !loadSettings().soundEnabled) return;
-  const src = eventVoiceSource(key, opts.seat ?? 0);
-  if (!src) return;
-  void loadBuffer(src).then((buf) => {
-    if (!buf || (opts.isStillValid && !opts.isStillValid())) return;
-    playBuffer(src, {
-      channel: "voice",
-      volume: 0.95,
-      token: opts.token ?? null,
-      isStillValid: opts.isStillValid,
-      onEnd: () => {
-        notify(null);
-        opts.onEnd?.();
-      },
-    });
-    if (opts.seat != null) notify(opts.seat);
-  });
+function logVoice(entry: Record<string, unknown>) {
+  const w = window as unknown as { __voiceLog?: unknown[] };
+  (w.__voiceLog ??= []).push({ ...entry, t: Math.round(performance.now()) });
 }

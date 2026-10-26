@@ -3,11 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ITransport, Unsubscribe } from "./ITransport";
-import { ClientPacket, HostPacket, PROTOCOL_VERSION } from "./protocol";
+import { ITransport, Unsubscribe } from './ITransport';
+import { ClientPacket, HostPacket, PROTOCOL_VERSION } from './protocol';
 
 export type ClientSocketStatus =
-  "DISCONNECTED" | "CONNECTING" | "CONNECTED" | "RECONNECTING" | "HOST_DROPPED";
+  | 'DISCONNECTED'
+  | 'CONNECTING'
+  | 'CONNECTED'
+  | 'RECONNECTING'
+  | 'HOST_DROPPED';
 
 export interface LocalClientSocketOptions {
   url?: string; // default ws://localhost:8080
@@ -27,7 +31,7 @@ export class LocalClientSocket implements ITransport {
   private preferredSeat?: number;
 
   private ws: WebSocket | null = null;
-  private status: ClientSocketStatus = "DISCONNECTED";
+  private status: ClientSocketStatus = 'DISCONNECTED';
   private reconnectAttempts = 0;
   private maxReconnectAttempts: number;
   private initialBackoffMs: number;
@@ -43,7 +47,7 @@ export class LocalClientSocket implements ITransport {
   private transportOverride: ITransport | null = null;
 
   constructor(options: LocalClientSocketOptions) {
-    this.url = options.url ?? "ws://localhost:8080";
+    this.url = options.url ?? 'ws://localhost:8080';
     this.playerToken = options.playerToken;
     this.playerName = options.playerName;
     this.preferredSeat = options.preferredSeat;
@@ -71,7 +75,7 @@ export class LocalClientSocket implements ITransport {
   }
 
   public isHostDropped(): boolean {
-    return this.status === "HOST_DROPPED";
+    return this.status === 'HOST_DROPPED';
   }
 
   private setStatus(newStatus: ClientSocketStatus): void {
@@ -80,7 +84,7 @@ export class LocalClientSocket implements ITransport {
     for (const handler of this.statusHandlers) {
       handler(newStatus);
     }
-    if (newStatus === "HOST_DROPPED") {
+    if (newStatus === 'HOST_DROPPED') {
       for (const handler of this.hostLeftHandlers) {
         handler();
       }
@@ -90,20 +94,20 @@ export class LocalClientSocket implements ITransport {
   private connect(): void {
     if (this.manualDisconnect) return;
 
-    if (typeof WebSocket === "undefined") {
+    if (typeof WebSocket === 'undefined') {
       // In testing environments without WebSocket, stay disconnected
-      this.setStatus("DISCONNECTED");
+      this.setStatus('DISCONNECTED');
       return;
     }
 
-    this.setStatus(this.reconnectAttempts > 0 ? "RECONNECTING" : "CONNECTING");
+    this.setStatus(this.reconnectAttempts > 0 ? 'RECONNECTING' : 'CONNECTING');
 
     try {
       this.ws = new WebSocket(this.url);
 
       this.ws.onopen = () => {
         this.reconnectAttempts = 0;
-        this.setStatus("CONNECTED");
+        this.setStatus('CONNECTED');
         // Resend JOIN on every connect / reconnect with playerToken
         this.sendJoin();
       };
@@ -115,7 +119,7 @@ export class LocalClientSocket implements ITransport {
             handler(packet);
           }
         } catch (err) {
-          console.error("[LocalClientSocket] Parse error:", err);
+          console.error('[LocalClientSocket] Parse error:', err);
         }
       };
 
@@ -134,23 +138,23 @@ export class LocalClientSocket implements ITransport {
   private handleDisconnectOrError(): void {
     this.ws = null;
     if (this.manualDisconnect) {
-      this.setStatus("DISCONNECTED");
+      this.setStatus('DISCONNECTED');
       return;
     }
 
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       // Max attempts exceeded: host has left / dropped
-      this.setStatus("HOST_DROPPED");
+      this.setStatus('HOST_DROPPED');
       return;
     }
 
     this.reconnectAttempts++;
-    this.setStatus("RECONNECTING");
+    this.setStatus('RECONNECTING');
 
     // Exponential backoff
     const delay = Math.min(
       this.initialBackoffMs * Math.pow(2, this.reconnectAttempts - 1),
-      this.maxBackoffMs,
+      this.maxBackoffMs
     );
 
     this.reconnectTimer = setTimeout(() => {
@@ -163,7 +167,7 @@ export class LocalClientSocket implements ITransport {
       v: PROTOCOL_VERSION,
       seq: ++this.seqCounter,
       playerToken: this.playerToken,
-      type: "JOIN",
+      type: 'JOIN',
       payload: {
         playerName: this.playerName,
         preferredSeat: this.preferredSeat,
@@ -173,7 +177,7 @@ export class LocalClientSocket implements ITransport {
 
   private setupTransportOverride(): void {
     if (!this.transportOverride) return;
-    this.setStatus("CONNECTED");
+    this.setStatus('CONNECTED');
 
     this.transportOverride.onMessage((packet) => {
       for (const handler of this.messageHandlers) {
@@ -230,6 +234,6 @@ export class LocalClientSocket implements ITransport {
     if (this.transportOverride) {
       this.transportOverride.disconnect();
     }
-    this.setStatus("DISCONNECTED");
+    this.setStatus('DISCONNECTED');
   }
 }

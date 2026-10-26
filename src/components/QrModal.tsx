@@ -3,10 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from "react";
-import QRCode from "qrcode";
-import { X, Copy, Check, QrCode as QrIcon, Wifi, Sparkles, Edit2, CheckCircle } from "lucide-react";
-import { encodeRoomPayload, getLocalIpAddress } from "../network/localIp";
+import React, { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
+import {
+  X,
+  Copy,
+  Check,
+  QrCode as QrIcon,
+  Wifi,
+  Sparkles,
+  Edit2,
+  CheckCircle,
+} from 'lucide-react';
+import { encodeRoomPayload, getLocalIpAddress } from '../network/localIp';
 
 export interface QrModalProps {
   roomCode: string;
@@ -23,12 +32,12 @@ export const QrModal: React.FC<QrModalProps> = ({
   port = 8080,
   isOpen,
   onClose,
-  className = "",
+  className = '',
 }) => {
-  const [ip, setIp] = useState<string>(initialIp || "192.168.1.105");
+  const [ip, setIp] = useState<string>(initialIp || '192.168.1.105');
   const [isEditingIp, setIsEditingIp] = useState<boolean>(false);
   const [tempIp, setTempIp] = useState<string>(ip);
-  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
 
@@ -50,12 +59,12 @@ export const QrModal: React.FC<QrModalProps> = ({
       width: 250,
       margin: 2,
       color: {
-        dark: "#052e16", // Deep emerald dark
-        light: "#ffffff",
+        dark: '#052e16', // Deep emerald dark
+        light: '#ffffff',
       },
     })
       .then((url) => setQrDataUrl(url))
-      .catch((err) => console.error("Failed to generate QR code:", err));
+      .catch((err) => console.error('Failed to generate QR code:', err));
   }, [ip, port, roomCode, isOpen]);
 
   if (!isOpen) return null;
@@ -168,7 +177,7 @@ export const QrModal: React.FC<QrModalProps> = ({
               className="text-[10px] text-amber-300 hover:text-amber-200 flex items-center gap-0.5 cursor-pointer"
             >
               <Edit2 className="w-2.5 h-2.5" />
-              <span>{isEditingIp ? "إلغاء" : "تعديل IP"}</span>
+              <span>{isEditingIp ? 'إلغاء' : 'تعديل IP'}</span>
             </button>
           </div>
 
@@ -199,11 +208,7 @@ export const QrModal: React.FC<QrModalProps> = ({
                 onClick={handleCopyUrl}
                 className="text-[10px] text-amber-300/80 hover:text-amber-200 flex items-center gap-1 cursor-pointer"
               >
-                {copiedUrl ? (
-                  <Check className="w-3 h-3 text-emerald-400" />
-                ) : (
-                  <Copy className="w-3 h-3" />
-                )}
+                {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                 <span>نسخ الرابط</span>
               </button>
             </div>

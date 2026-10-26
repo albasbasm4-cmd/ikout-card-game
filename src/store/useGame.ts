@@ -3,50 +3,42 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { GameState, Card, Bid, Suit, Difficulty, TrickPlay } from "../types/kout";
-import { KoutGameEngine } from "../engine/KoutGameEngine";
-import { getLegalCards, trickWinner } from "../rules/cards";
-import { getPlayedCards } from "../engine/KoutTricks";
-import { getBotDecision } from "../ai/AIClient";
-import { evaluateBid } from "../ai/BidEvaluator";
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { GameState, Card, Bid, Suit, Difficulty, TrickPlay } from '../types/kout';
+import { KoutGameEngine } from '../engine/KoutGameEngine';
+import { getLegalCards, trickWinner } from '../rules/cards';
+import { getPlayedCards } from '../engine/KoutTricks';
+import { getBotDecision } from '../ai/AIClient';
+import { evaluateBid } from '../ai/BidEvaluator';
 import {
   playCardSound,
   playTrickWinSound,
   playTrumpSound,
   playWinSound,
   playLoseSound,
-} from "../utils/audio";
-import { saveGameState } from "../utils/persist";
-import { useHaptics } from "./useSettings";
-import { verifyCheatReport } from "../rules/cheat";
-import type { PlayerSlot } from "../types/kout";
-import { assignBotCharacters, loadPlayerProfile } from "../utils/playerProfile";
+} from '../utils/audio';
+import { saveGameState } from '../utils/persist';
+import { useHaptics } from './useSettings';
 
 export interface UseGameOptions {
-  variant?: "BO6" | "BO4";
+  variant?: 'BO6' | 'BO4';
   targetScore?: number;
   difficulty?: Difficulty;
   autoStart?: boolean;
   initialState?: GameState;
-  initialPlayers?: PlayerSlot[];
 }
 
 const SUIT_ARABIC: Record<Suit, string> = {
-  S: "سبيت ♠",
-  H: "هاص ♥",
-  D: "ديمن ♦",
-  C: "كلفس ♣",
+  S: 'سبيت ♠',
+  H: 'هاص ♥',
+  D: 'ديمن ♦',
+  C: 'كلفس ♣',
 };
 
 export function useGame(options: UseGameOptions = {}) {
-  const [difficulty, setDifficulty] = useState<Difficulty>(options.difficulty ?? "MEDIUM");
-  const [variant, setVariant] = useState<"BO6" | "BO4">(
-    options.initialState?.variant ?? options.variant ?? "BO6",
-  );
-  const [targetScore, setTargetScore] = useState<number>(
-    options.initialState?.targetScore ?? options.targetScore ?? 51,
-  );
+  const [difficulty, setDifficulty] = useState<Difficulty>(options.difficulty ?? 'MEDIUM');
+  const [variant, setVariant] = useState<'BO6' | 'BO4'>(options.initialState?.variant ?? options.variant ?? 'BO6');
+  const [targetScore, setTargetScore] = useState<number>(options.initialState?.targetScore ?? options.targetScore ?? 51);
 
   // Engine instance reference
   const engineRef = useRef<KoutGameEngine | null>(null);
@@ -58,22 +50,8 @@ export function useGame(options: UseGameOptions = {}) {
         targetScore,
         initialDealer: 0,
         seed: Math.floor(Math.random() * 1000000),
-        players: options.initialPlayers
-          ? assignBotCharacters(
-              options.initialPlayers.map((player) =>
-                player.seatIndex === 0
-                  ? {
-                      ...player,
-                      name: loadPlayerProfile().nickname,
-                      characterId: loadPlayerProfile().characterId,
-                    }
-                  : player,
-              ),
-              loadPlayerProfile().characterId,
-            )
-          : undefined,
       },
-      options.initialState,
+      options.initialState
     );
     if (!options.initialState && options.autoStart !== false) {
       engineRef.current.startRound();
@@ -101,31 +79,26 @@ export function useGame(options: UseGameOptions = {}) {
     }
   }, [state.currentTrick]);
 
-  const hasRemoteHuman = (state.players ?? []).some(
-    (p) => p.kind === "HUMAN_REMOTE" && p.connected,
-  );
-
+  // Legal cards for human player (seat 0)
   const legalCardsForHuman = useMemo(() => {
-    if (state.phase !== "PLAY" || state.currentSeat !== 0 || isResolvingTrickRef.current) {
+    if (state.phase !== 'PLAY' || state.currentSeat !== 0 || isResolvingTrickRef.current) {
       return new Set<string>();
     }
     const myHand = state.hands[0] || [];
-    // القيد مفيد للاعب ضد البوتات. مع لاعب حقيقي عن بعد (hotspot): حرية كاملة
-    // لاختيار أي بطاقة، والفلتر هو زر بلاغ الغش وليس القيد.
-    if (hasRemoteHuman) return new Set(myHand.map((c) => c.id));
-    return new Set(
-      getLegalCards(myHand, state.currentTrick, state.trump, { allowJokerAnytime: true }).map(
-        (c) => c.id,
-      ),
-    );
-  }, [state, hasRemoteHuman]);
+    const played = getPlayedCards(state.trickHistory, state.currentTrick);
+    const legal = getLegalCards(myHand, state.currentTrick, state.trump, {
+      playedCards: played,
+      highBid: state.highBid,
+    });
+    return new Set(legal.map((c) => c.id));
+  }, [state]);
 
   // Is human turn?
   const isHumanTurn =
     !isResolvingTrickRef.current &&
-    ((state.phase === "BID" && state.currentSeat === 0) ||
-      (state.phase === "TRUMP" && state.bidderSeat === 0) ||
-      (state.phase === "PLAY" && state.currentSeat === 0));
+    ((state.phase === 'BID' && state.currentSeat === 0) ||
+      (state.phase === 'TRUMP' && state.bidderSeat === 0) ||
+      (state.phase === 'PLAY' && state.currentSeat === 0));
 
   // Plays a card with smooth trick completion delay
   const executePlayCardWithPacing = useCallback(
@@ -134,9 +107,9 @@ export function useGame(options: UseGameOptions = {}) {
       if (!engine) return;
 
       playCardSound();
-      triggerHaptic("light");
+      triggerHaptic('light');
 
-      const numSeats = engine.state.variant === "BO6" ? 6 : 4;
+      const numSeats = engine.state.variant === 'BO6' ? 6 : 4;
       const currentTrick = engine.state.currentTrick;
 
       // Check if this card completes the trick
@@ -145,31 +118,17 @@ export function useGame(options: UseGameOptions = {}) {
         isResolvingTrickRef.current = true;
         const fullTrick = [...currentTrick, { seat, card }];
         const winner = trickWinner(fullTrick, engine.state.trump);
-        const winnerName = engine.state.players?.[winner.seat]?.name || `لاعب ${winner.seat + 1}`;
+        const winnerName =
+          engine.state.players?.[winner.seat]?.name || `لاعب ${winner.seat + 1}`;
 
         setDisplayedTrick(fullTrick);
         setWinningTrickPlay(winner);
-        const announceMsg = winner.seat === 0 ? "أكلتها أنت! 🎉" : `أكلها ${winnerName}!`;
+        const announceMsg =
+          winner.seat === 0 ? 'أكلتها أنت! 🎉' : `أكلها ${winnerName}!`;
         setTrickWinnerAnnouncement(announceMsg);
 
         playTrickWinSound();
-        triggerHaptic("medium");
-
-        // Contextual voice reaction based on who won the trick
-        const myTeam = 0;
-        const winnerTeam = winner.seat % 2;
-        const partnerSeat = 2; // In 4-player, 2 is partner of 0
-
-        // If partner won a big trick, player or partner praises
-        if (winner.seat === partnerSeat && Math.random() < 0.6) {
-          playEventVoice("partner", { seat: 0 });
-        } else if (winnerTeam !== myTeam && Math.random() < 0.45) {
-          // Opponent taunt or surprise
-          playEventVoice("surprise", { seat: 0 });
-          if (Math.random() < 0.5) {
-            playEventVoice("taunt", { seat: winner.seat });
-          }
-        }
+        triggerHaptic('medium');
 
         setTimeout(() => {
           try {
@@ -177,25 +136,11 @@ export function useGame(options: UseGameOptions = {}) {
             setState({ ...nextState });
             saveGameState(nextState);
 
-            if (nextState.phase === "ROUND_END" || nextState.phase === "GAME_END") {
-              // Win = the bidder's team made its contract, not a score comparison.
-              const bidderTeam = (nextState.bidderSeat ?? 0) % 2;
-              const made = nextState.tricksWon[bidderTeam] >= (nextState.highBid ?? 0);
-              const myTeam = 0;
-              const iWon =
-                nextState.phase === "GAME_END"
-                  ? nextState.scores[myTeam] >= nextState.targetScore ||
-                    (nextState.roundNo === 1 &&
-                      nextState.highBid === 9 &&
-                      nextState.tricksWon[myTeam] === 9)
-                  : (made ? bidderTeam : 1 - bidderTeam) === myTeam;
-              if (iWon) {
+            if (nextState.phase === 'ROUND_END' || nextState.phase === 'GAME_END') {
+              if (nextState.scores[0] >= nextState.scores[1]) {
                 playWinSound();
-                playEventVoice("win", { seat: 0 });
-                setTimeout(() => playEventVoice("taunt", { seat: 0 }), 1400);
               } else {
                 playLoseSound();
-                playEventVoice("lose", { seat: 0 });
               }
             }
           } finally {
@@ -212,7 +157,7 @@ export function useGame(options: UseGameOptions = {}) {
         saveGameState(nextState);
       }
     },
-    [triggerHaptic],
+    [triggerHaptic]
   );
 
   // Human Actions
@@ -220,38 +165,38 @@ export function useGame(options: UseGameOptions = {}) {
     (card: Card) => {
       const engine = engineRef.current;
       if (!engine || isResolvingTrickRef.current) return;
-      if (engine.state.phase !== "PLAY" || engine.state.currentSeat !== 0) return;
+      if (engine.state.phase !== 'PLAY' || engine.state.currentSeat !== 0) return;
 
       try {
         executePlayCardWithPacing(0, card);
       } catch (err) {
-        console.error("Human playCard error:", err);
+        console.error('Human playCard error:', err);
       }
     },
-    [executePlayCardWithPacing],
+    [executePlayCardWithPacing]
   );
 
   const humanBid = useCallback((bid: Bid) => {
     const engine = engineRef.current;
     if (!engine) return;
-    if (engine.state.phase !== "BID" || engine.state.currentSeat !== 0) return;
+    if (engine.state.phase !== 'BID' || engine.state.currentSeat !== 0) return;
 
     try {
-      const bubble = bid === 0 ? "طاف" : bid === 9 ? "كوت بوستة!" : `طلب ${bid}`;
+      const bubble = bid === 0 ? 'طاف' : `طلب ${bid}`;
       setSpeechBubbles((prev) => ({ ...prev, 0: bubble }));
 
       const nextState = engine.placeBid(0, bid);
       setState({ ...nextState });
       saveGameState(nextState);
     } catch (err) {
-      console.error("Human placeBid error:", err);
+      console.error('Human placeBid error:', err);
     }
   }, []);
 
   const humanDeclareTrump = useCallback((suit: Suit) => {
     const engine = engineRef.current;
     if (!engine) return;
-    if (engine.state.phase !== "TRUMP" || engine.state.bidderSeat !== 0) return;
+    if (engine.state.phase !== 'TRUMP' || engine.state.bidderSeat !== 0) return;
 
     try {
       playTrumpSound();
@@ -264,7 +209,7 @@ export function useGame(options: UseGameOptions = {}) {
       setState({ ...nextState });
       saveGameState(nextState);
     } catch (err) {
-      console.error("Human declareTrump error:", err);
+      console.error('Human declareTrump error:', err);
     }
   }, []);
 
@@ -284,17 +229,12 @@ export function useGame(options: UseGameOptions = {}) {
     if (!engine) return;
     setSpeechBubbles({});
     const nextState = engine.startRound();
-    const players = assignBotCharacters(
-      [...(nextState.players ?? [])],
-      loadPlayerProfile().characterId,
-    );
-    const personalizedState = engine.setPlayers(players);
-    setState({ ...personalizedState });
-    saveGameState(personalizedState);
+    setState({ ...nextState });
+    saveGameState(nextState);
   }, []);
 
   const startNewGame = useCallback(
-    (newVariant?: "BO6" | "BO4", newTarget?: number, newDiff?: Difficulty) => {
+    (newVariant?: 'BO6' | 'BO4', newTarget?: number, newDiff?: Difficulty) => {
       const v = newVariant ?? variant;
       const t = newTarget ?? targetScore;
       const d = newDiff ?? difficulty;
@@ -305,54 +245,18 @@ export function useGame(options: UseGameOptions = {}) {
       setWinningTrickPlay(null);
       setTrickWinnerAnnouncement(null);
 
-      const profile = loadPlayerProfile();
-      const initialPlayers = assignBotCharacters(
-        options.initialPlayers ??
-          Array.from({ length: v === "BO6" ? 6 : 4 }, (_, seatIndex) => ({
-            seatIndex,
-            kind: seatIndex === 0 ? ("HUMAN_LOCAL" as const) : ("AI_BOT" as const),
-            name: seatIndex === 0 ? profile.nickname : `بوت ${seatIndex + 1}`,
-            team: (seatIndex % 2) as 0 | 1,
-            connected: true,
-            ...(seatIndex === 0 ? { characterId: profile.characterId } : {}),
-          })),
-        profile.characterId,
-      );
       const newEngine = new KoutGameEngine({
         variant: v,
         targetScore: t,
         initialDealer: 0,
         seed: Math.floor(Math.random() * 1000000),
-        players: initialPlayers,
       });
       engineRef.current = newEngine;
       const firstState = newEngine.startRound();
       setState({ ...firstState });
       saveGameState(firstState);
     },
-    [variant, targetScore, difficulty, options.initialPlayers],
-  );
-
-  const reportCheat = useCallback(
-    (accusedSeat: number, cardType: Suit | "JOKER" | "MAKER") => {
-      const confirmed = verifyCheatReport(state, accusedSeat, cardType);
-      const doubledBid = confirmed ? (state.highBid ?? 0) * 2 : null;
-      if (confirmed) {
-        const nextState: GameState = {
-          ...state,
-          contractDoubled: true,
-          doubledBid,
-          version: state.version + 1,
-        };
-        setState(nextState);
-        saveGameState(nextState);
-        sendSpeechBubble("بلاغ غش صحيح! اللعبة دبل! ⚠️", 0);
-      } else {
-        sendSpeechBubble("بلاغ غش غير صحيح!", 0);
-      }
-      return confirmed;
-    },
-    [state, sendSpeechBubble],
+    [variant, targetScore, difficulty]
   );
 
   // Human turn timeout handler (auto-plays legal move)
@@ -361,17 +265,17 @@ export function useGame(options: UseGameOptions = {}) {
     if (!engine || isResolvingTrickRef.current) return;
     const current = engine.state;
 
-    if (current.phase === "BID" && current.currentSeat === 0) {
+    if (current.phase === 'BID' && current.currentSeat === 0) {
       const isDealerForced =
         current.dealer === 0 &&
-        current.bids.length === (current.variant === "BO6" ? 5 : 3) &&
+        current.bids.length === (current.variant === 'BO6' ? 5 : 3) &&
         current.bids.every((b) => b.bid === 0);
       const autoBid: Bid = isDealerForced ? 5 : 0;
       humanBid(autoBid);
-    } else if (current.phase === "TRUMP" && current.bidderSeat === 0) {
+    } else if (current.phase === 'TRUMP' && current.bidderSeat === 0) {
       const evalResult = evaluateBid(current.hands[0], null, false, difficulty);
       humanDeclareTrump(evalResult.bestSuit);
-    } else if (current.phase === "PLAY" && current.currentSeat === 0) {
+    } else if (current.phase === 'PLAY' && current.currentSeat === 0) {
       const hand = current.hands[0] || [];
       const played = getPlayedCards(current.trickHistory, current.currentTrick);
       const legal = getLegalCards(hand, current.currentTrick, current.trump, {
@@ -394,9 +298,9 @@ export function useGame(options: UseGameOptions = {}) {
 
     if (isResolvingTrickRef.current) return;
 
-    const isBotTurnToBid = current.phase === "BID" && current.currentSeat !== 0;
-    const isBotTurnToTrump = current.phase === "TRUMP" && current.bidderSeat !== 0;
-    const isBotTurnToPlay = current.phase === "PLAY" && current.currentSeat !== 0;
+    const isBotTurnToBid = current.phase === 'BID' && current.currentSeat !== 0;
+    const isBotTurnToTrump = current.phase === 'TRUMP' && current.bidderSeat !== 0;
+    const isBotTurnToPlay = current.phase === 'PLAY' && current.currentSeat !== 0;
 
     if (!isBotTurnToBid && !isBotTurnToTrump && !isBotTurnToPlay) {
       setIsBotThinking(false);
@@ -407,7 +311,7 @@ export function useGame(options: UseGameOptions = {}) {
     isExecutingRef.current = true;
     setIsBotThinking(true);
 
-    const activeSeat = current.phase === "TRUMP" ? current.bidderSeat : current.currentSeat;
+    const activeSeat = current.phase === 'TRUMP' ? current.bidderSeat : current.currentSeat;
     if (activeSeat === null) {
       isExecutingRef.current = false;
       return;
@@ -424,15 +328,14 @@ export function useGame(options: UseGameOptions = {}) {
           return;
         }
 
-        if (decision.type === "BID" && currentEngineState.phase === "BID") {
-          const bubble =
-            decision.bid === 0 ? "طاف" : decision.bid === 9 ? "كوت بوستة!" : `طلب ${decision.bid}`;
+        if (decision.type === 'BID' && currentEngineState.phase === 'BID') {
+          const bubble = decision.bid === 0 ? 'طاف' : `طلب ${decision.bid}`;
           setSpeechBubbles((prev) => ({ ...prev, [activeSeat]: bubble }));
 
           const next = engine.placeBid(activeSeat, decision.bid);
           setState({ ...next });
           saveGameState(next);
-        } else if (decision.type === "TRUMP" && currentEngineState.phase === "TRUMP") {
+        } else if (decision.type === 'TRUMP' && currentEngineState.phase === 'TRUMP') {
           playTrumpSound();
           setSpeechBubbles((prev) => ({
             ...prev,
@@ -442,11 +345,11 @@ export function useGame(options: UseGameOptions = {}) {
           const next = engine.declareTrump(activeSeat, decision.suit);
           setState({ ...next });
           saveGameState(next);
-        } else if (decision.type === "PLAY" && currentEngineState.phase === "PLAY") {
+        } else if (decision.type === 'PLAY' && currentEngineState.phase === 'PLAY') {
           executePlayCardWithPacing(activeSeat, decision.card);
         }
       } catch (err) {
-        console.error("Error in bot execution:", err);
+        console.error('Error in bot execution:', err);
       } finally {
         if (isMounted) {
           isExecutingRef.current = false;
@@ -482,8 +385,6 @@ export function useGame(options: UseGameOptions = {}) {
     startNextRound,
     startNewGame,
     handleHumanTimeout,
-    reportCheat,
-    hasRemoteHuman,
   };
 }
 

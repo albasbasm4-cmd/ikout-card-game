@@ -3,51 +3,40 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GameState, Difficulty, Bid, Suit, Card } from "../types/kout";
-import { RULES } from "../rules/config";
-import { getLegalCards } from "../rules/cards";
-import { getPlayedCards } from "../engine/KoutTricks";
-import { evaluateBid } from "./BidEvaluator";
-import { chooseCard } from "./ISMCTS";
-import type { WorkerDecision, WorkerResponse, WorkerRequest } from "./kout-ai.worker";
+import { GameState, Difficulty, Bid, Suit, Card } from '../types/kout';
+import { RULES } from '../rules/config';
+import { getLegalCards } from '../rules/cards';
+import { getPlayedCards } from '../engine/KoutTricks';
+import { evaluateBid } from './BidEvaluator';
+import { chooseCard } from './ISMCTS';
+import type { WorkerDecision, WorkerResponse, WorkerRequest } from './kout-ai.worker';
 
 export type { WorkerDecision, WorkerResponse, WorkerRequest };
 
-export const AI_TIMEOUT_MS = 2500;
-
-/**
- * Authentic Cardio.Kout.KoutBots humanizing delays:
- * - AICallAmountDelay: 800 - 1500ms (evaluating auction strategy)
- * - AICallSuitDelay: 700 - 1200ms (deciding trump command)
- * - AIPlayCardDelay: 800 - 1400ms (evaluating trick play & ISMCTS)
- */
-export function getBotThinkingDelayMs(phase: GameState["phase"]): number {
-  if (phase === "BID") {
-    return Math.floor(800 + Math.random() * 700);
-  }
-  if (phase === "TRUMP") {
-    return Math.floor(700 + Math.random() * 500);
-  }
-  return Math.floor(800 + Math.random() * 600);
-}
+export const AI_TIMEOUT_MS = 1500;
 
 /**
  * Generates an instantaneous random legal move as a safety fallback
  * if the AI worker times out or fails.
  */
-export function generateFallbackDecision(state: GameState, seat: number): WorkerDecision {
+export function generateFallbackDecision(
+  state: GameState,
+  seat: number
+): WorkerDecision {
   const numSeats = RULES[state.variant].seats;
   const cardsPerPlayer = RULES[state.variant].cardsPerPlayer;
-  const suits: Suit[] = ["S", "H", "D", "C"];
+  const suits: Suit[] = ['S', 'H', 'D', 'C'];
   const randomSuit = suits[Math.floor(Math.random() * suits.length)];
 
-  if (state.phase === "BID") {
+  if (state.phase === 'BID') {
     const isDealer = seat === state.dealer;
     const isDealerForced =
-      isDealer && state.bids.length === numSeats - 1 && state.bids.every((b) => b.bid === 0);
+      isDealer &&
+      state.bids.length === numSeats - 1 &&
+      state.bids.every((b) => b.bid === 0);
 
     if (isDealerForced) {
-      return { type: "BID", bid: 5, bestSuit: randomSuit };
+      return { type: 'BID', bid: 5, bestSuit: randomSuit };
     }
 
     const legalBids: Bid[] = [0]; // Pass
@@ -57,11 +46,11 @@ export function generateFallbackDecision(state: GameState, seat: number): Worker
     }
 
     const chosenBid = legalBids[Math.floor(Math.random() * legalBids.length)];
-    return { type: "BID", bid: chosenBid, bestSuit: randomSuit };
+    return { type: 'BID', bid: chosenBid, bestSuit: randomSuit };
   }
 
-  if (state.phase === "TRUMP") {
-    return { type: "TRUMP", suit: randomSuit };
+  if (state.phase === 'TRUMP') {
+    return { type: 'TRUMP', suit: randomSuit };
   }
 
   // PLAY phase
@@ -73,9 +62,11 @@ export function generateFallbackDecision(state: GameState, seat: number): Worker
   });
 
   const chosenCard =
-    legalCards.length > 0 ? legalCards[Math.floor(Math.random() * legalCards.length)] : hand[0];
+    legalCards.length > 0
+      ? legalCards[Math.floor(Math.random() * legalCards.length)]
+      : hand[0];
 
-  return { type: "PLAY", card: chosenCard };
+  return { type: 'PLAY', card: chosenCard };
 }
 
 export interface DecisionOptions {
@@ -100,11 +91,12 @@ export class AIClient {
   }
 
   private initWorker(): void {
-    if (typeof Worker !== "undefined") {
+    if (typeof Worker !== 'undefined') {
       try {
-        this.worker = new Worker(new URL("./kout-ai.worker.ts", import.meta.url), {
-          type: "module",
-        });
+        this.worker = new Worker(
+          new URL('./kout-ai.worker.ts', import.meta.url),
+          { type: 'module' }
+        );
 
         this.worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
           const { requestId, decision, success, error } = e.data;
@@ -115,7 +107,7 @@ export class AIClient {
             if (success && decision) {
               pending.resolve(decision);
             } else {
-              pending.reject(new Error(error || "Worker execution error"));
+              pending.reject(new Error(error || 'Worker execution error'));
             }
           }
         };
@@ -123,7 +115,7 @@ export class AIClient {
         this.worker.onerror = () => {
           for (const pending of this.pendingRequests.values()) {
             clearTimeout(pending.timer);
-            pending.reject(new Error("Worker error"));
+            pending.reject(new Error('Worker error'));
           }
           this.pendingRequests.clear();
         };
@@ -142,22 +134,25 @@ export class AIClient {
   public async requestDecision(
     state: GameState,
     seat: number,
-    difficulty: Difficulty = "MEDIUM",
-    options: DecisionOptions = {},
+    difficulty: Difficulty = 'MEDIUM',
+    options: DecisionOptions = {}
   ): Promise<WorkerDecision> {
-    // Authentic humanized thinking delay so bots deliberate realistically
+    // Artificial delay (400-900ms) so bots feel natural and human
     const delayMs = options.skipDelay
       ? 0
-      : (options.customDelayMs ?? getBotThinkingDelayMs(state.phase));
+      : (options.customDelayMs ??
+        Math.floor(400 + Math.random() * 500));
 
     const delayPromise =
-      delayMs > 0 ? new Promise<void>((r) => setTimeout(r, delayMs)) : Promise.resolve();
+      delayMs > 0
+        ? new Promise<void>((r) => setTimeout(r, delayMs))
+        : Promise.resolve();
 
     const workerPromise = new Promise<WorkerDecision>((resolve) => {
       // Direct in-process execution fallback if Worker is unavailable (e.g. Node / test runner)
       if (!this.worker) {
         try {
-          if (state.phase === "BID") {
+          if (state.phase === 'BID') {
             const numSeats = RULES[state.variant].seats;
             const isDealer = seat === state.dealer;
             const isDealerForced =
@@ -169,26 +164,24 @@ export class AIClient {
               state.hands[seat] || [],
               state.highBid,
               isDealerForced,
-              difficulty,
-              {
-                seat,
-                bidderSeat: state.bidderSeat,
-                partnerSeat: (seat + RULES[state.variant].seats / 2) % RULES[state.variant].seats,
-                scores: state.scores,
-                targetScore: state.targetScore,
-              },
+              difficulty
             );
             resolve({
-              type: "BID",
+              type: 'BID',
               bid: evalResult.bid,
               bestSuit: evalResult.bestSuit,
             });
-          } else if (state.phase === "TRUMP") {
-            const evalResult = evaluateBid(state.hands[seat] || [], null, false, difficulty);
-            resolve({ type: "TRUMP", suit: evalResult.bestSuit });
-          } else if (state.phase === "PLAY") {
+          } else if (state.phase === 'TRUMP') {
+            const evalResult = evaluateBid(
+              state.hands[seat] || [],
+              null,
+              false,
+              difficulty
+            );
+            resolve({ type: 'TRUMP', suit: evalResult.bestSuit });
+          } else if (state.phase === 'PLAY') {
             const card = chooseCard(state, seat, { difficulty });
-            resolve({ type: "PLAY", card });
+            resolve({ type: 'PLAY', card });
           } else {
             resolve(generateFallbackDecision(state, seat));
           }
@@ -259,8 +252,8 @@ export function getAIClient(): AIClient {
 export async function getBotDecision(
   state: GameState,
   seat: number,
-  difficulty: Difficulty = "MEDIUM",
-  options: DecisionOptions = {},
+  difficulty: Difficulty = 'MEDIUM',
+  options: DecisionOptions = {}
 ): Promise<WorkerDecision> {
   return getAIClient().requestDecision(state, seat, difficulty, options);
 }
