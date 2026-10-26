@@ -65,11 +65,16 @@ describe("BidEvaluator", () => {
   });
 
   describe("Sample Hand 2: Moderate Hand", () => {
-    it("identifies Hearts as best suit and bids 5 or 6 on opening", () => {
+    it("identifies Hearts as best suit and passes on opening when unforced, or bids 5 when forced", () => {
       const evalResult = evaluateBid(moderateHand, null, false, "MEDIUM");
 
       expect(evalResult.bestSuit).toBe("H");
-      expect([5, 6]).toContain(evalResult.bid);
+      // Moderate hand has < 5.5 tricks and voluntary 5 is not allowed in Kout, so it wisely passes (0):
+      expect(evalResult.bid).toBe(0);
+
+      // When dealer is forced (Malzom), it bids 5:
+      const forcedResult = evaluateBid(moderateHand, null, true, "MEDIUM");
+      expect(forcedResult.bid).toBe(5);
     });
 
     it("passes if current high bid is higher than hand potential (e.g. 7)", () => {

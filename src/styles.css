@@ -1037,7 +1037,7 @@
     height: 50%;
   }
   .reference-local-hand {
-    bottom: -20px;
+    bottom: calc(44px + env(safe-area-inset-bottom, 0px) + 4px);
   }
   .playing-card-md {
     width: 62px !important;
@@ -1119,7 +1119,7 @@
     grid-template-columns: repeat(2, 24px);
   }
   .reference-local-hand {
-    bottom: 8px;
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px) + 8px);
   }
   .playing-card-md {
     width: 62px !important;
@@ -1152,7 +1152,7 @@
     height: 86px;
   }
   .reference-local-hand {
-    bottom: 35px;
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px) + 8px);
   }
   .reference-controlbar {
     bottom: 18px;
@@ -1201,8 +1201,8 @@
   border-top: 1px solid var(--reference-disc-edge);
 }
 .reference-local-hand {
-  bottom: 65px;
-  width: min(76%, 650px);
+  bottom: calc(66px + env(safe-area-inset-bottom, 0px) + 8px);
+  width: min(92%, 640px);
 }
 .reference-tools button {
   width: 36px !important;
@@ -1498,8 +1498,8 @@
     height: 32px !important;
   }
   .reference-local-hand {
-    bottom: 35px;
-    width: min(65%, 500px);
+    bottom: calc(48px + env(safe-area-inset-bottom, 0px) + 4px);
+    width: min(84%, 540px);
   }
   .hand-fan-height {
     height: 93px;
@@ -1702,7 +1702,7 @@ body {
   height: calc(var(--ik-card-h) * 1.32);
 }
 .reference-local-hand {
-  bottom: 6px;
+  bottom: calc(66px + env(safe-area-inset-bottom, 0px) + 8px);
   width: min(94%, 640px);
 }
 /* Overlap only as much as needed to fit — never more than the reference look */
@@ -1719,7 +1719,7 @@ body {
     height: clamp(36px, 9.6vh, 49px);
   }
   .reference-local-hand {
-    bottom: 4px;
+    bottom: calc(46px + env(safe-area-inset-bottom, 0px) + 4px);
   }
 }
 
@@ -1952,9 +1952,10 @@ body {
 
   /* Mobile Hand card sizing and overlap */
   .reference-local-hand {
-    bottom: 8px !important;
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px) + 8px) !important;
     padding: 0 4px !important;
-    gap: -14px !important;
+    width: min(98%, 560px) !important;
+    z-index: 38 !important;
   }
 
   .playing-card-md {
@@ -2014,7 +2015,9 @@ body {
   }
 
   .reference-local-hand {
-    bottom: 4px !important;
+    bottom: calc(46px + env(safe-area-inset-bottom, 0px) + 4px) !important;
+    width: min(84%, 540px) !important;
+    z-index: 38 !important;
   }
 }
 

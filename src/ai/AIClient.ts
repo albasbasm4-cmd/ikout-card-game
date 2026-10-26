@@ -154,6 +154,7 @@ export class AIClient {
               state.highBid,
               isDealerForced,
               difficulty,
+              { seat, bidderSeat: state.bidderSeat },
             );
             resolve({
               type: "BID",

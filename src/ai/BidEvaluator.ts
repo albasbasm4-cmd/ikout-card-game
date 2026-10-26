@@ -174,7 +174,7 @@ export function evaluateBid(
   // Invariant for bidding 6 (minimum voluntary bid):
   const canBid6 =
     trumpLength >= 3 &&
-    expectedTricks >= 5.5;
+    expectedTricks >= (difficulty === "EXPERT" ? 6.0 : difficulty === "EASY" ? 5.8 : 5.9);
 
   let rawBid: Bid = 0;
   if (canBid9) {
