@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { GameScreen } from './GameScreen';
-import { Lobby } from './Lobby';
+import { RoomScreen } from './RoomScreen';
 import { HomeScreen } from './HomeScreen';
 import { SetupScreen } from './SetupScreen';
 import { SplashScreen } from './SplashScreen';
@@ -62,16 +62,19 @@ export default function App() {
         )}
 
         {view === 'lobby' && (
-          <Lobby
+          <RoomScreen
+            mode="host"
             onStartGame={handleStartGame}
             initialConfig={roomConfig ?? undefined}
+            onBack={() => setView('setup')}
           />
         )}
 
         {view === 'join' && (
-          <Lobby
-            startInJoin
+          <RoomScreen
+            mode="join"
             onStartGame={handleStartGame}
+            onBack={() => setView('setup')}
           />
         )}
 
