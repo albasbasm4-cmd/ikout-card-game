@@ -1034,6 +1034,18 @@
 .seat-6-3, .seat-4-2 { top:1%; }
 .seat-6-2 { right:1%; top:4%; } .seat-6-4 { left:1%; top:4%; }
 .seat-6-1 { right:1%; top:42%; } .seat-6-5 { left:1%; top:auto; bottom:6%; }
+
+/* 5-player seating layout for 187 mode */
+.seat-5-1 { right: 1.5%; top: 38%; }
+.seat-5-2 { right: 18%; top: 2%; flex-direction: row; gap: 8px; }
+.seat-5-3 { left: 18%; top: 2%; flex-direction: row; gap: 8px; }
+.seat-5-4 { left: 1.5%; top: 38%; }
+.seat-5-1 .reference-opponent-hand { order: -1; transform: none; }
+.seat-5-4 .reference-opponent-hand { transform: none; }
+.seat-5-2 .reference-opponent-hand, .seat-5-3 .reference-opponent-hand { transform: none; }
+.seat-5-2 .reference-portrait, .seat-5-3 .reference-portrait { width: 104px; height: 104px; }
+.seat-5-1 .reference-portrait, .seat-5-4 .reference-portrait { width: 104px; height: 104px; }
+
 .reference-local-seat { right:1.2%; bottom:3%; }
 .reference-player-name { gap:4px; }
 .reference-bid-badge, .reference-crown { z-index:6; }
