@@ -85,7 +85,7 @@ export default function App() {
             initialDifficulty={roomConfig?.botDifficulty}
             initialPlayers={roomConfig?.players}
             initialState={resumedState ?? (roomConfig ? undefined : loadSavedGameState() ?? undefined)}
-            onGoToLobby={() => setView('lobby')}
+            onGoHome={() => setView('home')}
           />
         )}
 
