@@ -1008,3 +1008,7 @@
 .reference-bid-wheel .bid-wedge.bid-selected { background:#1d5f8f!important; color:#fff!important; }
 .reference-bid-wheel .bid-pass { background:#d8c8ad!important; color:#fff!important; }
 .reference-bid-wheel .bid-pass:disabled { background:#b9ad97!important; }
+
+/* إظهار شريط الاختصارات أعلى اليسار في كل المقاسات، وفتح الدردشة من صورة اللاعب */
+.reference-tools>div { position:static; }
+.reference-portrait.reference-chat-trigger { cursor:pointer; }

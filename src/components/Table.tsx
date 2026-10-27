@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { GameState, Card as CardType, Suit, TrickPlay } from '../types/kout';
 import { Card, SuitSvg, JokerSvg } from './Card';
 import { Hand } from './Hand';
-import { Crown, MessageSquare, X, Hand as PassHand, Bot } from 'lucide-react';
+import { Crown, X, Hand as PassHand, Bot } from 'lucide-react';
 import { Button } from './ui/button';
 import { playBubbleSound, playTapSound } from '../utils/audio';
 import { CHARACTER_IDS, characterFace, tableImage, useProfile } from '../utils/profile';
@@ -245,7 +245,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
  const active = state.phase === 'TRUMP' ? state.bidderSeat : state.currentSeat;
  return <div dir="rtl" className={`reference-game table-theme-${profile.table} card-theme-${profile.cards} ${className}`}>
   <section className="reference-arena table-felt" aria-label="طاولة كوت" style={{ backgroundImage: 'url(/assets/ikout/backgrounds/wood-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-    <div className="reference-tools" dir="ltr">{headerControls}<Button variant="ghost" size="icon" aria-label="تعليقات الشخصيات" title="تعليقات الشخصيات" onClick={()=>{playTapSound();setChatOpen(v=>!v);}}><MessageSquare/></Button></div>
+    <div className="reference-tools" dir="ltr">{headerControls}</div>
     <header className="reference-scorebar" dir="ltr">
       <div className="reference-score-row">
         <span className="reference-score team-red"><strong>{state.scores[0]}</strong></span>
@@ -318,9 +318,9 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
     <div className="reference-local-hand"><Hand cards={(handSeat !== undefined ? state.hands[handSeat] : state.hands[mySeat]) || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" /></div>
     <div className={`reference-local-seat ${speakingSeat === mySeat ? 'seat-speaking' : ''}`}>
       <AnimatePresence>{bubble(mySeat) && <motion.div key={bubble(mySeat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(mySeat)}</motion.div>}</AnimatePresence>
-      <div className="reference-avatar-wrap"><img className="reference-portrait" src={portraitFor(mySeat)} alt={name(mySeat)} draggable={false} /><span className="reference-player-name">{name(mySeat)}</span></div>
+      <div className="reference-avatar-wrap"><img className="reference-portrait reference-chat-trigger" src={portraitFor(mySeat)} alt={name(mySeat)} title="رسائل الدردشة" aria-label="رسائل الدردشة" draggable={false} onClick={()=>{playTapSound();setChatOpen(v=>!v);}} /><span className="reference-player-name">{name(mySeat)}</span></div>
     </div>
-    {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{voiceSet(characterFor(mySeat)).chat.map(clip => <Button key={clip.file} variant="ghost" onClick={()=>{playBubbleSound(); setReactions(current => ({ ...current, [mySeat]: clip.text })); playCharacterClip(characterFor(mySeat), clip, mySeat); onSendSpeechBubble?.(`clip:${clip.file}`); setChatOpen(false);}}>{clip.text}</Button>)}</div></div>}
+    {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{voiceSet(characterFor(mySeat)).chat.filter(clip => clip.text && clip.text.trim()).map(clip => <Button key={clip.file} variant="ghost" onClick={()=>{playBubbleSound(); setReactions(current => ({ ...current, [mySeat]: clip.text })); playCharacterClip(characterFor(mySeat), clip, mySeat); onSendSpeechBubble?.(`clip:${clip.file}`); setChatOpen(false);}}>{clip.text}</Button>)}</div></div>}
   </section>
  </div>;
 };
