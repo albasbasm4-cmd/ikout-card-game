@@ -67,13 +67,13 @@ export function stopCharacterVoice(token?: string) {
 export function voiceSource(characterId: CharacterId, clip: VoiceClip): string {
   return clipUrl(characterId, clip.file);
 }
-function playClip(characterId: CharacterId, clip: VoiceClip, seat: number, token: string | null, isStillValid: () => boolean) {
+function playClip(characterId: CharacterId, clip: VoiceClip, seat: number, token: string | null, isStillValid: () => boolean, allowLateStart = false) {
   if (typeof window === 'undefined' || !loadSettings().soundEnabled) return;
   const src = voiceSource(characterId, clip);
   const requested = performance.now();
   const startBuffer = (buf: AudioBuffer) => {
     const c = context();
-    if (!c || !isStillValid() || performance.now() - requested > MAX_VOICE_DELAY_MS) { if (import.meta.env.DEV) logVoice({ key: clip.file, token, dropped: true, delay: Math.round(performance.now() - requested) }); return; }
+    if (!c || !isStillValid() || (!allowLateStart && performance.now() - requested > MAX_VOICE_DELAY_MS)) { if (import.meta.env.DEV) logVoice({ key: clip.file, token, dropped: true, delay: Math.round(performance.now() - requested) }); return; }
     stopCharacterVoice();
     const node = c.createBufferSource();
     const gain = c.createGain();
@@ -103,8 +103,38 @@ export function playCharacterVoice(characterId: CharacterId, key: PhraseKey, sea
   playClip(characterId, clip, seat, token, isStillValid);
 }
 /** Plays one exact verified clip (chat panel buttons, soundboard). */
-export function playCharacterClip(characterId: CharacterId, clip: VoiceClip, seat: number, token: string | null = null, isStillValid: () => boolean = () => true) {
-  playClip(characterId, clip, seat, token, isStillValid);
+export function playCharacterClip(characterId: CharacterId, clip: VoiceClip, seat: number, token: string | null = null, isStillValid: () => boolean = () => true, allowLateStart = false) {
+  playClip(characterId, clip, seat, token, isStillValid, allowLateStart);
+}
+
+/** Every distinct verified clip of a character (situation lines + chat), for random picks. */
+export function allCharacterClips(characterId: CharacterId): VoiceClip[] {
+  const set = voiceSet(characterId);
+  const seen = new Set<string>();
+  const clips: VoiceClip[] = [];
+  for (const value of Object.values(set)) {
+    const items = Array.isArray(value) ? value : value ? [value as VoiceClip] : [];
+    for (const clip of items) {
+      if (clip?.file && !seen.has(clip.file)) { seen.add(clip.file); clips.push(clip); }
+    }
+  }
+  return clips;
+}
+
+const lastPreviewFile = new Map<CharacterId, string>();
+/**
+ * Profile-editor preview: ONE random clip from the tapped character's own
+ * verified bundle. Anti-repeat keeps consecutive taps varied, and late start
+ * is allowed so the very first tap still speaks before the file is cached.
+ */
+export function playRandomCharacterClip(characterId: CharacterId, seat: number = 0) {
+  const clips = allCharacterClips(characterId);
+  if (!clips.length) return;
+  const last = lastPreviewFile.get(characterId);
+  const pool = clips.length > 1 ? clips.filter(c => c.file !== last) : clips;
+  const clip = pool[Math.floor(Math.random() * pool.length)];
+  lastPreviewFile.set(characterId, clip.file);
+  playCharacterClip(characterId, clip, seat, null, () => true, true);
 }
 
 function logVoice(entry: Record<string, unknown>) {
