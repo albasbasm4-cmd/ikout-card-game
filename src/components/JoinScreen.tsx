@@ -110,6 +110,10 @@ export interface JoinScreenProps {
   onConnected?: (socket: LocalClientSocket, payload: any) => void;
   onBack: () => void;
   scannerOverride?: IBarcodeScanner;
+  /** رمز غرفة مُدخل مسبقاً (من شاشة الغرفة). */
+  initialCode?: string;
+  /** افتح الشاشة مباشرة في وضع المسح أو الإدخال اليدوي. */
+  initialMode?: 'SCAN' | 'MANUAL';
   className?: string;
 }
 
@@ -117,12 +121,14 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
   onConnected,
   onBack,
   scannerOverride,
+  initialCode,
+  initialMode,
   className = '',
 }) => {
-  const [mode, setMode] = useState<'SCAN' | 'MANUAL'>('SCAN');
+  const [mode, setMode] = useState<'SCAN' | 'MANUAL'>(initialMode ?? 'SCAN');
   const [playerName, setPlayerName] = useState<string>('لاعب');
   const [hostIp, setHostIp] = useState<string>('192.168.1.105');
-  const [roomCode, setRoomCode] = useState<string>('');
+  const [roomCode, setRoomCode] = useState<string>(initialCode ?? '');
   const [status, setStatus] = useState<
     'IDLE' | 'SCANNING' | 'CONNECTING' | 'ERROR' | 'SUCCESS'
   >('IDLE');
