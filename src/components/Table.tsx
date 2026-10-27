@@ -262,7 +262,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
         {!(bid !== undefined && state.phase === 'BID') && <div className="reference-opponent-hand" aria-label={`${state.hands[seat]?.length ?? 0} أوراق`}>
           {Array.from({ length: state.hands[seat]?.length ?? 0 }, (_, i) => {
             const mid = ((state.hands[seat]?.length ?? 0) - 1) / 2;
-            return <img key={i} src={cardBack(profile.cards)} className="reference-mini-back" alt="" draggable={false} style={{ transform: `rotate(${(i - mid) * 9}deg) translateY(${Math.abs(i - mid) * 2}px)` }} />;
+            return <img key={i} src={cardBack(profile.cards)} className="reference-mini-back" alt="" draggable={false} style={{ transform: `rotate(${(i - mid) * 2.8}deg)` }} />;
           })}
         </div>}
         <AnimatePresence>{bubble(seat) && <motion.div key={bubble(seat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(seat)}</motion.div>}</AnimatePresence>

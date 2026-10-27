@@ -931,3 +931,36 @@
 }
 .seat-6-4 .reference-speech, .seat-6-5 .reference-speech, .seat-4-3 .reference-speech { transform:translateX(-32%); }
 .seat-6-1 .reference-speech, .seat-6-2 .reference-speech, .seat-4-1 .reference-speech { transform:translateX(-68%); }
+
+/* ============ Reference match v2: large avatars + tight card fans ============ */
+.reference-portrait { width:104px; height:104px; border-radius:22px; }
+.reference-local-seat .reference-portrait { width:88px; height:88px; border-radius:20px; }
+.seat-6-3 .reference-portrait, .seat-4-2 .reference-portrait { width:96px; height:96px; }
+.reference-opponent-hand { width:auto; height:56px; align-items:center; }
+.reference-mini-back { width:27px; height:39px; margin-left:-17px; border-radius:4px; transform-origin:50% 200%; }
+.reference-mini-back:first-child { margin-left:0; }
+.seat-6-1 .reference-opponent-hand, .seat-6-2 .reference-opponent-hand, .seat-4-1 .reference-opponent-hand { order:-1; transform:none; }
+.seat-6-4 .reference-opponent-hand, .seat-6-5 .reference-opponent-hand, .seat-4-3 .reference-opponent-hand { transform:none; }
+.seat-6-3, .seat-4-2 { flex-direction:row; gap:8px; top:2%; }
+.seat-6-3 .reference-opponent-hand, .seat-4-2 .reference-opponent-hand { transform:none; }
+.seat-6-3 .reference-speech, .seat-4-2 .reference-speech { top:auto; bottom:calc(100% + 14px); }
+.reference-bid-badge { font-size:26px; }
+.reference-player-name { font-size:12px; line-height:19px; }
+@media (max-width:900px) {
+ .reference-portrait { width:78px; height:78px; border-radius:18px; }
+ .reference-local-seat .reference-portrait { width:68px; height:68px; }
+ .seat-6-3 .reference-portrait, .seat-4-2 .reference-portrait { width:72px; height:72px; }
+ .reference-opponent-hand { height:46px; }
+ .reference-mini-back { width:22px; height:32px; margin-left:-14px; }
+}
+@media (max-width:560px) {
+ .reference-portrait { width:56px; height:56px; border-radius:14px; }
+ .reference-local-seat .reference-portrait { width:50px; height:50px; }
+ .seat-6-3 .reference-portrait, .seat-4-2 .reference-portrait { width:52px; height:52px; }
+ .reference-opponent-hand { height:38px; }
+ .reference-mini-back { width:17px; height:25px; margin-left:-11px; border-radius:3px; }
+ .reference-player-name { font-size:9px; line-height:14px; }
+}
+.seat-6-3 .reference-speech, .seat-4-2 .reference-speech { top:calc(100% + 6px); bottom:auto; }
+.reference-local-seat .reference-speech { left:auto; right:-4px; transform:none; }
+.reference-local-seat .reference-speech::after { left:auto; right:22px; }
