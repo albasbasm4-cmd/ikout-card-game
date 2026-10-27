@@ -8,8 +8,8 @@ import {
   CARD_THEMES, CHARACTER_IDS, PlayerProfile, TABLE_THEMES, characterFace, loadProfile, saveProfile, useProfile,
 } from '../utils/profile';
 import { MUSLIM_COUNTRIES, flagUrl, countryName } from '../utils/countries';
-import { voiceFor, CharacterId } from '../utils/gamePresentation';
-import { playCharacterClip } from '../utils/characterAudio';
+import { CharacterId } from '../utils/gamePresentation';
+import { playRandomCharacterClip } from '../utils/characterAudio';
 import { playTapSound } from '../utils/audio';
 import { useXp } from '../utils/xp';
 
@@ -47,9 +47,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose }) => {
   const chooseCharacter = (id: string) => {
     playTapSound();
     apply({ characterId: id });
-    // Preview: play the chosen character's own voice.
-    const clip = voiceFor(id as CharacterId, 'welcome');
-    if (clip) playCharacterClip(id as CharacterId, clip, 0);
+    // Preview: ONE random clip from the tapped character's own bundle.
+    playRandomCharacterClip(id as CharacterId, 0);
   };
 
   const popOnce = (text: string) => {
