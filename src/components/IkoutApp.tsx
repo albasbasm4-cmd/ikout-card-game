@@ -19,6 +19,8 @@ type View = 'splash' | 'home' | 'setup' | 'game' | 'lobby';
 
 export default function App() {
   const [view, setView] = useState<View>('splash');
+  // The splash stays mounted above the home menu until the boom fades out.
+  const [splashVisible, setSplashVisible] = useState(true);
   const [roomConfig, setRoomConfig] = useState<RoomConfig | null>(null);
   const [resumedState, setResumedState] = useState<GameState | null>(null);
 
@@ -36,13 +38,15 @@ export default function App() {
     setView('game');
   };
 
+  const handleHostRoom = (config: RoomConfig) => {
+    setRoomConfig(config);
+    setResumedState(null);
+    setView('lobby');
+  };
+
   return (
     <ErrorBoundary>
       <div className="relative w-full min-h-screen">
-        {view === 'splash' && (
-          <SplashScreen onDone={() => setView('home')} />
-        )}
-
         {view === 'home' && (
           <HomeScreen onEnterSetup={() => setView('setup')} />
         )}
@@ -52,6 +56,7 @@ export default function App() {
             onBack={() => setView('home')}
             onStartGame={handleStartGame}
             onResumeGame={handleResumeGame}
+            onHostRoom={handleHostRoom}
           />
         )}
 
@@ -70,6 +75,15 @@ export default function App() {
             initialPlayers={roomConfig?.players}
             initialState={resumedState ?? (roomConfig ? undefined : loadSavedGameState() ?? undefined)}
             onGoToLobby={() => setView('lobby')}
+          />
+        )}
+
+        {/* The creeper intro runs above the menu; it reveals the home screen
+            behind its white flash, then unmounts itself. */}
+        {splashVisible && (
+          <SplashScreen
+            onReveal={() => setView('home')}
+            onDone={() => setSplashVisible(false)}
           />
         )}
       </div>

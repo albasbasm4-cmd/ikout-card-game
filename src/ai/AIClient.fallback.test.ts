@@ -5,6 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { generateFallbackDecision } from './AIClient';
+import { Card } from '../types/kout';
 import type { GameState } from '../types/kout';
 
 function baseState(overrides: Partial<GameState> = {}): GameState {
@@ -27,7 +28,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
     version: 1,
     players: Array.from({ length: 6 }, (_, i) => ({
       seatIndex: i,
-      kind: 'BOT' as const,
+      kind: 'AI_BOT' as const,
       name: `Bot ${i}`,
       team: (i % 2) as 0 | 1,
       connected: true,
@@ -39,7 +40,7 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
 describe('generateFallbackDecision (AI timeout safety net)', () => {
   it('never bids above 6 on a weak hand when the worker times out', () => {
     // A hand with no aces, kings or jokers can never justify 8 or 9.
-    const weakHand = [
+    const weakHand: Card[] = [
       { id: 'C-2', suit: 'C', rank: 2 }, { id: 'C-4', suit: 'C', rank: 4 },
       { id: 'C-5', suit: 'C', rank: 5 }, { id: 'H-3', suit: 'H', rank: 3 },
       { id: 'H-6', suit: 'H', rank: 6 }, { id: 'D-7', suit: 'D', rank: 7 },
@@ -58,7 +59,7 @@ describe('generateFallbackDecision (AI timeout safety net)', () => {
   });
 
   it('bids high with a genuinely strong hand even on timeout', () => {
-    const monsterHand = [
+    const monsterHand: Card[] = [
       { id: 'JOKER-RED', joker: 'RED' as const }, { id: 'JOKER-BLACK', joker: 'BLACK' as const },
       { id: 'S-14', suit: 'S', rank: 14 }, { id: 'S-13', suit: 'S', rank: 13 },
       { id: 'S-12', suit: 'S', rank: 12 }, { id: 'S-10', suit: 'S', rank: 10 },
@@ -74,7 +75,7 @@ describe('generateFallbackDecision (AI timeout safety net)', () => {
   });
 
   it('declares a forced dealer bid of 5 when every other seat passed', () => {
-    const weakHand = [
+    const weakHand: Card[] = [
       { id: 'C-2', suit: 'C', rank: 2 }, { id: 'C-3', suit: 'C', rank: 3 },
       { id: 'C-4', suit: 'C', rank: 4 }, { id: 'H-5', suit: 'H', rank: 5 },
       { id: 'H-6', suit: 'H', rank: 6 }, { id: 'D-7', suit: 'D', rank: 7 },

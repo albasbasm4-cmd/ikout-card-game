@@ -4,179 +4,186 @@
  */
 
 import React, { useState } from 'react';
-import { X, Save, UserCircle2 } from 'lucide-react';
-import { CARD_THEMES, CHARACTER_IDS, PlayerProfile, TABLE_THEMES, characterFace, loadProfile, saveProfile, useProfile } from '../utils/profile';
-import { MUSLIM_COUNTRIES, flagUrl } from '../utils/countries';
+import {
+  CARD_THEMES, CHARACTER_IDS, PlayerProfile, TABLE_THEMES, characterFace, loadProfile, saveProfile, useProfile,
+} from '../utils/profile';
+import { MUSLIM_COUNTRIES, flagUrl, countryName } from '../utils/countries';
+import { voiceFor, CharacterId } from '../utils/gamePresentation';
+import { playCharacterClip } from '../utils/characterAudio';
 import { playTapSound } from '../utils/audio';
+import { useXp } from '../utils/xp';
 
 export interface ProfileEditorProps {
-  /** Called after changes are saved (or discarded) to return to the previous screen. */
-  onClose: (saved: boolean) => void;
+  onClose: () => void;
 }
 
+type Tab = 'character' | 'table' | 'cards' | 'flag';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'character', label: 'الشخصية' },
+  { id: 'table', label: 'شكل الطاولة' },
+  { id: 'cards', label: 'شكل الأوراق' },
+  { id: 'flag', label: 'العلم' },
+];
+
 /**
- * Full-screen profile editor opened from the home screen.
- * Edits stay as a draft until the player presses "حفظ التعديلات";
- * the X button in the top-left corner leaves without saving.
+ * The profile panel, opened by tapping the profile image on the home screen.
+ * Same panel look as the approved design: white border, blue gradient, gold
+ * title, option grids. Tabs: all 36 characters (each tap previews that
+ * character's real voice), table style, card backs and the country flag.
+ * Every change applies immediately, exactly like the design.
  */
 export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose }) => {
-  const saved = useProfile();
-  const [draft, setDraft] = useState<PlayerProfile>(() => loadProfile());
+  const { level, inLevel, needed } = useXp();
+  const [profile, setProfile] = useState<PlayerProfile>(() => loadProfile());
+  const [tab, setTab] = useState<Tab>('character');
+  const [pop, setPop] = useState<string | null>(null);
 
-  const apply = (partial: Partial<PlayerProfile>) => setDraft(prev => ({ ...prev, ...partial }));
+  const apply = (partial: Partial<PlayerProfile>) => {
+    const next = saveProfile(partial);
+    setProfile(next);
+  };
 
-  const save = () => {
+  const chooseCharacter = (id: string) => {
     playTapSound();
-    saveProfile(draft);
-    onClose(true);
+    apply({ characterId: id });
+    // Preview: play the chosen character's own voice.
+    const clip = voiceFor(id as CharacterId, 'welcome');
+    if (clip) playCharacterClip(id as CharacterId, clip, 0);
+  };
+
+  const popOnce = (text: string) => {
+    setPop(text);
+    setTimeout(() => setPop(null), 1300);
   };
 
   return (
-    <div className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4" dir="rtl">
-      <div className="relative w-full max-w-md max-h-[92dvh] overflow-y-auto bg-neutral-950 border-2 border-amber-500/50 rounded-3xl p-4 sm:p-5 shadow-2xl text-amber-50 animate-in zoom-in-95 duration-200">
-        {/* Exit without saving — top-left */}
-        <button
-          type="button"
-          onClick={() => onClose(false)}
-          aria-label="خروج دون حفظ"
-          title="خروج دون حفظ"
-          className="absolute top-4 left-4 w-8 h-8 rounded-full bg-neutral-800 text-white border border-neutral-600 flex items-center justify-center shadow-lg active:scale-95 cursor-pointer hover:bg-neutral-700"
-        >
-          <X className="w-4 h-4" />
-        </button>
+    <div className="ik-ov" onClick={e => { if (e.target === e.currentTarget) onClose(); }} dir="rtl">
+      <div className="ik-pn">
+        <button type="button" className="ik-x" onClick={onClose} aria-label="إغلاق">✕</button>
+        <h2>الملف الشخصي</h2>
+        <div className="ik-pb">
+          {/* Left column: identity, level and XP */}
+          <div className="ik-col l">
+            <div className="ik-big">
+              <img src={characterFace(profile.characterId)} alt={profile.name} />
+            </div>
+            <input
+              className="ik-nm"
+              maxLength={14}
+              dir="ltr"
+              value={profile.name}
+              aria-label="اسم اللاعب"
+              onChange={e => apply({ name: e.target.value.trim() || 'أنت' })}
+            />
+            <h3>المستوى <span style={{ color: '#5ed3ff' }}>{level}</span></h3>
+            <div className="ik-rel">
+              <div className="ik-xpbig">
+                <i style={{ width: `${Math.round((inLevel / needed) * 100)}%` }} />
+                <span>{inLevel} / {needed} XP</span>
+              </div>
+              {pop && <div className="ik-pop" style={{ top: -8 }}>{pop}</div>}
+            </div>
+            <div className="ik-sm">كل فوز = 30 خبرة، ومع كل فوز متتالٍ +5 إضافية</div>
+          </div>
 
-        <h2 className="text-base font-black text-amber-300 flex items-center gap-2 justify-center mb-4 pb-2 border-b border-amber-500/25">
-          <UserCircle2 className="w-5 h-5" />
-          الملف الشخصي
-        </h2>
+          {/* Right column: tabs + option grid */}
+          <div className="ik-col">
+            <div className="ik-tabs">
+              {TABS.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`ik-tab ${tab === t.id ? 'on' : ''}`}
+                  onClick={() => { playTapSound(); setTab(t.id); }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
-        {/* الشخصية */}
-        <div className="mb-4">
-          <span className="text-xs font-bold text-amber-200/80 block mb-1.5">الشخصية</span>
-          <div className="grid grid-cols-6 gap-2 max-h-56 overflow-y-auto pr-1">
-            {CHARACTER_IDS.map(id => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={draft.characterId === id}
-                title={`شخصية ${id.replace('a', '')}`}
-                onClick={() => { playTapSound(); apply({ characterId: id }); }}
-                className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all active:scale-95 cursor-pointer ${
-                  draft.characterId === id
-                    ? 'border-amber-400 ring-2 ring-amber-400/40 shadow-lg'
-                    : 'border-neutral-700 hover:border-amber-400/50'
-                }`}
-              >
-                <img src={characterFace(id)} alt={`شخصية ${id}`} loading="lazy" className="w-full h-full object-cover" />
-              </button>
-            ))}
+            {tab === 'character' && (
+              <div className="ik-grid" style={{ gridTemplateColumns: 'repeat(6,1fr)' }}>
+                {CHARACTER_IDS.map(id => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={profile.characterId === id}
+                    title={`شخصية ${id.replace('a', '')}`}
+                    onClick={() => chooseCharacter(id)}
+                    className={`ik-f ${profile.characterId === id ? 'on' : ''}`}
+                  >
+                    <img src={characterFace(id)} alt={`شخصية ${id}`} loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {tab === 'table' && (
+              <div className="ik-grid">
+                {TABLE_THEMES.map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    aria-pressed={profile.table === t.id}
+                    title={t.label}
+                    onClick={() => { playTapSound(); apply({ table: t.id }); }}
+                    className={`ik-f ${profile.table === t.id ? 'on' : ''}`}
+                  >
+                    <img src={t.image} alt={t.label} loading="lazy" />
+                    <span style={{ fontSize: 12 }}>{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {tab === 'cards' && (
+              <div className="ik-grid">
+                {CARD_THEMES.map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    aria-pressed={profile.cards === t.id}
+                    title={t.label}
+                    onClick={() => { playTapSound(); apply({ cards: t.id }); }}
+                    className={`ik-f ${profile.cards === t.id ? 'on' : ''}`}
+                  >
+                    <img src={t.back} alt={t.label} loading="lazy" />
+                    <span style={{ fontSize: 12 }}>{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {tab === 'flag' && (
+              <div className="ik-grid" style={{ gridTemplateColumns: 'repeat(6,1fr)' }}>
+                <button
+                  type="button"
+                  aria-pressed={profile.country === null}
+                  aria-label="بدون علم"
+                  onClick={() => { playTapSound(); apply({ country: null }); }}
+                  className={`ik-f ${profile.country === null ? 'on' : ''}`}
+                >
+                  <span style={{ fontSize: 30 }}>🌐</span>
+                  <span style={{ fontSize: 12 }}>بدون</span>
+                </button>
+                {MUSLIM_COUNTRIES.map(c => (
+                  <button
+                    key={c.code}
+                    type="button"
+                    aria-pressed={profile.country === c.code}
+                    title={countryName(c.code) ?? c.code}
+                    onClick={() => { playTapSound(); apply({ country: c.code }); popOnce(countryName(c.code) ?? ''); }}
+                    className={`ik-f ${profile.country === c.code ? 'on' : ''}`}
+                  >
+                    <img src={flagUrl(c.code) ?? undefined} alt={c.code} loading="lazy" />
+                    <span style={{ fontSize: 12 }}>{countryName(c.code)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-
-        {/* العلم */}
-        <div className="mb-4">
-          <span className="text-xs font-bold text-amber-200/80 block mb-1.5">العلم</span>
-          <div className="grid grid-cols-6 gap-2 max-h-44 overflow-y-auto pr-1">
-            <button
-              type="button"
-              aria-pressed={draft.country === null}
-              aria-label="بدون علم"
-              onClick={() => { playTapSound(); apply({ country: null }); }}
-              className={`aspect-square rounded-2xl border-2 flex items-center justify-center bg-neutral-900 text-neutral-400 transition-all active:scale-95 cursor-pointer ${
-                draft.country === null ? 'border-amber-400 ring-2 ring-amber-400/40' : 'border-neutral-700 hover:border-amber-400/50'
-              }`}
-            >
-              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z" />
-              </svg>
-            </button>
-            {MUSLIM_COUNTRIES.map(c => (
-              <button
-                key={c.code}
-                type="button"
-                aria-pressed={draft.country === c.code}
-                title={c.name}
-                onClick={() => { playTapSound(); apply({ country: c.code }); }}
-                className={`aspect-square rounded-2xl overflow-hidden border-2 transition-all active:scale-95 cursor-pointer flex items-center justify-center bg-neutral-900 ${
-                  draft.country === c.code
-                    ? 'border-amber-400 ring-2 ring-amber-400/40 shadow-lg'
-                    : 'border-neutral-700 hover:border-amber-400/50'
-                }`}
-              >
-                <img src={flagUrl(c.code)} alt={c.name} loading="lazy" className="w-9 h-6 object-cover rounded-[3px]" />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* الاسم */}
-        <label className="mb-4 block">
-          <span className="text-xs font-bold text-amber-200/80 block mb-1.5">الاسم</span>
-          <input
-            value={draft.name}
-            maxLength={16}
-            onChange={e => apply({ name: e.target.value })}
-            placeholder="اكتب اسمك هنا"
-            className="w-full bg-black/50 border border-neutral-700 rounded-xl px-3 py-2 text-sm text-white font-semibold focus:outline-none focus:border-amber-400"
-          />
-        </label>
-
-        {/* شكل الطاولة */}
-        <div className="mb-4">
-          <span className="text-xs font-bold text-amber-200/80 block mb-1.5">شكل طاولة اللعب</span>
-          <div className="grid grid-cols-3 gap-2">
-            {TABLE_THEMES.map(t => (
-              <button
-                key={t.id}
-                type="button"
-                aria-pressed={draft.table === t.id}
-                onClick={() => { playTapSound(); apply({ table: t.id }); }}
-                className={`rounded-xl border overflow-hidden transition-all active:scale-95 cursor-pointer ${
-                  draft.table === t.id
-                    ? 'border-amber-400 ring-2 ring-amber-400/40 shadow-md'
-                    : 'border-neutral-700 hover:border-amber-400/50'
-                }`}
-              >
-                <img src={t.image} alt={t.label} className="w-full h-16 object-cover" />
-                <span className="block py-1 text-[10px] font-black bg-black/60 text-amber-200">{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* شكل الأوراق */}
-        <div className="mb-5">
-          <span className="text-xs font-bold text-amber-200/80 block mb-1.5">شكل أوراق اللعب</span>
-          <div className="grid grid-cols-3 gap-2">
-            {CARD_THEMES.map(t => (
-              <button
-                key={t.id}
-                type="button"
-                aria-pressed={draft.cards === t.id}
-                onClick={() => { playTapSound(); apply({ cards: t.id }); }}
-                className={`rounded-xl border overflow-hidden transition-all active:scale-95 cursor-pointer ${
-                  draft.cards === t.id
-                    ? 'border-amber-400 ring-2 ring-amber-400/40 shadow-md'
-                    : 'border-neutral-700 hover:border-amber-400/50'
-                }`}
-              >
-                <img src={t.back} alt={t.label} className="w-full h-16 object-cover" />
-                <span className="block py-1 text-[10px] font-black bg-black/60 text-amber-200">{t.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* حفظ التعديلات */}
-        <button
-          type="button"
-          onClick={save}
-          className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-black text-sm shadow-xl active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 border border-amber-200"
-        >
-          <Save className="w-4 h-4" />
-          <span>حفظ التعديلات</span>
-        </button>
       </div>
     </div>
   );
