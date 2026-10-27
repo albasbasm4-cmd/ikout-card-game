@@ -30,7 +30,7 @@ export function getPlayedCards(
  * Declares the trump suit:
  * - Winning bidder declares trump
  * - Phase transitions to 'PLAY'
- * - Bid winner leads the first trick
+ * - الحاكم الذي حكم ينزل آخر واحد في أول أكلة، والذي على يمينه يبدأ اللعب
  */
 export function declareTrump(
   state: GameState,
@@ -47,11 +47,16 @@ export function declareTrump(
     );
   }
 
+  const numSeats = RULES[state.variant].seats;
+  // في دوران اللعب عكس عقارب الساعة، اللاعب على يمين الحاكم هو المقعد التالي
+  // وبهذا يبدأ هو اللعب، ويدور الدور حتى يصل للحاكم ليكون آخر من ينزل في الأكلة الأولى
+  const firstLeadSeat = (state.bidderSeat! + 1) % numSeats;
+
   return {
     ...state,
     trump: suit,
     phase: 'PLAY',
-    currentSeat: state.bidderSeat, // Bid winner leads the first trick
+    currentSeat: firstLeadSeat,
     version: state.version + 1,
   };
 }
@@ -155,7 +160,7 @@ export function playCard(
   const isRoundOver = nextTrickHistory.length === cardsPerPlayer;
 
   let nextPhase: Phase = 'PLAY';
-  let nextSeat = winnerSeat; // Winner leads next trick
+  let nextSeat = winnerSeat; // الفائز بالأكلة يبدأ الأكلة التالية
 
   if (isRoundOver) {
     nextPhase = 'ROUND_END';

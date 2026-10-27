@@ -14,7 +14,7 @@ import {
 } from './protocol';
 import { GameState, PlayerSlot, SeatKind } from '../types/kout';
 import { RULES } from '../rules/config';
-import { verifyCheatReport } from '../rules/cheat';
+import { verifyCheatReport, applyCheatVerdict } from '../rules/cheat';
 
 export interface HostSessionOptions {
   engine?: KoutGameEngine;
@@ -375,21 +375,33 @@ export class HostSession {
     this.cheatReportsThisRound += 1;
 
     const { accusedSeat, cardType } = packet.payload;
-    const confirmed = verifyCheatReport(this.engine.state, accusedSeat, cardType);
+    const result = applyCheatVerdict(this.engine.state, senderSeat, accusedSeat, cardType);
 
-    // الحكم يوصل لكل اللاعبين حتى يشهدوا النتيجة
+    // تحديث المحرك بالحالة الجديدة بالنقاط المضاعفة
+    this.engine = new KoutGameEngine(
+      { variant: this.engine.state.variant, targetScore: this.engine.state.targetScore },
+      result.nextState
+    );
+
+    // الحكم يوصل لكل اللاعبين
     for (const seat of this.seatToToken.keys()) {
       this.sendPacket(this.seatToToken.get(seat) as string, {
         type: 'CHEAT_VERDICT',
         payload: {
-          confirmed,
+          confirmed: result.confirmed,
           accusedSeat,
           cardType,
           reporterSeat: senderSeat,
           roundNo: this.engine.state.roundNo,
+          announcement: result.announcement,
+          pointsAdded: result.pointsAdded,
+          winningTeam: result.winningTeam,
         },
       });
     }
+
+    // بث الحالة المحدثة لجميع اللاعبين
+    this.broadcastState();
   }
 
   /**

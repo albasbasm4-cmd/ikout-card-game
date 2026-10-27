@@ -212,16 +212,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     return <div className={`rm-sa rm-n${n}`}>{col(0, h, 'ta', 'الفريق أ')}{col(h, n, 'tb', 'الفريق ب')}</div>;
   };
 
-  if (showScanner) {
-    return (
-      <JoinScreen
-        initialCode={showScanner.code}
-        initialMode={showScanner.manual ? 'MANUAL' : undefined}
-        onBack={() => setShowScanner(null)}
-        onConnected={() => { setShowScanner(null); setJoined(true); }}
-      />
-    );
-  }
+
 
   return (
     <div dir="rtl" className={`ik-home su2-root ${className}`} style={{ background: '#1a2128' }}>
@@ -343,6 +334,27 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
         {profileOpen && <ProfileEditor onClose={() => setProfileOpen(false)} />}
         {qrOpen && <QrModal roomCode={roomCode} isOpen onClose={() => setQrOpen(false)} />}
       </div>
+
+      {/* شاشة الانضمام والمسح كطبقة فوقية تحافظ على بنية المسرح وملاءمته للشاشة */}
+      {showScanner && (
+        <div className="fixed inset-0 z-50 bg-black">
+          <JoinScreen
+            initialCode={showScanner.code}
+            initialMode={showScanner.manual ? 'MANUAL' : undefined}
+            onBack={() => {
+              setShowScanner(null);
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+            }}
+            onConnected={() => {
+              setShowScanner(null);
+              setJoined(true);
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -177,18 +177,18 @@ describe('HostSession & Network Protocol v1', () => {
     expect(client1Error).not.toBeNull();
     expect(client1Error!.code).toBe('NOT_YOUR_TURN');
 
-    // Client 2 (Seat 1) bids legally
+    // Client 2 (Seat 1) bids legally (voluntary min is 6, 5 is Malzom only)
     client2.send({
       v: 1,
       seq: 2,
       playerToken: token2,
       type: 'BID_REQUEST',
-      payload: { bid: 5 },
+      payload: { bid: 6 },
     });
 
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(hostSession.state.highBid).toBe(5);
+    expect(hostSession.state.highBid).toBe(6);
     expect(hostSession.state.bidderSeat).toBe(1);
   });
 

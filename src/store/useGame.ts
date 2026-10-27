@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { GameState, Card, Bid, Suit, Difficulty, TrickPlay, PlayerSlot } from '../types/kout';
-import { verifyCheatReport, type ReportedCardType } from '../rules/cheat';
+import { verifyCheatReport, applyCheatVerdict, type ReportedCardType } from '../rules/cheat';
 import { KoutGameEngine } from '../engine/KoutGameEngine';
 import { getLegalCards, trickWinner } from '../rules/cards';
 import { getPlayedCards } from '../engine/KoutTricks';
@@ -37,6 +37,9 @@ export interface CheatVerdict {
   cardType: ReportedCardType;
   reporterSeat: number | null;
   roundNo: number;
+  announcement?: string;
+  pointsAdded?: number;
+  winningTeam?: 0 | 1;
 }
 
 const MAX_CHEAT_REPORTS_PER_ROUND = 3;
@@ -456,16 +459,33 @@ export function useGame(options: UseGameOptions = {}) {
     lastCheatReportAtRef.current = now;
     cheatReportsThisRoundRef.current += 1;
 
-    // التحقق يجري على الحالة الكاملة (أوراق كل اللاعبين) — هذه هي الحقيقة
-    const confirmed = verifyCheatReport(engine.state, accusedSeat, cardType);
+    const reporterSeat = activeHumanSeatRef.current ?? 0;
+    const result = applyCheatVerdict(engine.state, reporterSeat, accusedSeat, cardType);
+
+    engineRef.current = new KoutGameEngine(
+      { variant, targetScore: state.targetScore, seed: 0, players: state.players },
+      result.nextState
+    );
+    setState(result.nextState);
+
     setCheatVerdict({
-      confirmed,
+      confirmed: result.confirmed,
       accusedSeat,
       cardType,
-      reporterSeat: activeHumanSeatRef.current,
+      reporterSeat,
       roundNo: engine.state.roundNo,
+      announcement: result.announcement,
+      pointsAdded: result.pointsAdded,
+      winningTeam: result.winningTeam,
     });
-    return confirmed;
+
+    if (result.confirmed) {
+      playWinSound();
+    } else {
+      playLoseSound();
+    }
+
+    return result.confirmed;
   }, []);
 
   return {

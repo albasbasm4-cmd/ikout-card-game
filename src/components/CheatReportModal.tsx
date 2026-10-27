@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { ShieldAlert, X } from 'lucide-react';
-import type { Suit, PlayerSlot } from '../types/kout';
+import type { PlayerSlot } from '../types/kout';
 import type { ReportedCardType } from '../rules/cheat';
 import { Button } from './ui/button';
 import { playTapSound } from '../utils/audio';
@@ -21,17 +21,19 @@ const CARD_TYPES: { value: ReportedCardType; label: string; icon: string }[] = [
 
 export interface CheatReportModalProps {
   players: PlayerSlot[];
+  reporterSeat?: number;
   seatsCount: number;
   onClose: () => void;
   onSubmit: (accusedSeat: number, cardType: ReportedCardType) => void;
 }
 
 /**
- * نافذة البلاغ عن غش: تُفعَّل فقط في اللعب الجماعي ضد لاعبين بشريين.
- * البلاغ يُحكم فيه بعد التحقق من يده الكاملة وقت اللعب — لا يُحتسب غشاً تلقائياً.
+ * نافذة البلاغ عن غش:
+ * تظهر فقط اللاعبين الحقيقيين الذين انضموا للغرفة (بدون البوتات وبدون اللاعب نفسه).
  */
 export const CheatReportModal: React.FC<CheatReportModalProps> = ({
   players,
+  reporterSeat,
   seatsCount,
   onClose,
   onSubmit,
@@ -39,20 +41,22 @@ export const CheatReportModal: React.FC<CheatReportModalProps> = ({
   const [accusedSeat, setAccusedSeat] = useState<number | null>(null);
   const [cardType, setCardType] = useState<ReportedCardType | null>(null);
 
-  const playerName = (seat: number): string =>
-    players?.[seat]?.name || `لاعب ${seat + 1}`;
+  // إظهار اللاعبين الحقيقيين فقط الذين دخلوا الغرفة
+  const eligiblePlayers = (players || []).filter(
+    (p) => p.kind !== 'AI_BOT' && p.seatIndex !== reporterSeat
+  );
 
   const canSubmit = accusedSeat !== null && cardType !== null;
 
   return (
-    <div className="absolute inset-0 z-[60] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+    <div className="absolute inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-sm bg-neutral-950 border-2 border-rose-500/60 rounded-3xl p-4 shadow-2xl">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 flex items-center justify-center">
               <ShieldAlert className="w-5 h-5 text-white" />
             </div>
-            <h2 className="text-sm font-black text-rose-300">البلاغ عن غش</h2>
+            <h2 className="text-sm font-black text-rose-300">إبلاغ عن غش</h2>
           </div>
           <button
             type="button"
@@ -60,61 +64,80 @@ export const CheatReportModal: React.FC<CheatReportModalProps> = ({
               playTapSound();
               onClose();
             }}
-            className="w-7 h-7 rounded-full bg-black/60 border border-white/20 flex items-center justify-center"
+            className="w-7 h-7 rounded-full bg-black/60 border border-white/20 flex items-center justify-center cursor-pointer"
             aria-label="إغلاق"
           >
             <X className="w-4 h-4 text-white/70" />
           </button>
         </div>
 
-        <p className="text-[11px] text-amber-200/70 font-medium mb-3 leading-relaxed">
-          اختر اللاعب ونوع الورقة التي كسر فيها التبعية. النظام يفحص يده وقت اللعب ويصدر الحكم —
-          البلاغ الكذب يُستهلك من حدّك (٣ بلاغات بالجولة).
+        <p className="text-[11px] text-amber-200/80 font-medium mb-3 leading-relaxed">
+          حدد اللاعب الحقيقي ونوع البطاقة التي غش فيها (مثلاً كسر التبعية ونزل ورقة أخرى).
+          إذا ثبت الغش يُدبّل الفوز لفريقك، وإذا كان البلاغ خاطئاً تُحتسب النقاط المضاعفة لفريقه.
         </p>
 
-        {/* الخطوة ١: اختيار اللاعب */}
-        <span className="text-[10px] text-white/50 font-black block mb-1">اللاعب المُبلَّغ عنه</span>
-        <div className={`grid gap-1.5 mb-3 ${seatsCount === 6 ? 'grid-cols-3' : 'grid-cols-3'}`}>
-          {Array.from({ length: seatsCount }, (_, seat) => (
-            <button
-              key={seat}
-              type="button"
-              onClick={() => {
-                playTapSound();
-                setAccusedSeat(seat);
-              }}
-              className={`px-2 py-1.5 rounded-xl text-[11px] font-black border transition-colors cursor-pointer ${
-                accusedSeat === seat
-                  ? 'bg-rose-600 border-rose-300 text-white'
-                  : 'bg-black/60 border-white/15 text-white/80 hover:border-rose-400/60'
-              }`}
-            >
-              {playerName(seat)}
-            </button>
-          ))}
-        </div>
+        {/* الخطوة ١: اختيار اللاعب الحقيقي فقط */}
+        <span className="text-[10px] text-white/60 font-black block mb-1">
+          اللاعب الحقيقي المُبلَّغ عنه
+        </span>
 
-        {/* الخطوة ٢: نوع الورقة */}
-        <span className="text-[10px] text-white/50 font-black block mb-1">نوع الورقة (الذي لم ينزّله رغم توفره)</span>
+        {eligiblePlayers.length === 0 ? (
+          <div className="p-3 mb-3 bg-white/5 border border-white/10 rounded-xl text-center text-xs text-white/60 font-bold">
+            لا يوجد لاعبون حقيقيون متاحون للإبلاغ عنهم في هذه الغرفة.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 mb-3">
+            {eligiblePlayers.map((p) => {
+              const isSelected = accusedSeat === p.seatIndex;
+              return (
+                <button
+                  key={p.seatIndex}
+                  type="button"
+                  onClick={() => {
+                    playTapSound();
+                    setAccusedSeat(p.seatIndex);
+                  }}
+                  className={`px-2 py-2 rounded-xl text-[11px] font-black border transition-colors cursor-pointer flex flex-col items-center justify-center text-center ${
+                    isSelected
+                      ? 'bg-rose-600 border-rose-300 text-white shadow-md'
+                      : 'bg-black/60 border-white/15 text-white/80 hover:border-rose-400/60'
+                  }`}
+                >
+                  <span className="truncate w-full">{p.name || `لاعب ${p.seatIndex + 1}`}</span>
+                  <span className="text-[9px] opacity-70">فريق {p.team === 0 ? '١' : '٢'}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* الخطوة ٢: نوع البطاقة */}
+        <span className="text-[10px] text-white/60 font-black block mb-1">
+          نوع البطاقة التي غش فيها
+        </span>
         <div className="grid grid-cols-3 gap-1.5 mb-3">
-          {CARD_TYPES.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => {
-                playTapSound();
-                setCardType(t.value);
-              }}
-              className={`px-2 py-1.5 rounded-xl text-[11px] font-black border transition-colors cursor-pointer flex items-center justify-center gap-1 ${
-                cardType === t.value
-                  ? 'bg-amber-500 border-amber-200 text-black'
-                  : 'bg-black/60 border-white/15 text-white/80 hover:border-amber-400/60'
-              }`}
-            >
-              <span className={t.value === 'H' || t.value === 'D' ? 'text-rose-400' : ''}>{t.icon}</span>
-              {t.label}
-            </button>
-          ))}
+          {CARD_TYPES.map((t) => {
+            const isSelected = cardType === t.value;
+            const isRed = t.value === 'H' || t.value === 'D';
+            return (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => {
+                  playTapSound();
+                  setCardType(t.value);
+                }}
+                className={`px-2 py-1.5 rounded-xl text-[11px] font-black border transition-colors cursor-pointer flex items-center justify-center gap-1 ${
+                  isSelected
+                    ? 'bg-amber-500 border-amber-200 text-black shadow-md'
+                    : 'bg-black/60 border-white/15 text-white/80 hover:border-amber-400/60'
+                }`}
+              >
+                <span className={isRed ? 'text-rose-400' : ''}>{t.icon}</span>
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         <Button
@@ -132,7 +155,7 @@ export const CheatReportModal: React.FC<CheatReportModalProps> = ({
           }`}
         >
           <ShieldAlert className="w-4 h-4" />
-          <span>إرسال البلاغ</span>
+          <span>تأكيد الإبلاغ عن الغش</span>
         </Button>
       </div>
     </div>

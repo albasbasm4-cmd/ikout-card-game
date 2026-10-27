@@ -165,15 +165,14 @@ export class KoutGameEngine {
       if (effectiveBid < 5 || effectiveBid > 9) {
         throw new Error(`Invalid bid ${effectiveBid}. Valid bids are 0 (pass) or 5..9`);
       }
-      const minVoluntary = allOthersPassed ? 5 : 6;
-      if (effectiveBid < minVoluntary) {
-        throw new Error(`Invalid bid ${effectiveBid}. Minimum bid is ${minVoluntary} (5 is Malzom only)`);
-      }
-
       if (this._state.highBid !== null && effectiveBid <= this._state.highBid) {
         throw new Error(
           `Bid ${effectiveBid} must be higher than current high bid ${this._state.highBid}`
         );
+      }
+      const minVoluntary = allOthersPassed ? 5 : 6;
+      if (effectiveBid < minVoluntary) {
+        throw new Error(`Invalid bid ${effectiveBid}. Minimum bid is ${minVoluntary} (5 is Malzom only)`);
       }
     }
 
@@ -224,11 +223,14 @@ export class KoutGameEngine {
       );
     }
 
+    const numSeats = RULES[this._state.variant].seats;
+    const firstLeadSeat = (this._state.bidderSeat! + 1) % numSeats;
+
     const nextState: GameState = {
       ...this._state,
       trump: suit,
       phase: 'PLAY',
-      currentSeat: this._state.bidderSeat,
+      currentSeat: firstLeadSeat,
       version: this._state.version + 1,
     };
 

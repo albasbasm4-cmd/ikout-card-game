@@ -347,16 +347,17 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         {/* لافتة الحكم على البلاغ */}
         {cheatVerdict && (
           <div
-            className={`absolute top-16 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-2xl border-2 shadow-2xl backdrop-blur-md text-center animate-in zoom-in-95 duration-200 ${
+            className={`absolute top-16 left-1/2 -translate-x-1/2 z-[70] max-w-md w-[92%] px-4 py-2.5 rounded-2xl border-2 shadow-2xl backdrop-blur-md text-center animate-in zoom-in-95 duration-200 ${
               cheatVerdict.confirmed
-                ? 'bg-rose-950/95 border-rose-400'
-                : 'bg-amber-950/95 border-amber-400/70'
+                ? 'bg-rose-950/95 border-rose-400 text-rose-100'
+                : 'bg-amber-950/95 border-amber-400/70 text-amber-100'
             }`}
           >
-            <p className={`text-xs sm:text-sm font-black ${cheatVerdict.confirmed ? 'text-rose-200' : 'text-amber-200'}`}>
-              {cheatVerdict.confirmed
-                ? `⚖️ غش مؤكد: ${state.players?.[cheatVerdict.accusedSeat]?.name || `لاعب ${cheatVerdict.accusedSeat + 1}`} كان عنده الورقة وما نزلها!`
-                : '⚖️ الحكم: لا يوجد غش — الورقة ما كانت عنده وقتها'}
+            <p className="text-xs sm:text-sm font-black leading-snug">
+              {cheatVerdict.announcement ||
+                (cheatVerdict.confirmed
+                  ? `⚖️ غش مؤكد: ثبت أن ${state.players?.[cheatVerdict.accusedSeat]?.name || `لاعب ${cheatVerdict.accusedSeat + 1}`} كسر التبعية!`
+                  : '⚖️ بلاغ خاطئ: لم يثبت الغش!')}
             </p>
           </div>
         )}
@@ -392,6 +393,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         {showCheatModal && (
           <CheatReportModal
             players={state.players || []}
+            reporterSeat={activeHumanSeat ?? 0}
             seatsCount={numSeats}
             onClose={() => setShowCheatModal(false)}
             onSubmit={(accusedSeat: number, cardType: ReportedCardType) => {

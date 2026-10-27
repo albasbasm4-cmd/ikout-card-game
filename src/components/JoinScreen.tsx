@@ -241,7 +241,10 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={onBack}
+              onClick={() => {
+                scannerRef.current.stopScan();
+                onBack();
+              }}
               className="w-8 h-8 rounded-full bg-neutral-800 text-amber-300 hover:text-white flex items-center justify-center cursor-pointer active:scale-95 transition-colors"
               aria-label="الرجوع"
             >

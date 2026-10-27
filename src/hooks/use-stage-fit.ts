@@ -41,16 +41,25 @@ export function useStageFit(stageRef: RefObject<HTMLDivElement | null>, stageW =
       const dy = (ins.t - ins.b) / 2;
       el.style.transform = `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))${portrait ? ' rotate(90deg)' : ''} scale(${s})`;
     };
+
     fit();
-    const late = window.setTimeout(fit, 350);
+    const t1 = window.setTimeout(fit, 80);
+    const t2 = window.setTimeout(fit, 250);
+    const t3 = window.setTimeout(fit, 600);
+
     window.addEventListener('resize', fit);
     window.addEventListener('orientationchange', fit);
     window.visualViewport?.addEventListener('resize', fit);
+    window.visualViewport?.addEventListener('scroll', fit);
+
     return () => {
-      window.clearTimeout(late);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
       window.removeEventListener('resize', fit);
       window.removeEventListener('orientationchange', fit);
       window.visualViewport?.removeEventListener('resize', fit);
+      window.visualViewport?.removeEventListener('scroll', fit);
     };
-  }, [stageRef]);
+  }, [stageRef, stageW, stageH]);
 }

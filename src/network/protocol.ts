@@ -121,6 +121,9 @@ export interface CheatVerdictPayload {
   cardType: CheatCardType;
   reporterSeat: number | null;
   roundNo: number;
+  announcement?: string;
+  pointsAdded?: number;
+  winningTeam?: 0 | 1;
 }
 
 export type HostPacketType =
