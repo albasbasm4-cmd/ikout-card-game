@@ -392,8 +392,14 @@
 .reference-speech { position:absolute; bottom:100%; left:50%; transform:translateX(-50%); min-width:70px; max-width:150px; padding:3px 7px; font-size:10px; background:var(--reference-text); color:var(--reference-ink); border-radius:4px; box-shadow:0 2px 4px var(--reference-shadow); }
 .reference-local-speech { font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .reference-trump { position:absolute; top:10px; left:calc(50% + 70px); display:flex; gap:5px; color:var(--reference-gold); }
-.reference-trick { position:absolute; top:50%; left:50%; z-index:15; }
-.reference-trick-card { position:absolute; margin-left:-24px; margin-top:-35px; }
+/* خلايا الأوراق المنزلة: نسب مئوية داخل صندوق سطح الطاولة لكل ثيم (الافتراضي = خشب) */
+.reference-trick { position:absolute; z-index:20; pointer-events:none; left:15%; right:15%; top:21.8%; height:55.8%; }
+.table-theme-gold .reference-trick { left:14.8%; right:14.7%; top:20.6%; height:58.4%; }
+.table-theme-classic .reference-trick { left:2.4%; right:2.5%; top:0.5%; height:70.5%; }
+.table-theme-grass .reference-trick { left:9%; right:9%; top:0.5%; height:67.2%; }
+.table-theme-outdoor .reference-trick { left:12.5%; right:12.6%; top:0.5%; height:69.8%; }
+.reference-trick-card { position:absolute; width:13.8%; aspect-ratio:128/158; }
+.reference-trick-card .playing-card-sm { width:100%!important; height:100%!important; }
 .trick-winning { filter:drop-shadow(0 0 8px var(--reference-gold)); }
 .reference-winner { position:absolute; bottom:75px; left:50%; transform:translateX(-50%); white-space:nowrap; color:var(--reference-gold); font-size:12px; }
 .reference-local-hand { position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); width:min(65%,600px); z-index:30; }
@@ -438,7 +444,6 @@
  .reference-portrait { width:44px; height:47px; } .reference-local-player .reference-portrait { width:42px;height:45px; } .reference-player-name { font-size:9px; }
  .reference-bid-wheel { transform:scale(.8); }
  .reference-tools button { width:24px!important; height:24px!important; min-width:24px; }
- .reference-trick-card .playing-card-sm { width:40px!important;height:58px!important; }
  .reference-tools>div { position:absolute;top:calc(-100dvh + 58px);left:8px; }
 }
 @media (max-width:500px) and (orientation:portrait) {
@@ -449,7 +454,6 @@
  .reference-portrait { width:38px;height:42px; } .reference-scorebar { width:175px;height:25px;right:5px; }
  .reference-tools>div { position:absolute;bottom:65px;left:5px;display:grid;grid-template-columns:repeat(2,24px); }
  .reference-local-hand { bottom:8px; } .playing-card-md { width:62px!important;height:94px!important; } .hand-fan-height { height:100px; }
- .reference-trick-card .playing-card-sm { width:36px!important;height:53px!important; }
  .reference-player-name { font-size:9px; } .reference-opponent-hand { width:25px; }
 }
 @media (min-height:700px) and (min-width:800px) {
@@ -488,7 +492,6 @@
 .reference-local-player .reference-portrait { width:44px; height:46px; }
 .reference-local-speech { position:absolute; right:80px; bottom:75px; max-width:220px; white-space:normal; padding:6px 10px; border-radius:6px; background:var(--reference-text); color:var(--reference-ink); box-shadow:0 2px 8px var(--reference-shadow); }
 .reference-disc { top:46%; }
-.reference-trick { top:46%; }
 .reference-speech { font-size:12px; line-height:1.45; width:max-content; max-width:145px; padding:6px 9px; border-radius:6px; z-index:3; }
 .reference-speech::after { content:''; position:absolute; top:100%; left:calc(50% - 5px); border:5px solid transparent; border-top-color:var(--reference-text); }
 .reference-chat { bottom:76px; width:min(310px,calc(100% - 16px)); max-height:60%; overflow-y:auto; border-radius:8px; }
@@ -509,7 +512,6 @@
  .reference-scorebar { top:env(safe-area-inset-top,0px); right:0; left:0; width:100%; height:40px; padding:0 12px; }
  .reference-score { gap:14px; } .reference-score strong { font-size:17px; } .reference-round { font-size:11px; }
  .reference-disc { top:45%; width:76%; height:34%; }
- .reference-trick { top:45%; }
  .reference-trump { top:136px; left:calc(50% + 54px); }
  .reference-seat { min-width:64px; }
  .reference-portrait { width:44px; height:48px; border-width:2px; border-radius:8px; }
@@ -524,7 +526,6 @@
  .seat-6-4,.seat-6-5,.seat-4-3 { left:7px; }
  .seat-6-1 .reference-speech,.seat-6-2 .reference-speech,.seat-4-1 .reference-speech { transform:translateX(-64%); }
  .seat-6-4 .reference-speech,.seat-6-5 .reference-speech,.seat-4-3 .reference-speech { transform:translateX(-36%); }
- .reference-trick-card .playing-card-sm { width:40px!important; height:60px!important; }
  .reference-local-hand { width:100%; bottom:78px; }
  .playing-card-md { width:62px!important; height:94px!important; } .hand-fan-height { height:112px; }
  .reference-controlbar { height:68px; gap:5px; padding:5px 8px; }
@@ -543,7 +544,6 @@
  .reference-local-hand { bottom:35px; width:min(65%,500px); }
  .hand-fan-height { height:93px; } .playing-card-md { width:58px!important; height:86px!important; }
  .reference-disc { top:45%; height:48%; width:58%; }
- .reference-trick { top:45%; }
  .reference-seat { min-width:70px; } .reference-seat-row { gap:8px; }
  .seat-6-3,.seat-4-2 { top:43px; }
  .seat-6-2,.seat-6-4 { top:23%; } .seat-6-1,.seat-6-5 { top:auto; bottom:150px; }
@@ -569,7 +569,6 @@
   box-shadow: 0 28px 34px -6px var(--reference-shadow), 0 8px 0 var(--reference-disc-edge), inset 0 -14px 30px var(--reference-shadow), inset 0 10px 24px var(--reference-disc-light);
 }
 .reference-rosette { box-shadow: inset 0 0 0 6px var(--reference-disc-edge), inset 0 0 50px var(--reference-shadow); }
-.reference-trick { transform-style: preserve-3d; }
 .reference-trick-card { will-change: transform; filter: drop-shadow(0 10px 8px var(--reference-shadow)); }
 .reference-trick-card.trick-winning { filter: drop-shadow(0 0 12px var(--reference-gold)) drop-shadow(0 12px 10px var(--reference-shadow)); }
 .reference-portrait { box-shadow: 0 6px 10px var(--reference-shadow), inset 0 2px 0 var(--reference-disc-light); transition: transform .2s ease, box-shadow .2s ease; }
@@ -903,7 +902,6 @@
 .seat-6-3 .reference-speech, .seat-4-2 .reference-speech { bottom:auto; top:calc(100% + 6px); }
 .reference-local-seat .reference-speech { bottom:calc(100% + 8px); }
 .reference-local-hand { bottom:6px; width:min(70%,620px); z-index:30; }
-.reference-trick { top:46%; }
 .reference-trump { position:absolute; top:64px; left:10px; z-index:30; display:flex; gap:6px; align-items:center; color:var(--reference-gold); background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:3px 9px; font-size:15px; }
 .reference-selection-overlay { padding-bottom:120px; }
 @media (max-width:900px) {
@@ -923,7 +921,6 @@
  .reference-opponent-hand { width:56px; height:36px; }
  .reference-mini-back { width:17px; height:25px; margin-left:-11px; transform-origin:50% 110px; }
  .reference-table { width:min(80%,520px); top:43%; }
- .reference-trick { top:43%; }
  .reference-trump { top:52px; font-size:13px; }
  .reference-local-hand { width:92%; }
  .reference-local-seat { bottom:1.5%; }

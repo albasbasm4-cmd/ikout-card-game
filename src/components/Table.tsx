@@ -68,6 +68,29 @@ export const MOCK_TABLE_STATE: GameState = {
   ],
 };
 
+// خلايا الأوراق المنزلة: موضع ثابت لكل مقعد داخل صندوق سطح الطاولة (نسب مئوية قابلة للتعديل من مكان واحد)
+// 1 أعلى اليسار، 2 أعلى الوسط، 3 أعلى اليمين، 4 أسفل اليسار، 5 أسفل الوسط (أنا)، 6 أسفل اليمين
+export const TRICK_SLOTS: Record<number, { left: number; top: number; from: [number, number] }> = {
+  1: { left: 26, top: 18, from: [-250, 20] },
+  2: { left: 43, top: 13.5, from: [0, -210] },
+  3: { left: 60, top: 18, from: [250, 20] },
+  4: { left: 26, top: 51, from: [-250, 40] },
+  5: { left: 43, top: 56, from: [0, 220] },
+  6: { left: 60, top: 51, from: [250, 40] },
+};
+export const trickSlotFor = (relative: number, count: number): number => {
+  if (relative === 0) return 5;
+  if (count === 6) {
+    if (relative === 3) return 2;
+    if (relative === 4) return 1;
+    if (relative === 5) return 4;
+    if (relative === 2) return 3;
+    return 6;
+  }
+  if (relative === 2) return 2;
+  return relative === 3 ? 1 : 3;
+};
+
 export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat = 0, onPlayCard, displayedTrick, winningTrickPlay, trickWinnerAnnouncement, speechBubbles = {}, legalCardIds, onSendSpeechBubble, headerControls, className = '', localHandSeat }) => {
  const profile = useProfile();
  // Stable per-seat characters: the human's profile character, bots drawn from the restored 36.
@@ -238,7 +261,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
         <span className="reference-trick-count team-blue">{state.tricksWon[1]}</span>
       </div>
     </header>
-    <div className="reference-table" aria-hidden="true">
+    <div className="reference-table">
       <img src={tableImage(profile.table)} className="reference-table-img" alt="" draggable={false} />
       {(() => {
         const topRelative = count === 6 ? 3 : 2;
@@ -246,6 +269,17 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
         if (topSeat === mySeat) return null;
         return <div className="reference-table-plate">{name(topSeat)}{state.bidderSeat === topSeat && <Crown className="reference-plate-crown" />}</div>;
       })()}
+    <div className="reference-trick" aria-label="الأوراق على الطاولة">
+      <AnimatePresence>{trick.map((play, i) => {
+        const relative = (play.seat - mySeat + count) % count;
+        const slot = trickSlotFor(relative, count);
+        const slotDef = TRICK_SLOTS[slot];
+        const winnerRel = ((winningTrickPlay?.seat ?? play.seat) - mySeat + count) % count;
+        const winSlot = TRICK_SLOTS[trickSlotFor(winnerRel, count)];
+        return <motion.div key={play.card.id} className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? 'trick-winning' : ''}`} style={{ left: `${slotDef.left}%`, top: `${slotDef.top}%`, zIndex: winningTrickPlay?.card.id === play.card.id ? 50 : i + 1 }} initial={reducedMotion ? false : { x: slotDef.from[0], y: slotDef.from[1], scale: 1.12, opacity: 0 }} animate={{ x: 0, y: 0, scale: 1, opacity: 1, rotate: 0 }} exit={{ x: (winSlot.left - slotDef.left) * 6.5, y: (winSlot.top - slotDef.top) * 3.9, scale: .35, opacity: 0, transition: { duration: .4, ease: 'easeIn' } }} transition={reducedMotion ? { duration: 0 } : { duration: .45, ease: 'easeOut' }}><Card card={play.card} size="sm" /></motion.div>;
+      })}</AnimatePresence>
+      {trickWinnerAnnouncement && <span className="reference-winner">{trickWinnerAnnouncement}</span>}
+    </div>
     </div>
     <div className="reference-trump">{state.trump && <><SuitSvg suit={state.trump} className="w-5 h-5" /><strong>{state.highBid}</strong></>}</div>
     {Array.from({ length: count }, (_, seat) => {
@@ -272,15 +306,6 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
         <AnimatePresence>{bubble(seat) && <motion.div key={bubble(seat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(seat)}</motion.div>}</AnimatePresence>
       </div>;
     })}
-    <div className="reference-trick" aria-label="الأوراق على الطاولة">
-      <AnimatePresence>{trick.map((play, i) => {
-        const relative = (play.seat - mySeat + count) % count;
-        const angle = relative * Math.PI * 2 / count;
-        const winnerAngle = ((winningTrickPlay?.seat ?? play.seat) - mySeat + count) % count * Math.PI * 2 / count;
-        return <motion.div key={play.card.id} className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? 'trick-winning' : ''}`} style={{ zIndex: winningTrickPlay?.card.id === play.card.id ? 50 : i + 1 }} initial={reducedMotion ? false : { x: Math.sin(angle) * 240, y: Math.cos(angle) * 190, scale: 1.25, rotateX: 55, rotate: (relative % 2 ? -1 : 1) * 25, opacity: 0 }} animate={{ x: Math.sin(angle) * 70, y: Math.cos(angle) * 62, rotateX: 18, rotate: (relative % 2 ? -1 : 1) * 6, scale: 1, opacity: 1 }} exit={{ x: Math.sin(winnerAngle) * 260, y: Math.cos(winnerAngle) * 190, scale: .3, rotateX: 40, opacity: 0, transition: { duration: .35, ease: 'easeIn' } }} transition={reducedMotion ? { duration: 0 } : { duration: .3, ease: [0.16, 1, 0.3, 1] }}><Card card={play.card} size="sm" /></motion.div>;
-      })}</AnimatePresence>
-      {trickWinnerAnnouncement && <span className="reference-winner">{trickWinnerAnnouncement}</span>}
-    </div>
     <AnimatePresence>{slam && <motion.div key={slam.id} className={`reference-slam slam-${slam.kind}`} initial={reducedMotion ? false : { scale: .35, opacity: 0, rotate: -12 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 1.2, opacity: 0 }} transition={{ duration: reducedMotion ? 0 : .32 }}>
       <div className="reference-slam-ring" />
       <div className="reference-slam-symbol">{slam.kind === 'trump-ace' && slam.suit ? <SuitSvg suit={slam.suit} className="reference-slam-icon" /> : <JokerSvg isRed={slam.kind === 'joker'} className="reference-slam-joker" />}</div>
