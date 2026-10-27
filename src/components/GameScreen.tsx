@@ -32,7 +32,7 @@ import {
   BookOpen,
   Maximize,
   Minimize,
-  Users,
+  Home,
   ShieldAlert,
 } from 'lucide-react';
 import { RulesModal } from './RulesModal';
@@ -43,7 +43,8 @@ import { CheatReportModal } from './CheatReportModal';
 export interface GameScreenProps {
   initialDifficulty?: Difficulty;
   initialVariant?: 'BO6' | 'BO4';
-  onGoToLobby?: () => void;
+  /** العودة إلى الشاشة الرئيسية (الواجهة الأولى بعد الانترو). */
+  onGoHome?: () => void;
   className?: string;
   /** Saved game to restore exactly as it was. */
   initialState?: GameState;
@@ -55,7 +56,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   initialState,
   initialDifficulty = 'MEDIUM',
   initialVariant = 'BO6',
-  onGoToLobby,
+  onGoHome,
   className = '',
   initialPlayers,
 }) => {
@@ -280,19 +281,19 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
       </Button>
 
-      {/* Return to Lobby Button */}
-      {onGoToLobby && (
+      {/* Home Button — ينتقل إلى الواجهة الأولى بعد الانترو */}
+      {onGoHome && (
         <Button
           type="button"
           onClick={() => {
             playTapSound();
-            onGoToLobby();
+            onGoHome();
           }}
           className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/75 border border-amber-400/40 text-amber-300 flex items-center justify-center shadow-lg backdrop-blur-md active:scale-95 cursor-pointer hover:bg-black/90 hover:border-amber-300"
-          aria-label="غرفة اللعب"
-          title="غرفة اللعب (Lobby)"
+          aria-label="الشاشة الرئيسية"
+          title="الشاشة الرئيسية"
         >
-          <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300" />
+          <Home className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300" />
         </Button>
       )}
     </div>
@@ -657,20 +658,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                 >
                   إعادة تشغيل (كوت بوأربعة - ٤ لاعبين)
                 </Button>
-                {onGoToLobby && (
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      playTapSound();
-                      setShowSettingsModal(false);
-                      onGoToLobby();
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-xs font-black text-amber-300 border border-amber-400/50 cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <Users className="w-4 h-4" />
-                    <span>الذهاب إلى غرفة اللعب (Lobby)</span>
-                  </Button>
-                )}
+
               </div>
             </div>
           </div>
