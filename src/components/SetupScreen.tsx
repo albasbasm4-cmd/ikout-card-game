@@ -1,3 +1,4 @@
+import { useSettings } from '../store/useSettings';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -135,7 +136,7 @@ const Su2Clouds: React.FC = () => {
  */
 export const SetupScreen: React.FC<SetupScreenProps> = ({ onBack, onStartGame, onResumeGame, onHostRoom, onJoinRoom, className = '' }) => {
   const stageRef = useRef<HTMLDivElement | null>(null);
-  useStageFit(stageRef, 2400, 1080);
+  useStageFit(stageRef, 2400, 1080, settings.orientationPreference);
   const profile = useProfile();
   const { level, inLevel, needed } = useXp();
   const [profileOpen, setProfileOpen] = useState(false);

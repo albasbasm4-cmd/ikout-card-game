@@ -20,10 +20,17 @@ function readSafeInsets() {
 }
 
 /**
- * Fit a fixed-size stage into the visible, notch-safe area of the viewport:
- * centered, rotated 90° in portrait phones and scaled to fit without clipping.
+ * Fit a fixed-size stage into the visible, notch-safe area of the viewport.
+ * By default (orientation = 'landscape'), forces landscape: if the device is portrait,
+ * it rotates 90° and scales to fit so the game is viewed horizontally.
+ * If orientation = 'portrait', it leaves the view vertical without the 90° rotation.
  */
-export function useStageFit(stageRef: RefObject<HTMLDivElement | null>, stageW = 1536, stageH = 691) {
+export function useStageFit(
+  stageRef: RefObject<HTMLDivElement | null>,
+  stageW = 1536,
+  stageH = 691,
+  orientation: 'landscape' | 'portrait' = 'landscape'
+) {
   useEffect(() => {
     const fit = () => {
       const el = stageRef.current;
@@ -34,12 +41,18 @@ export function useStageFit(stageRef: RefObject<HTMLDivElement | null>, stageW =
       const ins = readSafeInsets();
       const w = Math.max(1, vw - ins.l - ins.r);
       const h = Math.max(1, vh - ins.t - ins.b);
-      const portrait = h > w;
-      const s = portrait ? Math.min(h / stageW, w / stageH) : Math.min(w / stageW, h / stageH);
-      // Shift the center to the middle of the safe area.
+      const isDevicePortrait = h > w;
+
+      const shouldRotate = orientation === 'landscape' && isDevicePortrait;
+      const s = shouldRotate
+        ? Math.min(h / stageW, w / stageH)
+        : Math.min(w / stageW, h / stageH);
+
       const dx = (ins.l - ins.r) / 2;
       const dy = (ins.t - ins.b) / 2;
-      el.style.transform = `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))${portrait ? ' rotate(90deg)' : ''} scale(${s})`;
+      el.style.transform = `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))${
+        shouldRotate ? ' rotate(90deg)' : ''
+      } scale(${s})`;
     };
 
     fit();
@@ -61,5 +74,5 @@ export function useStageFit(stageRef: RefObject<HTMLDivElement | null>, stageW =
       window.visualViewport?.removeEventListener('resize', fit);
       window.visualViewport?.removeEventListener('scroll', fit);
     };
-  }, [stageRef, stageW, stageH]);
+  }, [stageRef, stageW, stageH, orientation]);
 }

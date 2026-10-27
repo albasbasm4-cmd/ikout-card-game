@@ -3,14 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Card187, GameState187, Suit187, TrickPlay187 } from '../types';
 import { Card, SuitSvg } from '../../components/Card';
 import { getLegalCards187, getCardPoints } from '../rules';
-import { Crown, ShieldAlert } from 'lucide-react';
+import { Crown, ShieldAlert, Smartphone, ArrowRight, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { characterFace, CHARACTER_IDS, useProfile } from '../../utils/profile';
 import { playTapSound } from '../../utils/audio';
+import { useStageFit } from '../../hooks/use-stage-fit';
+import { useSettings } from '../../store/useSettings';
 
 export interface Table187Props {
   state: GameState187;
@@ -61,6 +63,11 @@ export const Table187: React.FC<Table187Props> = ({
   onExit,
 }) => {
   const profile = useProfile();
+  const stageRef = useRef<HTMLDivElement>(null);
+  const { settings, toggleOrientationPreference } = useSettings();
+  const orientation = settings.orientationPreference;
+
+  useStageFit(stageRef, 1920, 1080, orientation);
   const [selectedDiscards, setSelectedDiscards] = React.useState<string[]>([]);
   const [showCheatModal, setShowCheatModal] = React.useState(false);
   const [selectedCheatPlayer, setSelectedCheatPlayer] = React.useState<number | null>(null);
@@ -111,11 +118,51 @@ export const Table187: React.FC<Table187Props> = ({
   const minAllowedBid = state.highBid ? state.highBid + 5 : 75;
 
   return (
-    <div className="relative w-full h-full select-none overflow-hidden bg-[#0d1419]">
+    <div className="fixed inset-0 overflow-hidden bg-black select-none">
+      <div
+        ref={stageRef}
+        className="absolute top-1/2 left-1/2 overflow-hidden bg-[#0d1419] shadow-2xl" style={{ width: 1920, height: 1080, transformOrigin: "center" }}
+      >
       {/* إطار الطاولة البيضاوية الفخمة */}
       <div className="absolute inset-4 sm:inset-10 rounded-[60px] border-[12px] border-[#3a2c20] bg-[#1a4428] shadow-[inset_0_0_80px_rgba(0,0,0,0.8),0_12px_36px_rgba(0,0,0,0.7)] flex items-center justify-center">
         {/* حزام الزخرفة الذهبي الداخلي للطاولة */}
         <div className="absolute inset-4 rounded-[48px] border-2 border-[#d4af37]/30 pointer-events-none" />
+
+        {/* شريط التحكم والأزرار العلوي */}
+        <div className="absolute top-6 left-8 z-30 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              playTapSound();
+              onExit();
+            }}
+            className="px-4 py-2 bg-black/70 hover:bg-neutral-900 border border-white/20 backdrop-blur-md rounded-2xl text-xs font-black text-white/90 flex items-center gap-1.5 cursor-pointer shadow-xl transition-all active:scale-95"
+            title="الخروج إلى القائمة"
+          >
+            <ArrowRight className="w-4 h-4" />
+            <span>خروج</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              playTapSound();
+              toggleOrientationPreference();
+            }}
+            className="px-4 py-2 bg-black/70 hover:bg-neutral-900 border border-amber-400/50 backdrop-blur-md rounded-2xl text-xs font-black text-amber-300 flex items-center gap-2 cursor-pointer shadow-xl transition-all active:scale-95"
+            title={
+              orientation === 'landscape'
+                ? 'التحويل إلى الوضع العمودي'
+                : 'التحويل إلى الوضع الأفقي'
+            }
+          >
+            <Smartphone
+              className={`w-4 h-4 transition-transform ${
+                orientation === 'landscape' ? 'rotate-90 text-amber-400' : 'text-emerald-400'
+              }`}
+            />
+            <span>{orientation === 'landscape' ? 'أفقي (افتراضي)' : 'عمودي'}</span>
+          </button>
+        </div>
 
         {/* لوحة المعلومات العلوية في الطاولة */}
         <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 bg-black/60 border border-amber-400/50 backdrop-blur-md rounded-2xl px-6 py-2 flex items-center gap-8 text-white shadow-xl">
@@ -283,7 +330,6 @@ export const Table187: React.FC<Table187Props> = ({
             );
           })}
         </div>
-      </div>
 
       {/* ===== نوافذ تفاعلية حسب المرحلة ===== */}
 
@@ -543,6 +589,10 @@ export const Table187: React.FC<Table187Props> = ({
           </div>
         </div>
       )}
+      </div>
+      </div>
     </div>
   );
 };
+
+export default Table187;

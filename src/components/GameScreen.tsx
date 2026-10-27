@@ -15,6 +15,7 @@ import { TurnTimer } from './TurnTimer';
 import { Card as CardType, Difficulty, Suit } from '../types/kout';
 import { strings } from '../i18n/ar';
 import { useSettings } from '../store/useSettings';
+import { useStageFit } from '../hooks/use-stage-fit';
 import { playWinSound, playLoseSound, playTrickWinSound, playTapSound } from '../utils/audio';
 import {
   Trophy,
@@ -34,6 +35,7 @@ import {
   Minimize,
   Home,
   ShieldAlert,
+  Smartphone,
 } from 'lucide-react';
 import { RulesModal } from './RulesModal';
 import { Button } from './ui/button';
@@ -189,6 +191,27 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         </div>
       )}
 
+      {/* Orientation Toggle Button */}
+      <Button
+        type="button"
+        onClick={() => {
+          playTapSound();
+          toggleOrientationPreference();
+        }}
+        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/75 border border-amber-400/40 text-amber-300 flex items-center justify-center shadow-md hover:bg-neutral-900 active:scale-95 transition-all p-0 cursor-pointer"
+        title={
+          settings.orientationPreference === 'landscape'
+            ? 'التحويل إلى الوضع العمودي'
+            : 'التحويل إلى الوضع الأفقي'
+        }
+      >
+        <Smartphone
+          className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${
+            settings.orientationPreference === 'landscape' ? 'rotate-90 text-amber-400' : 'text-emerald-400'
+          }`}
+        />
+      </Button>
+
       {/* Fullscreen Toggle Button */}
       <Button
         type="button"
@@ -302,8 +325,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   return (
     <div
       dir="rtl"
-      className={`w-screen h-[100dvh] bg-[var(--reference-felt)] text-amber-50 select-none overflow-hidden ${className}`}
+      className={`fixed inset-0 bg-black text-amber-50 select-none overflow-hidden ${className}`}
     >
+      <div
+        ref={stageRef}
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1600px] h-[900px] bg-[var(--reference-felt)] shadow-2xl flex flex-col overflow-hidden"
+      >
 
       <div className="relative w-full h-full flex flex-col overflow-hidden">
         {/* Main Interactive Table Component with Integrated Header Controls */}
@@ -672,6 +699,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
           onClose={() => setShowRulesModal(false)}
         />
 
+      </div>
       </div>
     </div>
   );

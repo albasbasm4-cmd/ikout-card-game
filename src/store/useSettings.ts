@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 export type BotSpeed = 'SLOW' | 'NORMAL' | 'FAST';
 export type CardStyle = 'CLASSIC' | 'MODERN' | 'TRADITIONAL';
 export type Language = 'AR' | 'EN';
+export type OrientationPreference = 'landscape' | 'portrait';
 
 export interface AppSettings {
   soundEnabled: boolean;
@@ -15,6 +16,7 @@ export interface AppSettings {
   botSpeed: BotSpeed;
   cardStyle: CardStyle;
   language: Language;
+  orientationPreference: OrientationPreference;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   botSpeed: 'NORMAL',
   cardStyle: 'CLASSIC',
   language: 'AR',
+  orientationPreference: 'landscape', // أفقي فرضاً في كل التطبيق
 };
 
 const SETTINGS_STORAGE_KEY = 'ikout_settings_v1';
@@ -89,6 +92,20 @@ export function useSettings() {
     [updateSettings]
   );
 
+  const setOrientationPreference = useCallback(
+    (orientationPreference: OrientationPreference) => {
+      updateSettings({ orientationPreference });
+    },
+    [updateSettings]
+  );
+
+  const toggleOrientationPreference = useCallback(() => {
+    updateSettings({
+      orientationPreference:
+        settings.orientationPreference === 'landscape' ? 'portrait' : 'landscape',
+    });
+  }, [settings.orientationPreference, updateSettings]);
+
   return {
     settings,
     updateSettings,
@@ -97,6 +114,8 @@ export function useSettings() {
     setBotSpeed,
     setCardStyle,
     setLanguage,
+    setOrientationPreference,
+    toggleOrientationPreference,
   };
 }
 

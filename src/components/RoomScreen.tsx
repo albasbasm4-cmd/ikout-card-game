@@ -1,3 +1,4 @@
+import { useSettings } from '../store/useSettings';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -62,7 +63,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
 }) => {
   const isHost = mode === 'host';
   const stageRef = useRef<HTMLDivElement | null>(null);
-  useStageFit(stageRef, 2400, 1080);
+  useStageFit(stageRef, 2400, 1080, settings.orientationPreference);
   const profile = useProfile();
   const { level, inLevel, needed } = useXp();
 

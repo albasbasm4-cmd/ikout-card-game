@@ -1,3 +1,4 @@
+import { useSettings } from '../../store/useSettings';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -32,6 +33,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
   const profile = useProfile();
   const { level, inLevel, needed } = useXp();
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const { settings } = useSettings();
 
   const [screen, setScreen] = useState<ScreenMode>('main');
   const [roomMode, setRoomMode] = useState<'host' | 'join'>('host');
@@ -52,7 +54,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     toastTimeoutRef.current = window.setTimeout(() => setToastMsg(null), 2500);
   };
 
-  useStageFit(stageRef, 2400, 1080);
+  useStageFit(stageRef, 2400, 1080, settings.orientationPreference);
 
   const generateCode = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

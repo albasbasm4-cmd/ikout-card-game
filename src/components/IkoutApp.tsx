@@ -55,7 +55,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="relative w-full min-h-[100dvh]">
+      <div className="fixed inset-0 w-full h-[100dvh] overflow-hidden bg-black select-none">
         {view === 'home' && (
           <HomeScreen
             onEnterSetup={() => setView('setup')}

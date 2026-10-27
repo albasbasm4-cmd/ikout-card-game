@@ -9,6 +9,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { useProfile, characterFace } from '../utils/profile';
 import { countryName, flagUrl } from '../utils/countries';
 import { useXp } from '../utils/xp';
+import { useSettings } from '../store/useSettings';
 import { useStageFit } from '../hooks/use-stage-fit';
 import { playTapSound } from '../utils/audio';
 
@@ -27,6 +28,7 @@ export interface HomeScreenProps {
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, onEnter187, className = '' }) => {
   const profile = useProfile();
   const { level, inLevel, needed } = useXp();
+  const { settings } = useSettings();
   const [profileOpen, setProfileOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -34,7 +36,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, onEnter187
   const prevLevel = useRef(level);
 
   // Fit the fixed stage into the viewport; rotate when the phone is portrait.
-  useStageFit(stageRef);
+  useStageFit(stageRef, 1536, 691, settings.orientationPreference);
 
   // Cards rise as soon as the menu is revealed (the intro explodes above it).
   useEffect(() => {
