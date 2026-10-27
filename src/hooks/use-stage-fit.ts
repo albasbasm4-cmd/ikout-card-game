@@ -5,14 +5,14 @@ import { useEffect, type RefObject } from 'react';
  * centered via translate(-50%,-50%), rotated 90° in portrait phones and
  * scaled to fill the screen. Shared by the home and setup screens.
  */
-export function useStageFit(stageRef: RefObject<HTMLDivElement | null>) {
+export function useStageFit(stageRef: RefObject<HTMLDivElement | null>, stageW = 1536, stageH = 691) {
   useEffect(() => {
     const fit = () => {
       const el = stageRef.current;
       if (!el) return;
       const w = window.innerWidth, h = window.innerHeight;
       const portrait = h > w;
-      const s = portrait ? Math.min(h / 1536, w / 691) : Math.min(w / 1536, h / 691);
+      const s = portrait ? Math.min(h / stageW, w / stageH) : Math.min(w / stageW, h / stageH);
       el.style.transform = `translate(-50%,-50%)${portrait ? ' rotate(90deg)' : ''} scale(${s})`;
     };
     fit();
