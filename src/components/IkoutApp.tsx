@@ -15,7 +15,7 @@ import { loadSavedGameState } from '../utils/persist';
 import { useKeepAwake } from '../store/useSettings';
 import type { GameState } from '../types/kout';
 
-type View = 'splash' | 'home' | 'setup' | 'game' | 'lobby';
+type View = 'splash' | 'home' | 'setup' | 'game' | 'lobby' | 'join';
 
 export default function App() {
   const [view, setView] = useState<View>('splash');
@@ -57,6 +57,7 @@ export default function App() {
             onStartGame={handleStartGame}
             onResumeGame={handleResumeGame}
             onHostRoom={handleHostRoom}
+            onJoinRoom={() => setView('join')}
           />
         )}
 
@@ -64,6 +65,13 @@ export default function App() {
           <Lobby
             onStartGame={handleStartGame}
             initialConfig={roomConfig ?? undefined}
+          />
+        )}
+
+        {view === 'join' && (
+          <Lobby
+            startInJoin
+            onStartGame={handleStartGame}
           />
         )}
 
