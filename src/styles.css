@@ -970,3 +970,41 @@
 .seat-4-3 .reference-opponent-hand, .seat-6-4 .reference-opponent-hand, .seat-6-5 .reference-opponent-hand { height:150px; margin-left:-14px; }
 .seat-4-1 .reference-opponent-hand, .seat-6-1 .reference-opponent-hand, .seat-6-2 .reference-opponent-hand { height:150px; margin-right:-14px; }
 .seat-4-1, .seat-6-1, .seat-6-2, .seat-4-3, .seat-6-4, .seat-6-5 { gap:0; }
+
+/* ============ Reference match v3: bigger avatars, neat fans, bid ribbon ============ */
+.reference-portrait { width:125px; height:125px; border-radius:26px; }
+.reference-local-seat .reference-portrait { width:106px; height:106px; border-radius:24px; }
+.seat-6-3 .reference-portrait, .seat-4-2 .reference-portrait { width:115px; height:115px; }
+.reference-player-name { font-size:14px; line-height:22px; display:flex; align-items:center; gap:4px; }
+.reference-bot-icon { width:12px; height:12px; min-width:12px; opacity:.9; }
+@media (max-width:900px) {
+ .reference-portrait { width:94px; height:94px; border-radius:20px; }
+ .reference-local-seat .reference-portrait { width:82px; height:82px; }
+ .seat-6-3 .reference-portrait, .seat-4-2 .reference-portrait { width:86px; height:86px; }
+ .reference-player-name { font-size:12px; line-height:18px; }
+}
+@media (max-width:560px) {
+ .reference-portrait { width:67px; height:67px; border-radius:15px; }
+ .reference-local-seat .reference-portrait { width:60px; height:60px; }
+ .seat-6-3 .reference-portrait, .seat-4-2 .reference-portrait { width:63px; height:63px; }
+ .reference-player-name { font-size:10px; line-height:15px; }
+}
+
+/* Neat shared-pivot card fans: fixed 4° step, one pivot per fan, blue backs */
+.reference-opponent-hand { position:relative; flex-shrink:0; }
+.reference-opponent-hand.fan-top, .fan-top .reference-opponent-hand { width:200px; height:62px; }
+.reference-opponent-hand.fan-left, .reference-opponent-hand.fan-right, .fan-left .reference-opponent-hand, .fan-right .reference-opponent-hand { width:72px; height:200px; }
+.fan-ring { position:absolute; left:50%; top:50%; width:200px; height:62px; transform:translate(-50%,-50%); }
+.fan-left .fan-ring { transform:translate(-50%,-50%) rotate(90deg); }
+.fan-right .fan-ring { transform:translate(-50%,-50%) rotate(-90deg); }
+.fan-ring .reference-mini-back { position:absolute; left:50%; top:0; width:27px; height:39px; margin:0 0 0 -13.5px; display:block; overflow:hidden; border-radius:4px; background:#0e5aa7; transform:rotate(var(--r)); transform-origin:50% 320px; box-shadow:0 2px 3px rgba(0,0,0,.55); }
+.fan-ring .reference-mini-back img { display:block; width:100%; height:100%; object-fit:cover; box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.9); }
+.fan-ring .reference-mini-back i { position:absolute; left:2px; bottom:2px; width:8px; height:8px; background:#173a56; clip-path:polygon(0 0,100% 100%,0 100%); }
+
+/* Bid panel: teal ribbon + beige grid like the reference */
+.reference-picker-ribbon { bottom:calc(100% + 10px); background:#2b9db0; color:#fff; font-size:16px; font-weight:800; padding:5px 34px; box-shadow:0 3px 6px rgba(0,0,0,.4); }
+.reference-bid-wheel .bid-wedge { background:#d8c8ad!important; color:#fff!important; text-shadow:0 2px 2px rgba(0,0,0,.35); }
+.reference-bid-wheel .bid-wedge:disabled { background:#b9ad97!important; color:#efe9dc!important; opacity:.8; text-shadow:none; }
+.reference-bid-wheel .bid-wedge.bid-selected { background:#1d5f8f!important; color:#fff!important; }
+.reference-bid-wheel .bid-pass { background:#d8c8ad!important; color:#fff!important; }
+.reference-bid-wheel .bid-pass:disabled { background:#b9ad97!important; }

@@ -8,7 +8,6 @@ import { motion, useReducedMotion } from 'motion/react';
 import { Card as CardType, Suit } from '../types/kout';
 import { Card } from './Card';
 import { playTapSound } from '../utils/audio';
-import { sortHandCards } from '../rules/cards';
 import { commitsCardDrag } from '../utils/gamePresentation';
 
 export interface HandProps {
@@ -59,11 +58,20 @@ export const Hand: React.FC<HandProps> = ({
     return () => observer.disconnect();
   }, [cards.length]);
 
-  // Auto-sort player cards: Jokers first, then grouped by suit (trump first) and rank descending
+  // Display order like the reference: spades, hearts, clubs, diamonds (rank descending), jokers last
   const displayCards = useMemo(() => {
     if (autoSort === false) return cards;
-    return sortHandCards(cards, trump);
-  }, [cards, trump, autoSort]);
+    const suitOrder: Record<string, number> = { S: 0, H: 1, C: 2, D: 3 };
+    return [...cards].sort((a, b) => {
+      if (a.joker && !b.joker) return 1;
+      if (!a.joker && b.joker) return -1;
+      if (a.joker && b.joker) return a.joker === 'RED' ? -1 : 1;
+      const sa = a.suit ? suitOrder[a.suit] : 9;
+      const sb = b.suit ? suitOrder[b.suit] : 9;
+      if (sa !== sb) return sa - sb;
+      return (b.rank ?? 0) - (a.rank ?? 0);
+    });
+  }, [cards, autoSort]);
 
   const selectedId =
     controlledSelectedId !== undefined ? controlledSelectedId : internalSelectedId;
@@ -84,9 +92,8 @@ export const Hand: React.FC<HandProps> = ({
     );
   }
 
-  // Calculate fan angle and horizontal overlap based on card count
-  const maxAngleSpread = Math.min(14, count * 1.6);
-  const angleStep = count > 1 ? (maxAngleSpread * 2) / (count - 1) : 0;
+  // Fan geometry like the reference: 3° steps, ±12° at the ends
+  const fanStep = count > 1 ? Math.min(3, 24 / (count - 1)) : 0;
   const horizontalOverlap = count > 1 ? Math.min(-20, (fanWidth - count * measuredCardWidth) / (count - 1)) : 0;
 
   const handleCardClick = (card: CardType, commit = false) => {
@@ -145,8 +152,8 @@ export const Hand: React.FC<HandProps> = ({
 
           // Natural parabolic fan geometry
           const normalizedIdx = index - (count - 1) / 2;
-          const rotateDeg = normalizedIdx * (angleStep * 0.65);
-          const translateY = Math.abs(normalizedIdx) * 2.2;
+          const rotateDeg = normalizedIdx * fanStep;
+          const translateY = Math.abs(normalizedIdx) * Math.abs(normalizedIdx) * 2.4;
 
           return (
             <div

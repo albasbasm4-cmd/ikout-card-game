@@ -3,14 +3,17 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { GameState, Card as CardType, Suit, TrickPlay } from '../types/kout';
 import { Card, SuitSvg, JokerSvg } from './Card';
 import { Hand } from './Hand';
-import { Crown, MessageSquare, X, Hand as PassHand } from 'lucide-react';
+import { Crown, MessageSquare, X, Hand as PassHand, Bot } from 'lucide-react';
 import { Button } from './ui/button';
 import { playBubbleSound, playTapSound } from '../utils/audio';
-import { CHARACTER_IDS, cardBack, characterFace, tableImage, useProfile } from '../utils/profile';
+import { CHARACTER_IDS, characterFace, tableImage, useProfile } from '../utils/profile';
 import { playReferenceAudio, stopReferenceAudio } from '../utils/referenceAudio';
 import { playCharacterVoice, playCharacterClip, subscribeCharacterVoice, preloadCharacterVoices, stopCharacterVoice } from '../utils/characterAudio';
 import { characterPhrase, contextKeyForMessage, specialPlay, voiceSet, type CharacterId, type PhraseKey, type SpecialPlay } from '../utils/gamePresentation';
 import { addXpForGame } from '../utils/xp';
+// ظهر الأوراق في مراوح الخصوم: الأزرق المطابق للمرجع
+const FAN_BACK = '/assets/ikout/cards/CardBack-BlueFlask.png';
+
 export interface TableProps {
  state?: GameState; mySeat?: number; onPlayCard?: (card: CardType) => void; onBid?: (bid: number) => void; onDeclareTrump?: (suit: Suit) => void;
  displayedTrick?: TrickPlay[]; winningTrickPlay?: TrickPlay | null; trickWinnerAnnouncement?: string | null;
@@ -267,7 +270,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
         const topRelative = count === 6 ? 3 : 2;
         const topSeat = (mySeat + topRelative) % count;
         if (topSeat === mySeat) return null;
-        return <div className="reference-table-plate">{name(topSeat)}{state.bidderSeat === topSeat && <Crown className="reference-plate-crown" />}</div>;
+        return <div className="reference-table-plate">{name(topSeat)}{state.bidderSeat === topSeat && <Crown className="reference-plate-crown" />}{state.players?.[topSeat]?.kind === 'AI_BOT' && <Bot className="reference-bot-icon" />}</div>;
       })()}
     <div className="reference-trick" aria-label="الأوراق على الطاولة">
       <AnimatePresence>{trick.map((play, i) => {
@@ -286,23 +289,24 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
       if (seat === mySeat) return null;
       const relative = (seat - mySeat + count) % count;
       const bid = state.bids.find(b => b.seat === seat)?.bid;
-      return <div key={seat} className={`reference-seat seat-${count}-${relative} ${seat % 2 === mySeat % 2 ? 'seat-team' : 'seat-opponent'} ${active === seat ? 'seat-active' : ''} ${speakingSeat === seat ? 'seat-speaking' : ''}`}>
+      const topRel = count === 6 ? 3 : 2;
+      const fanSide = relative === topRel ? 'top' : relative > topRel ? 'left' : 'right';
+      return <div key={seat} className={`reference-seat seat-${count}-${relative} ${seat % 2 === mySeat % 2 ? 'seat-team' : 'seat-opponent'} ${active === seat ? 'seat-active' : ''} ${speakingSeat === seat ? 'seat-speaking' : ''} fan-${fanSide}`}>
         <div className="reference-avatar-wrap">
           <img className="reference-portrait" src={portraitFor(seat)} alt={name(seat)} draggable={false} />
           {bid !== undefined && state.phase === 'BID' && <span className="reference-bid-badge">{bid || <PassHand size={18}/>}</span>}
           {state.bidderSeat === seat && <Crown className="reference-crown w-4 h-4" />}
-          {!(count === 6 ? relative === 3 : relative === 2) && <span className="reference-player-name">{name(seat)}</span>}
+          {!(count === 6 ? relative === 3 : relative === 2) && <span className="reference-player-name">{name(seat)}{state.players?.[seat]?.kind === 'AI_BOT' && <Bot className="reference-bot-icon" />}</span>}
         </div>
-        {!(bid !== undefined && state.phase === 'BID') && <div className="reference-opponent-hand" aria-label={`${state.hands[seat]?.length ?? 0} أوراق`}>
-          {Array.from({ length: state.hands[seat]?.length ?? 0 }, (_, i) => {
-            const mid = ((state.hands[seat]?.length ?? 0) - 1) / 2;
-            const topRel = count === 6 ? 3 : 2;
-            const fanSide = relative === topRel ? 'top' : relative > topRel ? 'left' : 'right';
-            const fanStep = fanSide === 'top' ? 5 : 8;
-            const fanDir = fanSide === 'right' ? -1 : 1;
-            return <img key={i} src={cardBack(profile.cards)} className={`reference-mini-back fan-${fanSide}`} alt="" draggable={false} style={{ transform: `rotate(${(i - mid) * fanDir * fanStep}deg)` }} />;
-          })}
-        </div>}
+        {!(bid !== undefined && state.phase === 'BID') && (() => {
+          const held = state.hands[seat]?.length ?? 0;
+          const fanMid = (held - 1) / 2;
+          return <div className={`reference-opponent-hand fan-${fanSide}`} aria-label={`${held} أوراق`}>
+            <div className="fan-ring">
+              {Array.from({ length: held }, (_, i) => <span key={i} className="reference-mini-back" style={{ '--r': `${(i - fanMid) * 4}deg` } as React.CSSProperties}><img src={FAN_BACK} alt="" draggable={false} /><i /></span>)}
+            </div>
+          </div>;
+        })()}
         <AnimatePresence>{bubble(seat) && <motion.div key={bubble(seat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(seat)}</motion.div>}</AnimatePresence>
       </div>;
     })}
