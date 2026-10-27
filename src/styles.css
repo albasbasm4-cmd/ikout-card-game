@@ -355,7 +355,8 @@
  --bid-seven: oklch(0.80 0.16 91); --bid-six: oklch(0.88 0.19 106); --bid-five: oklch(0.67 0.21 136);
 }
 @theme inline { --color-card-ink: var(--card-ink); --color-card-red: var(--card-red); }
-.reference-game { height:100dvh; width:100%; display:flex; flex-direction:column; color:var(--reference-text); background:var(--reference-felt); }
+:root{--sa-t:env(safe-area-inset-top,0px);--sa-r:env(safe-area-inset-right,0px);--sa-b:env(safe-area-inset-bottom,0px);--sa-l:env(safe-area-inset-left,0px);--game-h:calc(100dvh - var(--sa-t) - var(--sa-b));}
+.reference-game { position:relative; height:var(--game-h); width:calc(100% - var(--sa-l) - var(--sa-r)); margin:var(--sa-t) var(--sa-r) var(--sa-b) var(--sa-l); overflow:hidden; display:flex; flex-direction:column; color:var(--reference-text); background:var(--reference-felt); }
 .reference-scorebar { height:36px; display:flex; align-items:center; justify-content:space-between; background:var(--reference-ink); border:1px solid var(--reference-disc-edge); font-size:11px; padding:0 8px; position:absolute; right:10px; top:8px; width:230px; z-index:20; }
 .reference-score { display:flex; align-items:center; gap:18px; width:35%; height:100%; border-bottom:2px solid currentColor; }
 .team-red { color:var(--reference-red); } .team-blue { color:var(--reference-blue); justify-content:flex-end; }
@@ -444,7 +445,7 @@
  .reference-portrait { width:44px; height:47px; } .reference-local-player .reference-portrait { width:42px;height:45px; } .reference-player-name { font-size:9px; }
  .reference-bid-wheel { transform:scale(.8); }
  .reference-tools button { width:24px!important; height:24px!important; min-width:24px; }
- .reference-tools>div { position:absolute;top:calc(-100dvh + 58px);left:8px; }
+ .reference-tools>div { position:absolute;top:calc(-1 * var(--game-h) + 58px);left:8px; }
 }
 @media (max-width:500px) and (orientation:portrait) {
  .reference-controlbar { padding:0 4px; gap:3px; } .reference-tools,.reference-tools>div { gap:2px; }
@@ -461,7 +462,7 @@
  .reference-seat { min-width:140px; } .reference-portrait { width:80px;height:86px; }
  .reference-local-hand { bottom:35px; }
  .reference-controlbar { bottom:18px; }
- .reference-tools>div { position:absolute;bottom:calc(100dvh - 66px);left:12px; }
+ .reference-tools>div { position:absolute;bottom:calc(var(--game-h) - 66px);left:12px; }
 }
 
 /* Trump slam: large suit symbol zooms in at the table center when the Ace of trump is played */
@@ -486,7 +487,7 @@
 /* Stable mobile table geometry; the hand always sits above the tool rail. */
 .reference-game { position:relative; isolation:isolate; }
 .reference-scorebar { z-index:35; }
-.reference-controlbar { bottom:0; height:66px; padding:4px max(12px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)); background:var(--reference-bar); border-top:1px solid var(--reference-disc-edge); }
+.reference-controlbar { bottom:0; height:66px; padding:4px 12px; background:var(--reference-bar); border-top:1px solid var(--reference-disc-edge); }
 .reference-local-hand { bottom:65px; width:min(76%,650px); }
 .reference-tools button { width:36px!important; height:36px!important; min-width:36px; }
 .reference-local-player .reference-portrait { width:44px; height:46px; }
@@ -509,7 +510,7 @@
 .slam-maker .reference-slam-ring { border-color:var(--reference-cyan); box-shadow:0 0 26px var(--reference-cyan),inset 0 0 26px var(--reference-cyan); }
 @keyframes slam-ring { from { transform:scale(.4); opacity:1; } to { transform:scale(1.5); opacity:0; } }
 @media (orientation:portrait) and (max-width:767px) {
- .reference-scorebar { top:env(safe-area-inset-top,0px); right:0; left:0; width:100%; height:40px; padding:0 12px; }
+ .reference-scorebar { top:0; right:0; left:0; width:100%; height:40px; padding:0 12px; }
  .reference-score { gap:14px; } .reference-score strong { font-size:17px; } .reference-round { font-size:11px; }
  .reference-disc { top:45%; width:76%; height:34%; }
  .reference-trump { top:136px; left:calc(50% + 54px); }
@@ -539,7 +540,7 @@
 @media (orientation:landscape) and (max-height:500px) {
  .reference-scorebar { top:6px; right:8px; height:28px; width:215px; }
  .reference-controlbar { height:48px; }
- .reference-tools>div { position:absolute; top:auto; bottom:calc(100dvh - 42px); left:8px; display:flex; gap:5px; }
+ .reference-tools>div { position:absolute; top:auto; bottom:calc(var(--game-h) - 42px); left:8px; display:flex; gap:5px; }
  .reference-tools button { width:32px!important; min-width:32px; height:32px!important; }
  .reference-local-hand { bottom:35px; width:min(65%,500px); }
  .hand-fan-height { height:93px; } .playing-card-md { width:58px!important; height:86px!important; }
@@ -667,7 +668,7 @@
 
 /* ============ Panels (profile / settings / setup) — same look as home.html ============ */
 .ik-ov{position:absolute;inset:0;background:rgba(10,20,30,.62);display:grid;place-items:center;z-index:60}
-.ik-pn{position:relative;width:860px;max-width:94vw;height:560px;max-height:92dvh;overflow-y:auto;border:6px solid #fff;border-radius:26px;background:linear-gradient(#34506a,#1d2f3f);box-shadow:0 12px 0 rgba(0,0,0,.3);padding:20px 28px;animation:ik-up .3s forwards;opacity:1;color:#fff}
+.ik-pn{position:relative;width:860px;max-width:94vw;height:560px;max-height:calc(92dvh - var(--sa-t,0px) - var(--sa-b,0px));overflow-y:auto;border:6px solid #fff;border-radius:26px;background:linear-gradient(#34506a,#1d2f3f);box-shadow:0 12px 0 rgba(0,0,0,.3);padding:20px 28px;animation:ik-up .3s forwards;opacity:1;color:#fff}
 .ik-pn h2{margin:0 0 12px;text-align:center;font-size:30px;font-weight:900;color:#ffd23f}
 .ik-x{position:absolute;left:14px;top:12px;width:46px;height:46px;border-radius:50%;border:3px solid #fff;background:#5b7488;color:#fff;font-size:22px;font-weight:900;cursor:pointer}
 .ik-x:active{transform:scale(.94)}
@@ -1012,3 +1013,48 @@
 /* إظهار شريط الاختصارات أعلى اليسار في كل المقاسات، وفتح الدردشة من صورة اللاعب */
 .reference-tools>div { position:static; }
 .reference-portrait.reference-chat-trigger { cursor:pointer; }
+
+/* ============ Reference match v4: framed silver table, straight 3x2 trick grid ============ */
+.reference-table { top:47%; width:min(52%,720px); aspect-ratio:2/1; }
+.reference-table-frame { position:absolute; inset:0; border-radius:18px; padding:3.2%;
+ background:linear-gradient(160deg,#f4f6f8 0%,#aeb5bc 22%,#e9ecef 45%,#8c949c 70%,#d5dade 100%);
+ box-shadow:inset 0 2px 0 rgba(255,255,255,.9), inset 0 -3px 0 rgba(0,0,0,.35), 0 0 0 2px #5d646b, 0 18px 30px rgba(0,0,0,.55); }
+.reference-table-surface { position:relative; width:100%; height:100%; border-radius:10px;
+ background:radial-gradient(ellipse at 50% 40%,#2f3a40 0%,#1b2327 65%,#11171a 100%);
+ box-shadow:inset 0 0 0 2px rgba(0,0,0,.6), inset 0 6px 18px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.35); }
+.table-theme-classic .reference-table-surface { background:radial-gradient(ellipse at 50% 40%,#1f5a3d,#0e2f20 80%); }
+.table-theme-gold .reference-table-surface { background:radial-gradient(ellipse at 50% 40%,#4a2e1a,#24150b 80%); }
+.reference-table-handle { position:absolute; top:50%; width:3.4%; height:30%; transform:translateY(-50%); border-radius:8px;
+ background:linear-gradient(90deg,#8a5f14,#ffe08a 40%,#e0a83a 60%,#7a5210); box-shadow:0 2px 5px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.35); }
+.handle-left { left:-2.4%; } .handle-right { right:-2.4%; }
+.reference-trick, .table-theme-gold .reference-trick, .table-theme-classic .reference-trick, .table-theme-grass .reference-trick, .table-theme-outdoor .reference-trick { left:3.2%; right:3.2%; top:6.4%; height:87.2%; }
+.reference-trick-card { width:13.8%; transform:none; }
+.reference-trick-card > * { rotate:0deg; }
+.reference-table-plate { display:none; }
+.seat-6-3, .seat-4-2 { top:1%; }
+.seat-6-2 { right:1%; top:4%; } .seat-6-4 { left:1%; top:4%; }
+.seat-6-1 { right:1%; top:42%; } .seat-6-5 { left:1%; top:auto; bottom:6%; }
+.reference-local-seat { right:1.2%; bottom:3%; }
+.reference-player-name { gap:4px; }
+.reference-bid-badge, .reference-crown { z-index:6; }
+@media (orientation:landscape) and (max-height:500px) {
+ .reference-table { top:46%; width:min(46%,560px); }
+ .reference-portrait { width:62px; height:62px; border-radius:14px; }
+ .reference-local-seat .reference-portrait { width:58px; height:58px; }
+ .seat-6-3 .reference-portrait, .seat-4-2 .reference-portrait { width:58px; height:58px; }
+ .reference-player-name { font-size:10px; line-height:15px; }
+ .seat-6-1 { top:38%; bottom:auto; } .seat-6-5 { top:auto; bottom:8%; }
+ .seat-6-2, .seat-6-4 { top:14%; }
+ .fan-ring { transform:translate(-50%,-50%) scale(.7); }
+ .fan-left .fan-ring { transform:translate(-50%,-50%) rotate(90deg) scale(.7); }
+ .fan-right .fan-ring { transform:translate(-50%,-50%) rotate(-90deg) scale(.7); }
+ .reference-opponent-hand.fan-left, .reference-opponent-hand.fan-right { width:48px; height:140px; }
+ .reference-opponent-hand.fan-top { width:140px; height:44px; }
+}
+@media (orientation:portrait) and (max-width:560px) {
+ .reference-table { width:86%; }
+}
+.reference-trump { top:10px; left:22%; }
+.reference-local-seat { bottom:calc(3% + 20px); }
+.reference-score-mid { margin:0 10px; }
+@media (orientation:landscape) and (max-height:500px) { .reference-local-seat { bottom:18px; } .reference-trump { top:6px; left:20%; } }

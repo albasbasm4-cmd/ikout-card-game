@@ -302,7 +302,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   return (
     <div
       dir="rtl"
-      className={`w-screen h-[100dvh] bg-neutral-950 text-amber-50 select-none overflow-hidden ${className}`}
+      className={`w-screen h-[100dvh] bg-[var(--reference-felt)] text-amber-50 select-none overflow-hidden ${className}`}
     >
 
       <div className="relative w-full h-full flex flex-col overflow-hidden">

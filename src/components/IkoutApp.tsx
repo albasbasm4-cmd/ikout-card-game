@@ -46,7 +46,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="relative w-full min-h-screen">
+      <div className="relative w-full min-h-[100dvh]">
         {view === 'home' && (
           <HomeScreen onEnterSetup={() => setView('setup')} />
         )}

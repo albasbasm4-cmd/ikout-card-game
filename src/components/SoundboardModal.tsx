@@ -62,7 +62,7 @@ export const SoundboardModal: React.FC<SoundboardModalProps> = ({
   return (
     <div
       dir="rtl"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 p-safe z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div

@@ -6,7 +6,7 @@ import { Hand } from './Hand';
 import { Crown, X, Hand as PassHand, Bot } from 'lucide-react';
 import { Button } from './ui/button';
 import { playBubbleSound, playTapSound } from '../utils/audio';
-import { CHARACTER_IDS, characterFace, tableImage, useProfile } from '../utils/profile';
+import { CHARACTER_IDS, characterFace, useProfile } from '../utils/profile';
 import { playReferenceAudio, stopReferenceAudio } from '../utils/referenceAudio';
 import { playCharacterVoice, playCharacterClip, subscribeCharacterVoice, preloadCharacterVoices, stopCharacterVoice } from '../utils/characterAudio';
 import { characterPhrase, contextKeyForMessage, specialPlay, voiceSet, type CharacterId, type PhraseKey, type SpecialPlay } from '../utils/gamePresentation';
@@ -74,12 +74,12 @@ export const MOCK_TABLE_STATE: GameState = {
 // خلايا الأوراق المنزلة: موضع ثابت لكل مقعد داخل صندوق سطح الطاولة (نسب مئوية قابلة للتعديل من مكان واحد)
 // 1 أعلى اليسار، 2 أعلى الوسط، 3 أعلى اليمين، 4 أسفل اليسار، 5 أسفل الوسط (أنا)، 6 أسفل اليمين
 export const TRICK_SLOTS: Record<number, { left: number; top: number; from: [number, number] }> = {
-  1: { left: 26, top: 18, from: [-250, 20] },
-  2: { left: 43, top: 13.5, from: [0, -210] },
-  3: { left: 60, top: 18, from: [250, 20] },
-  4: { left: 26, top: 51, from: [-250, 40] },
-  5: { left: 43, top: 56, from: [0, 220] },
-  6: { left: 60, top: 51, from: [250, 40] },
+  1: { left: 24, top: 9, from: [-250, 20] },
+  2: { left: 43.1, top: 9, from: [0, -210] },
+  3: { left: 62.2, top: 9, from: [250, 20] },
+  4: { left: 24, top: 53, from: [-250, 40] },
+  5: { left: 43.1, top: 53, from: [0, 220] },
+  6: { left: 62.2, top: 53, from: [250, 40] },
 };
 export const trickSlotFor = (relative: number, count: number): number => {
   if (relative === 0) return 5;
@@ -265,13 +265,10 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
       </div>
     </header>
     <div className="reference-table">
-      <img src={tableImage(profile.table)} className="reference-table-img" alt="" draggable={false} />
-      {(() => {
-        const topRelative = count === 6 ? 3 : 2;
-        const topSeat = (mySeat + topRelative) % count;
-        if (topSeat === mySeat) return null;
-        return <div className="reference-table-plate">{name(topSeat)}{state.bidderSeat === topSeat && <Crown className="reference-plate-crown" />}{state.players?.[topSeat]?.kind === 'AI_BOT' && <Bot className="reference-bot-icon" />}</div>;
-      })()}
+      <div className="reference-table-frame" aria-hidden="true">
+        <span className="reference-table-handle handle-left" /><span className="reference-table-handle handle-right" />
+        <div className="reference-table-surface" />
+      </div>
     <div className="reference-trick" aria-label="الأوراق على الطاولة">
       <AnimatePresence>{trick.map((play, i) => {
         const relative = (play.seat - mySeat + count) % count;
@@ -296,7 +293,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
           <img className="reference-portrait" src={portraitFor(seat)} alt={name(seat)} draggable={false} />
           {bid !== undefined && state.phase === 'BID' && <span className="reference-bid-badge">{bid || <PassHand size={18}/>}</span>}
           {state.bidderSeat === seat && <Crown className="reference-crown w-4 h-4" />}
-          {!(count === 6 ? relative === 3 : relative === 2) && <span className="reference-player-name">{name(seat)}{state.players?.[seat]?.kind === 'AI_BOT' && <Bot className="reference-bot-icon" />}</span>}
+          {<span className="reference-player-name">{name(seat)}{state.players?.[seat]?.kind === 'AI_BOT' && <Bot className="reference-bot-icon" />}</span>}
         </div>
         {!(bid !== undefined && state.phase === 'BID') && (() => {
           const held = state.hands[seat]?.length ?? 0;
@@ -318,7 +315,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
     <div className="reference-local-hand"><Hand cards={(handSeat !== undefined ? state.hands[handSeat] : state.hands[mySeat]) || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" /></div>
     <div className={`reference-local-seat ${speakingSeat === mySeat ? 'seat-speaking' : ''}`}>
       <AnimatePresence>{bubble(mySeat) && <motion.div key={bubble(mySeat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(mySeat)}</motion.div>}</AnimatePresence>
-      <div className="reference-avatar-wrap"><img className="reference-portrait reference-chat-trigger" src={portraitFor(mySeat)} alt={name(mySeat)} title="رسائل الدردشة" aria-label="رسائل الدردشة" draggable={false} onClick={()=>{playTapSound();setChatOpen(v=>!v);}} /><span className="reference-player-name">{name(mySeat)}</span></div>
+      <div className="reference-avatar-wrap"><img className="reference-portrait reference-chat-trigger" src={portraitFor(mySeat)} alt={name(mySeat)} title="رسائل الدردشة" aria-label="رسائل الدردشة" draggable={false} onClick={()=>{playTapSound();setChatOpen(v=>!v);}} /><span className="reference-player-name">{name(mySeat)}{state.players?.[mySeat]?.kind === 'AI_BOT' && <Bot className="reference-bot-icon" />}</span></div>
     </div>
     {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{voiceSet(characterFor(mySeat)).chat.filter(clip => clip.text && clip.text.trim()).map(clip => <Button key={clip.file} variant="ghost" onClick={()=>{playBubbleSound(); setReactions(current => ({ ...current, [mySeat]: clip.text })); playCharacterClip(characterFor(mySeat), clip, mySeat); onSendSpeechBubble?.(`clip:${clip.file}`); setChatOpen(false);}}>{clip.text}</Button>)}</div></div>}
   </section>

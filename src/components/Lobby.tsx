@@ -113,10 +113,10 @@ export const Lobby: React.FC<LobbyProps> = ({
   return (
     <div
       dir="rtl"
-      className={`min-h-screen w-full bg-neutral-950 flex justify-center items-center p-0 sm:p-4 text-amber-50 select-none ${className}`}
+      className={`min-h-[100dvh] w-full bg-neutral-950 flex justify-center items-center p-0 sm:p-4 text-amber-50 select-none ${className}`}
     >
       {/* Landscape and desktop responsive container */}
-      <div className="relative w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[95vh] sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col wood-rail border border-amber-900/40">
+      <div className="relative w-full max-w-2xl h-[100dvh] pt-safe pb-safe px-safe sm:h-auto sm:max-h-[95vh] sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col wood-rail border border-amber-900/40">
         
         {/* Top Header */}
         <header className="relative z-10 px-4 py-3 flex items-center justify-between border-b border-amber-500/20 bg-gradient-to-b from-black/80 to-black/40 backdrop-blur-md">

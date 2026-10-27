@@ -59,7 +59,7 @@ export const RotatePrompt: React.FC<RotatePromptProps> = ({ onDismiss }) => {
   return (
     <div
       dir="rtl"
-      className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-300"
+      className="fixed inset-0 p-safe z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center select-none animate-in fade-in duration-300"
     >
       <div className="relative w-full max-w-sm bg-neutral-950 border-2 border-amber-400/80 rounded-3xl p-6 shadow-[0_0_50px_rgba(251,191,36,0.25)] flex flex-col items-center">
         

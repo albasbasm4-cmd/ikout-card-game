@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<
       return (
         <div
           dir="rtl"
-          className="min-h-screen w-full bg-neutral-950 flex items-center justify-center p-4 text-amber-50 select-none"
+          className="min-h-[100dvh] w-full bg-neutral-950 flex items-center justify-center p-4 text-amber-50 select-none"
         >
           <div className="w-full max-w-sm bg-neutral-900 border border-amber-500/40 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 mb-3 shadow-inner">

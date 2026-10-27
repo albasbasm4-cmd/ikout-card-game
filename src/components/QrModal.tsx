@@ -93,7 +93,7 @@ export const QrModal: React.FC<QrModalProps> = ({
   return (
     <div
       dir="rtl"
-      className={`fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 text-amber-50 select-none animate-in fade-in duration-200 ${className}`}
+      className={`fixed inset-0 p-safe z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 text-amber-50 select-none animate-in fade-in duration-200 ${className}`}
     >
       <div className="relative w-full max-w-sm bg-neutral-900 border border-amber-500/40 rounded-3xl p-5 shadow-2xl flex flex-col items-center text-center">
         {/* Close Button */}

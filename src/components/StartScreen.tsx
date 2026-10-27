@@ -75,7 +75,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
   return (
     <div
       dir="rtl"
-      className="relative w-full h-[100dvh] flex flex-col items-center justify-between overflow-y-auto overscroll-contain p-3 sm:p-6 bg-gradient-to-b from-[#091b12] via-[#07150e] to-[#040c08] text-amber-50 select-none overflow-x-hidden"
+      className="relative w-full h-[100dvh] flex flex-col items-center justify-between overflow-y-auto overscroll-contain p-3 sm:p-6 p-safe bg-gradient-to-b from-[#091b12] via-[#07150e] to-[#040c08] text-amber-50 select-none overflow-x-hidden"
     >
       {/* Background Ambience */}
       <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#d4af37_1px,transparent_1px)] [background-size:24px_24px]" />

@@ -18,7 +18,7 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
   return (
     <div
       dir="rtl"
-      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-200"
+      className="fixed inset-0 p-safe z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-200"
     >
       <div className="relative w-full max-w-md max-h-[85vh] bg-neutral-950 border-2 border-amber-500/50 rounded-3xl flex flex-col shadow-2xl text-amber-50 overflow-hidden">
         

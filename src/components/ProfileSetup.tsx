@@ -107,7 +107,7 @@ export function ProfileSetup({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 backdrop-blur-md"
+      className="fixed inset-0 p-safe z-[100] flex items-center justify-center bg-black/80 p-3 backdrop-blur-md"
       dir="rtl"
       role="dialog"
       aria-modal="true"
