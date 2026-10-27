@@ -32,6 +32,8 @@ import { generateRoomCode } from '../network/localIp';
 export interface LobbyProps {
   initialConfig?: Partial<RoomConfig>;
   onStartGame: (config: RoomConfig) => void;
+  /** Open straight into the join-a-room screen (from the setup screen's الانضمام button). */
+  startInJoin?: boolean;
   className?: string;
 }
 
@@ -55,6 +57,7 @@ const PRESETS: Array<{ id: RoomPreset; title: string; subtitle: string }> = [
 
 export const Lobby: React.FC<LobbyProps> = ({
   initialConfig,
+  startInJoin,
   onStartGame,
   className = '',
 }) => {
@@ -80,7 +83,7 @@ export const Lobby: React.FC<LobbyProps> = ({
   );
   useEffect(() => { const n = loadProfile().name; if (n) setPlayerName(0, n); }, []);
   const [showQrModal, setShowQrModal] = useState<boolean>(false);
-  const [showJoinScreen, setShowJoinScreen] = useState<boolean>(false);
+  const [showJoinScreen, setShowJoinScreen] = useState<boolean>(startInJoin ?? false);
   const [roomCode] = useState<string>(() => generateRoomCode());
 
   const isBO6 = variant === 'BO6';
