@@ -14,8 +14,11 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { loadSavedGameState } from '../utils/persist';
 import { useKeepAwake } from '../store/useSettings';
 import type { GameState } from '../types/kout';
+import { Room187Screen } from '../game187/components/Room187Screen';
+import { Game187Screen } from '../game187/components/Game187Screen';
+import type { GameState187, Player187 } from '../game187/types';
 
-type View = 'splash' | 'home' | 'setup' | 'game' | 'lobby' | 'join';
+type View = 'splash' | 'home' | 'setup' | 'game' | 'lobby' | 'join' | '187';
 
 export default function App() {
   const [view, setView] = useState<View>('splash');
@@ -23,6 +26,12 @@ export default function App() {
   const [splashVisible, setSplashVisible] = useState(true);
   const [roomConfig, setRoomConfig] = useState<RoomConfig | null>(null);
   const [resumedState, setResumedState] = useState<GameState | null>(null);
+
+  // 187 Game State
+  const [players187, setPlayers187] = useState<Player187[] | null>(null);
+  const [resumedState187, setResumedState187] = useState<GameState187 | null>(null);
+  const [mode187, setMode187] = useState<'single' | 'room'>('single');
+  const [roomCode187, setRoomCode187] = useState<string | undefined>(undefined);
 
   // Keep screen awake while using the app
   useKeepAwake(true);
@@ -48,7 +57,14 @@ export default function App() {
     <ErrorBoundary>
       <div className="relative w-full min-h-[100dvh]">
         {view === 'home' && (
-          <HomeScreen onEnterSetup={() => setView('setup')} />
+          <HomeScreen
+            onEnterSetup={() => setView('setup')}
+            onEnter187={() => {
+              setPlayers187(null);
+              setResumedState187(null);
+              setView('187');
+            }}
+          />
         )}
 
         {view === 'setup' && (
@@ -86,6 +102,53 @@ export default function App() {
             initialPlayers={roomConfig?.players}
             initialState={resumedState ?? (roomConfig ? undefined : loadSavedGameState() ?? undefined)}
             onGoHome={() => setView('home')}
+          />
+        )}
+
+        {/* لعبة 187 منفصلة بمحركها وشاشاتها الخاصة */}
+        {view === '187' && !players187 && (
+          <Room187Screen
+            hasSavedGame={(() => {
+              try {
+                return Boolean(localStorage.getItem('ikout_187_state'));
+              } catch {
+                return false;
+              }
+            })()}
+            onBack={() => setView('home')}
+            onStartMatch={(players, mode, roomCode) => {
+              setPlayers187(players);
+              setMode187(mode);
+              setRoomCode187(roomCode);
+              setResumedState187(null);
+            }}
+            onResumeMatch={() => {
+              try {
+                const saved = localStorage.getItem('ikout_187_state');
+                if (saved) {
+                  const parsed = JSON.parse(saved);
+                  setResumedState187(parsed);
+                  setPlayers187(parsed.players);
+                  setMode187('single');
+                }
+              } catch {
+                // ignore
+              }
+            }}
+          />
+        )}
+
+        {view === '187' && players187 && (
+          <Game187Screen
+            key={resumedState187 ? '187-resumed' : '187-new'}
+            players={players187}
+            initialState={resumedState187 ?? undefined}
+            mode={mode187}
+            roomCode={roomCode187}
+            onExit={() => {
+              setPlayers187(null);
+              setResumedState187(null);
+            }}
           />
         )}
 

@@ -14,6 +14,7 @@ import { playTapSound } from '../utils/audio';
 
 export interface HomeScreenProps {
   onEnterSetup: () => void;
+  onEnter187?: () => void;
   className?: string;
 }
 
@@ -21,10 +22,9 @@ export interface HomeScreenProps {
  * The home menu, ported 1:1 from the approved home.html design: a fixed
  * 1536x691 stage (rotated automatically in portrait), drifting SVG clouds,
  * the city skyline, the profile cluster, the settings gear in the top-right
- * and the four game cards rising right after the creeper intro. Only the
- * first card (كوت ikout) opens the game; the others are placeholders.
+ * and the four game cards rising right after the creeper intro.
  */
-export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, className = '' }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, onEnter187, className = '' }) => {
   const profile = useProfile();
   const { level, inLevel, needed } = useXp();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -91,10 +91,11 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, className 
           <div className="ik-un" dir="ltr">{profile.name || 'أنت'}</div>
         </div>
 
-        {/* Game mode cards — only ikout works for now */}
+        {/* Game mode cards — c1: كوت, c2: 187 */}
         <ModeCard id="c1" left={236} width={346} delay={0.05} image="/assets/ikout/home/c1.webp"
           enabled label="كوت" onClick={() => { playTapSound(); onEnterSetup(); }} />
-        <ModeCard id="c2" left={602} width={220} delay={0.12} image="/assets/ikout/home/c2.webp" label="قريبا" />
+        <ModeCard id="c2" left={602} width={220} delay={0.12} image="/assets/ikout/home/c2.webp"
+          enabled label="187" onClick={() => { playTapSound(); onEnter187?.(); }} />
         <ModeCard id="c3" left={842} width={220} delay={0.19} image="/assets/ikout/home/c3.webp" label="قريبا" />
         <ModeCard id="c4" left={1082} width={218} delay={0.26} image="/assets/ikout/home/c4.webp" label="قريبا" />
 
