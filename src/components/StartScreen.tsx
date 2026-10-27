@@ -138,7 +138,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
           >
             {profile.characterId ? (
               <img
-                src={`/assets/ikout/characters/${profile.characterId}-face.png`}
+                src={`/assets/ikout/characters/${profile.characterId}-portrait.png`}
                 alt={profile.nickname}
                 className="w-full h-full rounded-full object-cover select-none"
               />

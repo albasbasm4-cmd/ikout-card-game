@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 /** The 36 restored authentic characters (a1..a36). */
 export const CHARACTER_IDS = Array.from({ length: 36 }, (_, i) => `a${i + 1}`);
 
+/** Full character head with facial features (eyes, nose, mouth). */
 export function characterFace(characterId: string): string {
-  return `/assets/ikout/characters/${characterId}-face.png`;
+  return `/assets/ikout/characters/${characterId}-portrait.png`;
 }
 
 export type TableTheme = 'classic' | 'gold' | 'wood' | 'grass' | 'outdoor';
