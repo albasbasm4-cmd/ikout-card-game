@@ -37,11 +37,11 @@ export function cardBack(theme: CardTheme): string {
 }
 
 export interface PlayerProfile { name: string; characterId: string; table: TableTheme; cards: CardTheme; country: string | null }
-export const DEFAULT_PROFILE: PlayerProfile = { name: 'أنت', characterId: 'a1', table: 'classic', cards: 'authentic', country: 'kw' };
+export const DEFAULT_PROFILE: PlayerProfile = { name: 'أنت', characterId: 'a1', table: 'wood', cards: 'authentic', country: 'kw' };
 const KEY = 'ikout_profile_v1';
 const listeners = new Set<(p: PlayerProfile) => void>();
 
-const LEGACY_TABLE: Record<string, TableTheme> = { stone: 'classic', wood: 'wood', night: 'gold', classic: 'classic', gold: 'gold', grass: 'grass', outdoor: 'outdoor' };
+const LEGACY_TABLE: Record<string, TableTheme> = { stone: 'wood', wood: 'wood', night: 'gold', classic: 'wood', gold: 'gold', grass: 'grass', outdoor: 'outdoor' };
 const LEGACY_CARDS: Record<string, CardTheme> = { classic: 'authentic', royal: 'gold', night: 'moon', authentic: 'authentic', gold: 'gold', moon: 'moon', kuwait: 'kuwait', maze: 'maze', squares: 'squares' };
 
 export function loadProfile(): PlayerProfile {

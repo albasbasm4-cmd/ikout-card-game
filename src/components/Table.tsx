@@ -6,7 +6,7 @@ import { Hand } from './Hand';
 import { Crown, MessageSquare, X, Hand as PassHand } from 'lucide-react';
 import { Button } from './ui/button';
 import { playBubbleSound, playTapSound } from '../utils/audio';
-import { CHARACTER_IDS, characterFace, tableImage, useProfile } from '../utils/profile';
+import { CHARACTER_IDS, cardBack, characterFace, tableImage, useProfile } from '../utils/profile';
 import { playReferenceAudio, stopReferenceAudio } from '../utils/referenceAudio';
 import { playCharacterVoice, playCharacterClip, subscribeCharacterVoice, preloadCharacterVoices, stopCharacterVoice } from '../utils/characterAudio';
 import { characterPhrase, contextKeyForMessage, specialPlay, voiceSet, type CharacterId, type PhraseKey, type SpecialPlay } from '../utils/gamePresentation';
@@ -218,52 +218,77 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
  const name = (seat:number) => state.players?.[seat]?.name || `لاعب ${seat + 1}`;
  const active = state.phase === 'TRUMP' ? state.bidderSeat : state.currentSeat;
  return <div dir="rtl" className={`reference-game table-theme-${profile.table} card-theme-${profile.cards} ${className}`}>
-   <header className="reference-scorebar" dir="ltr">
-     <div className="reference-score team-red"><span>لنا</span><strong>{state.scores[0]}</strong><span>{state.tricksWon[0]}</span></div>
-     <span className="reference-round">iKout · {state.roundNo} / {state.targetScore}</span>
-     <div className="reference-score team-blue"><span>{state.tricksWon[1]}</span><strong>{state.scores[1]}</strong><span>لهم</span></div>
-   </header>
-   <section className="reference-arena table-felt" aria-label="طاولة كوت" style={{ backgroundImage: `url(${tableImage(profile.table)})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-     <div className="reference-disc" aria-hidden="true"><div className="reference-rosette" /></div>
-     <div className="reference-trump">{state.trump && <><SuitSvg suit={state.trump} className="w-5 h-5" /><strong>{state.highBid}</strong></>}</div>
-     {Array.from({ length: count }, (_, seat) => {
-       if (seat === mySeat) return null;
-       const relative = (seat - mySeat + count) % count;
-       const bid = state.bids.find(b => b.seat === seat)?.bid;
-       return <div key={seat} className={`reference-seat seat-${count}-${relative} ${seat % 2 === mySeat % 2 ? 'seat-team' : 'seat-opponent'} ${active === seat ? 'seat-active' : ''} ${speakingSeat === seat ? 'seat-speaking' : ''}`}>
-         <span className="reference-player-name">{name(seat)}</span>
-         <div className="reference-seat-row">
-           <img className="reference-portrait" src={portraitFor(seat)} alt={name(seat)} />
-           {bid !== undefined && state.phase === 'BID' ? <span className="reference-bid-badge">{bid || <PassHand size={18}/>}</span> : <div className="reference-opponent-hand" aria-label={`${state.hands[seat]?.length ?? 0} أوراق`}>
-             {Array.from({ length: state.hands[seat]?.length ?? 0 }, (_, i) => <div key={i} className="reference-mini-back" style={{ transform: `rotate(${(i - ((state.hands[seat]?.length ?? 0) - 1) / 2) * 8}deg)` }} />)}
-           </div>}
-           {state.bidderSeat === seat && <Crown className="reference-crown w-4 h-4" />}
-         </div>
-         <AnimatePresence>{bubble(seat) && <motion.div key={bubble(seat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(seat)}</motion.div>}</AnimatePresence>
-       </div>;
-     })}
-     <div className="reference-trick" aria-label="الأوراق على الطاولة">
-       <AnimatePresence>{trick.map((play, i) => {
-         const relative = (play.seat - mySeat + count) % count;
-         const angle = relative * Math.PI * 2 / count;
-         const winnerAngle = ((winningTrickPlay?.seat ?? play.seat) - mySeat + count) % count * Math.PI * 2 / count;
-         return <motion.div key={play.card.id} className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? 'trick-winning' : ''}`} style={{ zIndex: winningTrickPlay?.card.id === play.card.id ? 50 : i + 1 }} initial={reducedMotion ? false : { x: Math.sin(angle) * 240, y: Math.cos(angle) * 190, scale: 1.25, rotateX: 55, rotate: (relative % 2 ? -1 : 1) * 25, opacity: 0 }} animate={{ x: Math.sin(angle) * 70, y: Math.cos(angle) * 62, rotateX: 18, rotate: (relative % 2 ? -1 : 1) * 6, scale: 1, opacity: 1 }} exit={{ x: Math.sin(winnerAngle) * 260, y: Math.cos(winnerAngle) * 190, scale: .3, rotateX: 40, opacity: 0, transition: { duration: .35, ease: 'easeIn' } }} transition={reducedMotion ? { duration: 0 } : { duration: .3, ease: [0.16, 1, 0.3, 1] }}><Card card={play.card} size="sm" /></motion.div>;
-       })}</AnimatePresence>
-        {trickWinnerAnnouncement && <span className="reference-winner">{trickWinnerAnnouncement}</span>}
+  <section className="reference-arena table-felt" aria-label="طاولة كوت" style={{ backgroundImage: 'url(/assets/ikout/backgrounds/wood-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <div className="reference-tools" dir="ltr">{headerControls}<Button variant="ghost" size="icon" aria-label="تعليقات الشخصيات" title="تعليقات الشخصيات" onClick={()=>{playTapSound();setChatOpen(v=>!v);}}><MessageSquare/></Button></div>
+    <header className="reference-scorebar" dir="ltr">
+      <div className="reference-score-row">
+        <span className="reference-score team-red"><strong>{state.scores[0]}</strong></span>
+        <span className="reference-score-mid"><strong>{state.highBid ?? '-'}</strong></span>
+        <span className="reference-score team-blue"><strong>{state.scores[1]}</strong></span>
       </div>
-             <AnimatePresence>{slam && <motion.div key={slam.id} className={`reference-slam slam-${slam.kind}`} initial={reducedMotion ? false : { scale: .35, opacity: 0, rotate: -12 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 1.2, opacity: 0 }} transition={{ duration: reducedMotion ? 0 : .32 }}>
-         <div className="reference-slam-ring" />
-         <div className="reference-slam-symbol">{slam.kind === 'trump-ace' && slam.suit ? <SuitSvg suit={slam.suit} className="reference-slam-icon" /> : <JokerSvg isRed={slam.kind === 'joker'} className="reference-slam-joker" />}</div>
-         <strong>{slam.kind === 'joker' ? 'الجيكر' : slam.kind === 'maker' ? 'الميكر' : 'أكة الحكم'}</strong>
-       </motion.div>}</AnimatePresence>
-<div className="reference-local-hand"><Hand cards={(handSeat !== undefined ? state.hands[handSeat] : state.hands[mySeat]) || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" /></div>
-     {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{voiceSet(characterFor(mySeat)).chat.map(clip => <Button key={clip.file} variant="ghost" onClick={()=>{playBubbleSound(); setReactions(current => ({ ...current, [mySeat]: clip.text })); playCharacterClip(characterFor(mySeat), clip, mySeat); onSendSpeechBubble?.(`clip:${clip.file}`); setChatOpen(false);}}>{clip.text}</Button>)}</div></div>}
-   </section>
-   <footer className="reference-controlbar" dir="ltr">
-     <div className="reference-tools">{headerControls}<Button variant="ghost" size="icon" aria-label="تعليقات الشخصيات" title="تعليقات الشخصيات" onClick={()=>{playTapSound();setChatOpen(v=>!v);}}><MessageSquare/></Button></div>
-     {bubble(mySeat) && <span className="reference-local-speech" role="status">{bubble(mySeat)}</span>}
-     <div className={`reference-local-player ${speakingSeat === mySeat ? 'seat-speaking' : ''}`}><span>{name(mySeat)}</span><img src={portraitFor(mySeat)} className="reference-portrait" alt={name(mySeat)}/></div>
-   </footer>
+      <div className="reference-trick-row">
+        <span className="reference-trick-count team-red">{state.tricksWon[0]}</span>
+        <span className="reference-trick-dots" aria-label="أشواط محرزة">
+          {Array.from({ length: Math.max(state.hands[mySeat]?.length ?? 0, 1) }, (_, i) => {
+            const red = i < state.tricksWon[0];
+            const blue = i >= (state.hands[mySeat]?.length ?? 0) - state.tricksWon[1];
+            return <i key={i} className={`reference-dot ${red ? 'dot-red' : blue ? 'dot-blue' : ''}`} />;
+          })}
+        </span>
+        <span className="reference-trick-count team-blue">{state.tricksWon[1]}</span>
+      </div>
+    </header>
+    <div className="reference-table" aria-hidden="true">
+      <img src={tableImage(profile.table)} className="reference-table-img" alt="" draggable={false} />
+      {(() => {
+        const topRelative = count === 6 ? 3 : 2;
+        const topSeat = (mySeat + topRelative) % count;
+        if (topSeat === mySeat) return null;
+        return <div className="reference-table-plate">{name(topSeat)}{state.bidderSeat === topSeat && <Crown className="reference-plate-crown" />}</div>;
+      })()}
+    </div>
+    <div className="reference-trump">{state.trump && <><SuitSvg suit={state.trump} className="w-5 h-5" /><strong>{state.highBid}</strong></>}</div>
+    {Array.from({ length: count }, (_, seat) => {
+      if (seat === mySeat) return null;
+      const relative = (seat - mySeat + count) % count;
+      const bid = state.bids.find(b => b.seat === seat)?.bid;
+      return <div key={seat} className={`reference-seat seat-${count}-${relative} ${seat % 2 === mySeat % 2 ? 'seat-team' : 'seat-opponent'} ${active === seat ? 'seat-active' : ''} ${speakingSeat === seat ? 'seat-speaking' : ''}`}>
+        <div className="reference-avatar-wrap">
+          <img className="reference-portrait" src={portraitFor(seat)} alt={name(seat)} draggable={false} />
+          {bid !== undefined && state.phase === 'BID' && <span className="reference-bid-badge">{bid || <PassHand size={18}/>}</span>}
+          {state.bidderSeat === seat && <Crown className="reference-crown w-4 h-4" />}
+          {!(count === 6 ? relative === 3 : relative === 2) && <span className="reference-player-name">{name(seat)}</span>}
+        </div>
+        {!(bid !== undefined && state.phase === 'BID') && <div className="reference-opponent-hand" aria-label={`${state.hands[seat]?.length ?? 0} أوراق`}>
+          {Array.from({ length: state.hands[seat]?.length ?? 0 }, (_, i) => {
+            const mid = ((state.hands[seat]?.length ?? 0) - 1) / 2;
+            return <img key={i} src={cardBack(profile.cards)} className="reference-mini-back" alt="" draggable={false} style={{ transform: `rotate(${(i - mid) * 9}deg) translateY(${Math.abs(i - mid) * 2}px)` }} />;
+          })}
+        </div>}
+        <AnimatePresence>{bubble(seat) && <motion.div key={bubble(seat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(seat)}</motion.div>}</AnimatePresence>
+      </div>;
+    })}
+    <div className="reference-trick" aria-label="الأوراق على الطاولة">
+      <AnimatePresence>{trick.map((play, i) => {
+        const relative = (play.seat - mySeat + count) % count;
+        const angle = relative * Math.PI * 2 / count;
+        const winnerAngle = ((winningTrickPlay?.seat ?? play.seat) - mySeat + count) % count * Math.PI * 2 / count;
+        return <motion.div key={play.card.id} className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? 'trick-winning' : ''}`} style={{ zIndex: winningTrickPlay?.card.id === play.card.id ? 50 : i + 1 }} initial={reducedMotion ? false : { x: Math.sin(angle) * 240, y: Math.cos(angle) * 190, scale: 1.25, rotateX: 55, rotate: (relative % 2 ? -1 : 1) * 25, opacity: 0 }} animate={{ x: Math.sin(angle) * 70, y: Math.cos(angle) * 62, rotateX: 18, rotate: (relative % 2 ? -1 : 1) * 6, scale: 1, opacity: 1 }} exit={{ x: Math.sin(winnerAngle) * 260, y: Math.cos(winnerAngle) * 190, scale: .3, rotateX: 40, opacity: 0, transition: { duration: .35, ease: 'easeIn' } }} transition={reducedMotion ? { duration: 0 } : { duration: .3, ease: [0.16, 1, 0.3, 1] }}><Card card={play.card} size="sm" /></motion.div>;
+      })}</AnimatePresence>
+      {trickWinnerAnnouncement && <span className="reference-winner">{trickWinnerAnnouncement}</span>}
+    </div>
+    <AnimatePresence>{slam && <motion.div key={slam.id} className={`reference-slam slam-${slam.kind}`} initial={reducedMotion ? false : { scale: .35, opacity: 0, rotate: -12 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 1.2, opacity: 0 }} transition={{ duration: reducedMotion ? 0 : .32 }}>
+      <div className="reference-slam-ring" />
+      <div className="reference-slam-symbol">{slam.kind === 'trump-ace' && slam.suit ? <SuitSvg suit={slam.suit} className="reference-slam-icon" /> : <JokerSvg isRed={slam.kind === 'joker'} className="reference-slam-joker" />}</div>
+      <strong>{slam.kind === 'joker' ? 'الجيكر' : slam.kind === 'maker' ? 'الميكر' : 'أكة الحكم'}</strong>
+    </motion.div>}</AnimatePresence>
+    <div className="reference-local-hand"><Hand cards={(handSeat !== undefined ? state.hands[handSeat] : state.hands[mySeat]) || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" /></div>
+    <div className={`reference-local-seat ${speakingSeat === mySeat ? 'seat-speaking' : ''}`}>
+      <AnimatePresence>{bubble(mySeat) && <motion.div key={bubble(mySeat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(mySeat)}</motion.div>}</AnimatePresence>
+      <div className="reference-avatar-wrap"><img className="reference-portrait" src={portraitFor(mySeat)} alt={name(mySeat)} draggable={false} /><span className="reference-player-name">{name(mySeat)}</span></div>
+    </div>
+    {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{voiceSet(characterFor(mySeat)).chat.map(clip => <Button key={clip.file} variant="ghost" onClick={()=>{playBubbleSound(); setReactions(current => ({ ...current, [mySeat]: clip.text })); playCharacterClip(characterFor(mySeat), clip, mySeat); onSendSpeechBubble?.(`clip:${clip.file}`); setChatOpen(false);}}>{clip.text}</Button>)}</div></div>}
+  </section>
  </div>;
 };
 export default Table;

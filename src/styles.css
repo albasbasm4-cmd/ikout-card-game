@@ -857,3 +857,77 @@
 .rm-ci::placeholder{color:rgba(255,255,255,.25);letter-spacing:6px}
 .rm-jp .rm-btn{left:80px;width:600px;height:88px}
 .rm-or{position:absolute;left:0;right:0;top:326px;text-align:center;font:800 26px/1 Cairo,sans-serif;opacity:.8}
+
+/* ============ Studio table layout (wood room + framed table + tile seats) ============ */
+.reference-arena { background:#8a5a33; }
+.reference-tools { position:absolute; top:10px; left:10px; z-index:40; display:flex; gap:6px; align-items:center; }
+.reference-tools button { width:36px!important; height:36px!important; min-width:36px; border-radius:10px!important; border:1px solid rgba(255,255,255,.28)!important; background:rgba(12,12,12,.78)!important; color:#fff!important; box-shadow:0 2px 6px rgba(0,0,0,.45)!important; }
+.reference-tools button svg { width:18px!important; height:18px!important; }
+.reference-scorebar { position:absolute; top:10px; right:10px; left:auto; width:236px; height:auto; display:flex; flex-direction:column; gap:2px; padding:3px 9px 5px; background:linear-gradient(#242424,#050505); border:1px solid rgba(255,255,255,.22); border-radius:9px; box-shadow:0 3px 8px rgba(0,0,0,.5); z-index:35; }
+.reference-score-row { display:flex; align-items:center; justify-content:space-between; height:22px; }
+.reference-score { width:auto; border-bottom:none; gap:0; }
+.reference-score strong { font-size:17px; line-height:1; }
+.reference-score-mid strong { color:#fff; font-size:19px; font-weight:900; text-shadow:0 1px 2px #000; }
+.team-red { color:#f4564a; } .team-blue { color:#4fc3f7; }
+.reference-trick-row { display:flex; align-items:center; justify-content:space-between; font-size:10px; font-weight:800; }
+.reference-trick-count { min-width:22px; text-align:center; background:rgba(255,255,255,.08); border-radius:4px; line-height:15px; }
+.reference-trick-dots { display:flex; gap:2px; flex:1; justify-content:center; margin:0 6px; }
+.reference-dot { width:7px; height:7px; border-radius:50%; background:#3d3d3d; box-shadow:inset 0 1px 1px rgba(255,255,255,.25); }
+.reference-dot.dot-red { background:#f4564a; } .reference-dot.dot-blue { background:#4fc3f7; }
+.reference-table { position:absolute; left:50%; top:45%; transform:translate(-50%,-50%); width:min(58%,760px); z-index:5; filter:drop-shadow(0 20px 26px rgba(0,0,0,.55)); pointer-events:none; }
+.reference-table-img { width:100%; height:auto; display:block; }
+.reference-table-plate { position:absolute; top:14%; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:4px; background:linear-gradient(#ffe08a,#c98f2b); color:#2a1c04; font-weight:900; font-size:13px; line-height:18px; padding:1px 20px; border-radius:4px; border:1px solid #8a5f14; box-shadow:0 2px 5px rgba(0,0,0,.55); white-space:nowrap; z-index:2; }
+.reference-plate-crown { width:13px; height:13px; }
+.reference-seat { position:absolute; z-index:20; display:flex; align-items:center; gap:6px; min-width:0; text-align:center; direction:ltr; }
+.seat-4-2,.seat-6-3 { top:1.5%; left:50%; transform:translateX(-50%); flex-direction:column; gap:2px; }
+.seat-4-1 { right:1%; top:37%; } .seat-4-3 { left:1%; top:37%; }
+.seat-6-1 { right:1%; top:59%; } .seat-6-2 { right:1%; top:17%; } .seat-6-4 { left:1%; top:17%; } .seat-6-5 { left:1%; top:59%; }
+.reference-avatar-wrap { position:relative; display:flex; flex-direction:column; align-items:center; }
+.reference-portrait { width:64px; height:68px; object-fit:cover; border:none; border-radius:16px; background:#cf7c33; box-shadow:0 4px 9px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.14); }
+.seat-active .reference-portrait { box-shadow:0 0 0 3px #35d26b, 0 0 18px rgba(53,210,107,.85); }
+.reference-local-seat { position:absolute; right:1%; bottom:2%; z-index:25; display:flex; flex-direction:column; align-items:center; }
+.reference-local-seat .reference-portrait { box-shadow:0 0 0 3px #35d26b, 0 0 20px rgba(53,210,107,.75), 0 4px 9px rgba(0,0,0,.5); }
+.reference-player-name { position:absolute; top:calc(100% + 3px); left:50%; transform:translateX(-50%); background:#0d0d0d; color:#4fc3f7; font-size:11px; font-weight:800; line-height:17px; padding:0 8px; border-radius:3px; white-space:nowrap; max-width:150px; overflow:hidden; text-overflow:ellipsis; z-index:4; box-shadow:0 2px 4px rgba(0,0,0,.5); }
+.seat-opponent .reference-player-name { color:#f59a3c; }
+.seat-team .reference-player-name { color:#4fc3f7; }
+.reference-opponent-hand { display:flex; align-items:center; width:96px; height:52px; direction:ltr; position:relative; z-index:1; }
+.seat-6-1 .reference-opponent-hand, .seat-6-2 .reference-opponent-hand, .seat-4-1 .reference-opponent-hand { order:-1; transform:rotate(-34deg); }
+.seat-6-4 .reference-opponent-hand, .seat-6-5 .reference-opponent-hand, .seat-4-3 .reference-opponent-hand { transform:rotate(34deg); }
+.seat-6-3 .reference-opponent-hand, .seat-4-2 .reference-opponent-hand { transform:rotate(0deg) translateY(2px); }
+.reference-mini-back { width:25px; height:36px; flex-shrink:0; margin-left:-15px; border-radius:3.5px; object-fit:cover; box-shadow:0 2px 3px rgba(0,0,0,.55), inset 0 0 0 1.5px rgba(255,255,255,.85); transform-origin:50% 150px; }
+.reference-mini-back:first-child { margin-left:0; }
+.reference-bid-badge { top:-16px; right:-10px; z-index:5; }
+.reference-crown { left:-8px; top:-10px; }
+.reference-speech { bottom:calc(100% + 14px); background:#31b5ea; color:#fff; border-radius:10px; box-shadow:0 3px 7px rgba(0,0,0,.45); z-index:6; }
+.reference-speech::after { border-top-color:#31b5ea; }
+.seat-6-3 .reference-speech, .seat-4-2 .reference-speech { bottom:auto; top:calc(100% + 6px); }
+.reference-local-seat .reference-speech { bottom:calc(100% + 8px); }
+.reference-local-hand { bottom:6px; width:min(70%,620px); z-index:30; }
+.reference-trick { top:46%; }
+.reference-trump { position:absolute; top:64px; left:10px; z-index:30; display:flex; gap:6px; align-items:center; color:var(--reference-gold); background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:3px 9px; font-size:15px; }
+.reference-selection-overlay { padding-bottom:120px; }
+@media (max-width:900px) {
+ .reference-portrait { width:52px; height:56px; border-radius:13px; }
+ .reference-opponent-hand { width:78px; height:44px; }
+ .reference-mini-back { width:21px; height:31px; margin-left:-13px; }
+ .reference-table { width:min(72%,700px); }
+ .reference-scorebar { width:210px; }
+ .reference-local-seat { right:2%; }
+}
+@media (max-width:560px) {
+ .reference-tools button { width:32px!important; height:32px!important; min-width:32px; }
+ .reference-scorebar { width:176px; padding:2px 7px 4px; right:6px; top:6px; }
+ .reference-score strong { font-size:15px; } .reference-score-mid strong { font-size:16px; }
+ .reference-portrait { width:46px; height:50px; border-radius:11px; }
+ .reference-player-name { font-size:9px; line-height:14px; max-width:100px; }
+ .reference-opponent-hand { width:56px; height:36px; }
+ .reference-mini-back { width:17px; height:25px; margin-left:-11px; transform-origin:50% 110px; }
+ .reference-table { width:min(80%,520px); top:43%; }
+ .reference-trick { top:43%; }
+ .reference-trump { top:52px; font-size:13px; }
+ .reference-local-hand { width:92%; }
+ .reference-local-seat { bottom:1.5%; }
+ .reference-chat { left:6px; }
+}
+.seat-6-4 .reference-speech, .seat-6-5 .reference-speech, .seat-4-3 .reference-speech { transform:translateX(-32%); }
+.seat-6-1 .reference-speech, .seat-6-2 .reference-speech, .seat-4-1 .reference-speech { transform:translateX(-68%); }
