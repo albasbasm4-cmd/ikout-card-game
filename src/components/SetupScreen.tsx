@@ -53,9 +53,12 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onBack, onStartGame, o
   };
 
   return (
-    <div dir="rtl" className={`ik-home ${className}`}>
-      <div className="ik-stage" style={{ background: 'radial-gradient(ellipse 560px 320px at 50% 40%,#2e4a3a,transparent 72%),linear-gradient(#243a2c,#1a2b20 55%,#141f18)' }}>
-        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center' }}>
+    <div
+      dir="rtl"
+      className={`ik-home ${className}`}
+      style={{ background: 'radial-gradient(ellipse 560px 320px at 50% 40%,#2e4a3a,transparent 72%),linear-gradient(#243a2c,#1a2b20 55%,#141f18)' }}
+    >
+        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 16 }}>
           <div className="ik-pn" style={{ height: 'auto', width: 720 }}>
             <button type="button" className="ik-x" onClick={() => { playTapSound(); onBack(); }} aria-label="رجوع">✕</button>
             <h2>اختيار عدد اللاعبين</h2>
@@ -120,7 +123,6 @@ export const SetupScreen: React.FC<SetupScreenProps> = ({ onBack, onStartGame, o
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 };

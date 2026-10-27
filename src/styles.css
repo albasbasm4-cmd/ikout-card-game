@@ -668,7 +668,7 @@
 
 /* ============ Panels (profile / settings / setup) — same look as home.html ============ */
 .ik-ov{position:absolute;inset:0;background:rgba(10,20,30,.62);display:grid;place-items:center;z-index:60}
-.ik-pn{position:relative;width:860px;max-width:94vw;height:560px;max-height:92dvh;border:6px solid #fff;border-radius:26px;background:linear-gradient(#34506a,#1d2f3f);box-shadow:0 12px 0 rgba(0,0,0,.3);padding:20px 28px;animation:ik-up .3s forwards;opacity:1;color:#fff}
+.ik-pn{position:relative;width:860px;max-width:94vw;height:560px;max-height:92dvh;overflow-y:auto;border:6px solid #fff;border-radius:26px;background:linear-gradient(#34506a,#1d2f3f);box-shadow:0 12px 0 rgba(0,0,0,.3);padding:20px 28px;animation:ik-up .3s forwards;opacity:1;color:#fff}
 .ik-pn h2{margin:0 0 12px;text-align:center;font-size:30px;font-weight:900;color:#ffd23f}
 .ik-x{position:absolute;left:14px;top:12px;width:46px;height:46px;border-radius:50%;border:3px solid #fff;background:#5b7488;color:#fff;font-size:22px;font-weight:900;cursor:pointer}
 .ik-x:active{transform:scale(.94)}
