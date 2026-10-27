@@ -964,3 +964,12 @@
 .seat-6-3 .reference-speech, .seat-4-2 .reference-speech { top:calc(100% + 6px); bottom:auto; }
 .reference-local-seat .reference-speech { left:auto; right:-4px; transform:none; }
 .reference-local-seat .reference-speech::after { left:auto; right:22px; }
+
+/* === Deep held-hand card fans (reference match) === */
+.reference-opponent-hand { overflow:visible; }
+.fan-left.reference-mini-back { transform-origin: 118px 50%; }
+.fan-right.reference-mini-back { transform-origin: -91px 50%; }
+.fan-top.reference-mini-back { transform-origin: 50% 190%; }
+.seat-4-3 .reference-opponent-hand, .seat-6-4 .reference-opponent-hand, .seat-6-5 .reference-opponent-hand { height:150px; margin-left:-14px; }
+.seat-4-1 .reference-opponent-hand, .seat-6-1 .reference-opponent-hand, .seat-6-2 .reference-opponent-hand { height:150px; margin-right:-14px; }
+.seat-4-1, .seat-6-1, .seat-6-2, .seat-4-3, .seat-6-4, .seat-6-5 { gap:0; }
