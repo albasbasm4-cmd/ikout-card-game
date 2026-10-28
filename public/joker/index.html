@@ -176,8 +176,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1a2128;font-family:Ca
 #ksa.dn .knum{width:34px;height:34px;font-size:18px;right:8px;top:8px}#ksa.dn .kx{width:38px;height:38px;font-size:16px;left:8px;top:8px}
 .kstp{display:flex;align-items:center;gap:18px;font:800 26px Cairo,sans-serif}.kstp .kchip{width:70px;height:54px;padding:0;font-size:38px}
 #kwt{top:454px;height:92px;font:800 24px/1.3 Cairo,sans-serif;padding:0 10px}
-#kdemo{position:absolute;left:18px;top:6px;height:52px;font-size:22px;z-index:2;display:none}
-#kr.join .h-only,#kr.join #kdemo{display:none!important}
+#kr.join .h-only{display:none!important}
 .glp{position:absolute;left:18px;top:14px;width:520px;height:546px;display:flex;flex-direction:column;gap:14px}
 .gcard{height:290px;flex:none;border-radius:24px;background:#fff;color:#222;display:grid;place-items:center;text-align:center;font:900 140px/1 Cairo,sans-serif;cursor:pointer;border:6px solid #f3b6e6;box-shadow:0 6px 0 rgba(0,0,0,.25)}
 .gcard.back{background:repeating-linear-gradient(45deg,#c24fa8 0 16px,#e993d8 16px 32px);color:#fff;font-size:42px}
@@ -226,8 +225,10 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1a2128;font-family:Ca
 .gs.o .gav{filter:grayscale(1) brightness(.55)}
 .gtab .gs span{background:#0d0d0d;color:#4fc3f7;font:800 18px/1.3 Cairo,sans-serif;border-radius:4px;padding:0 8px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gtab .gs.o::after{left:50%;top:26px;bottom:auto;transform:translateX(-50%)}
-.rules{font:800 24px/1.6 Cairo,sans-serif;text-align:right;margin-bottom:14px}
+.rules{font:700 18px/1.6 Cairo,sans-serif;text-align:right;margin-bottom:12px;max-height:56vh;overflow:auto;padding-left:6px}
 .rules p{margin:6px 0}
+.rt{width:100%;border-collapse:collapse;font-size:15px;margin:6px 0}
+.rt th,.rt td{border:1px solid rgba(255,255,255,.35);padding:4px 6px;text-align:right}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -285,7 +286,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1a2128;font-family:Ca
 <!-- PAGE 2: room (5 individual seats) -->
 <div class="kpg" id="kp2" style="display:none">
 <div class="host" id="kr">
-<div class="kh" id="ttl">إنشاء غرفة</div><button class="kchip" id="kdemo" onclick="addSim()">+ لاعب تجريبي</button>
+<div class="kh" id="ttl">إنشاء غرفة</div>
 <div class="kd">
 <div id="kjv"><div class="kjp kdk">
 <div class="kjl">أدخل رمز الغرفة</div>
@@ -326,7 +327,7 @@ html,body{margin:0;height:100%;overflow:hidden;background:#1a2128;font-family:Ca
 <h3>المستوى <span id="pl2" style="color:#5ed3ff">5</span></h3>
 <div class="rel" id="pm"><div class="xpb big"><i id="pf"></i><span id="pt"></span></div></div>
 <div class="sm">كل فوز = 30 خبرة، ومع كل فوز متتالٍ +5 إضافية</div>
-<button class="btn" onclick="addWin()">🏆 جرّب فوز</button>
+
 </div>
 <div class="col">
 <h3>اختر شخصيتك</h3>
@@ -395,7 +396,6 @@ function fit(){const w=innerWidth,h=innerHeight,p=h>w,s=p?Math.min(h/1536,w/691)
 addEventListener('resize',fit);fit();
 
 /* ===== SCREENS: lobby (shared play) -> room ===== */
-const ROOM_SEATS = 5, ROOM_BOT_LEVEL = 'medium';            // room: 5 individual seats, no teams
 const fire = (n, d) => window.dispatchEvent(new CustomEvent(n, { detail: d }));
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let tt; function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2200); }
@@ -435,19 +435,18 @@ addEventListener('keydown', e => { if (e.key === 'Escape' && cur !== 'home' && !
      JokerNative.stop()            يغلق الغرفة
    من التطبيق إلى الواجهة: window.onNativeMessage({from:"<id>",m:{...}})
    وعند انقطاع لاعب أرسل للمضيف: onNativeMessage({from:"<id>",m:{t:"leave"}})
-   بدون JokerNative تعمل الواجهة بوضع تجريبي (زر «+ لاعب تجريبي» للمضيف). */
-const MIN = 4, MAX = 15, nat = () => window.JokerNative;
+   بدون JokerNative الصفحة للمعاينة فقط، والانضمام بين الأجهزة يحتاج تطبيق الجوال. */
+const MIN = 4, MAX = 9, nat = () => window.JokerNative;
 const DECK = (() => { const r = []; for (const s of '♠♥♦♣') for (const k of 'A 2 3 4 5 6 7 8 9 10 J Q K'.split(' ')) r.push(k + s); return r; })();
 const shuf = a => { a = [...a]; for (let i = a.length; i > 1;) { const j = Math.random() * i-- | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const pl = n => 'باقي ' + n + ' ' + (n === 1 ? 'لاعب' : n === 2 ? 'لاعبان' : n <= 10 ? 'لاعبين' : 'لاعباً');
 let isHost = false, ME = null, G = null, L = null, V = null, showC = false, code = '';
+let Q = false, lastRes = null;   // Q: ينتظر الجولة القادمة، lastRes: آخر نتيجة سُجّلت للخبرة
 const rand = () => { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r = ''; for (let i = 0; i < 5; i++) r += a[Math.random() * a.length | 0]; return r; };
 
 /* ---- النقل ---- */
-const sim = {};
 function send(id, m) {
   if (isHost && id === 'h') return void setTimeout(() => cRecv(m), 0);
-  if (sim[id]) return void setTimeout(() => sim[id] && sim[id](m), 0);
   const n = nat(); if (n && n.send) n.send(JSON.stringify({ to: id, m }));
 }
 function toHost(m) {
@@ -457,14 +456,22 @@ function toHost(m) {
 window.onNativeMessage = s => { const o = typeof s === 'string' ? JSON.parse(s) : s; if (isHost) hRecv(o.from, o.m); else cRecv(o.m); };
 window.onScan = t => { const m = String(t).match(/join=?([A-Za-z0-9]+)/); enterRoom((m ? m[1] : String(t)).trim().slice(0, 6)); };
 
-/* ================= المضيف (يحسم كل شيء) ================= */
+/* ================= المضيف (يحسم كل شيء) =================
+   المضيف يحفظ الحالة كلها، ولا يرسل لكل لاعب إلا ورقته وحالة الطاولة العامة. */
+const GRACE = window.JOKER_GRACE_MS || 15000;   // مهلة العودة بعد الانقطاع قبل اعتباره خروجاً
 const alive = () => G.P.filter(p => !G.out[p.id]);
-const nm = id => (G.P.find(p => p.id === id) || {}).name;
+const nm = id => (G.P.find(p => p.id === id) || {}).name || '';
+function clearDC() { Object.values(G.dc || {}).forEach(clearTimeout); G.dc = {}; }
 function lobbyPush() {
   if (!G) return;
   if (G.ph === 'lobby') { if (G.P.length >= MIN) { if (!G.P.some(p => p.id === G.starter)) G.starter = G.P[Math.random() * G.P.length | 0].id; } else G.starter = null; }
   const L2 = { code: G.code, cap: G.cap, starter: G.starter, players: G.P.map(p => ({ id: p.id, name: p.name, char: p.char })) };
   G.P.forEach(p => send(p.id, { t: 'lobby', L: L2, you: p.id }));
+}
+/* من انضم أثناء الجولة ينتظر الجولة القادمة */
+function mergeQueue() {
+  G.queue.forEach(q => { if (G.P.length < G.cap) G.P.push(q); else send(q.id, { t: 'rej', why: 'الغرفة ممتلئة' }); });
+  G.queue = [];
 }
 function logx(id) { G.log = [{ name: nm(id), rem: alive().length }, ...G.log].slice(0, 4); }
 function sync() {
@@ -476,100 +483,121 @@ function sync() {
   });
 }
 function deal() {
-  const cs = shuf(DECK); G.ph = 'play'; G.joker = G.P[Math.random() * G.P.length | 0].id; G.card = {}; G.out = {}; G.log = []; G.fin = null;
+  clearDC(); const cs = shuf(DECK); G.ph = 'play'; G.joker = G.P[Math.random() * G.P.length | 0].id; G.card = {}; G.out = {}; G.log = []; G.fin = null; G.rows = null;
   G.P.forEach((p, i) => G.card[p.id] = p.id === G.joker ? 'JK' : cs[i]); sync();
 }
+/* الاختيار المرفوض (مثلاً وصل بعد تغيّر الحالة) يُعاد معه إرسال الحالة لكل اللاعبين، فلا يبقى أحد عالقاً على أزرار قديمة */
+function reject() { if (G && G.ph === 'play') sync(); }
 function pick(id, to, fin) {
-  if (G.ph !== 'play' || G.out[id] || id === G.joker || to === id || !G.P.some(p => p.id === to)) return;
+  if (G.ph !== 'play' || G.out[id] || id === G.joker || to === id || !G.P.some(p => p.id === to)) return reject();
   const nn = alive().filter(p => p.id !== G.joker).length, jd = !!G.out[G.joker];
-  if (fin) { if (nn !== 1 || !jd) return; G.fin = { id, to }; return end(); }
-  if (nn <= 1) return;                       // آخر لاعب عادي لا يخرج قبل نزول ورقة الجوكر
+  if (fin) { if (nn !== 1 || !jd || G.fin) return reject(); G.fin = { id, to }; return end(); }
+  if (nn <= 1) return reject();              // آخر لاعب عادي لا يخرج قبل نزول ورقة الجوكر
   G.out[id] = { pick: to }; logx(id); sync();
 }
 function end() {
-  G.ph = 'res'; const j = G.joker, ok = G.fin.to === j, pn = x => x ? nm(x) : '';
+  G.ph = 'res'; clearDC(); const j = G.joker, ok = G.fin.to === j, pn = x => x ? nm(x) : '';
   const rows = G.P.map(p => {
     const o = G.out[p.id] || {}; let st, pk = o.pick;
     if (p.id === j) st = ok ? 'خاسر' : 'فائز';
     else if (p.id === G.fin.id) { pk = G.fin.to; st = ok ? 'فائز' : 'خاسر'; }
-    else if (o.left) st = 'منسحب'; else st = pk === j ? 'فائز' : 'غشاش';
-    return { name: p.name, card: G.card[p.id], joker: p.id === j, pick: pn(pk), st };
+    else if (o.left) st = 'منسحب';
+    else st = pk === j ? 'فائز' : 'غشاش';
+    return { id: p.id, name: p.name, card: G.card[p.id], joker: p.id === j, pick: pn(pk), good: pk ? pk === j : null, st };
   });
-  G.again = {}; G.P.forEach(p => send(p.id, { t: 'res', rows }));
+  G.rows = rows; G.again = {}; G.P.forEach(p => send(p.id, { t: 'res', rows }));
 }
 function again(id, y) {
   if (!G || G.ph !== 'res') return; G.again[id] = !!y;
   if (G.P.every(p => p.id in G.again || (G.out[p.id] && G.out[p.id].left))) {
-    G.P = G.P.filter(p => G.again[p.id]); G.ph = 'lobby'; G.starter = null; G.cap = Math.max(G.cap, G.P.length, MIN);
+    G.P = G.P.filter(p => G.again[p.id]); G.ph = 'lobby'; G.starter = null; G.joker = null; G.card = {}; G.out = {}; G.log = []; G.fin = null; G.rows = null;
+    G.cap = Math.max(G.cap, G.P.length, MIN); mergeQueue();
     if (!G.P.length) { G = null; return; } lobbyPush();
   }
 }
-function cancel() { G.P = G.P.filter(p => !(G.out[p.id] && G.out[p.id].left)); G.ph = 'lobby'; G.starter = null; G.P.forEach(p => send(p.id, { t: 'cancel' })); lobbyPush(); }
+function cancel() {
+  clearDC(); G.P = G.P.filter(p => !(G.out[p.id] && G.out[p.id].left));
+  G.ph = 'lobby'; G.starter = null; G.joker = null; G.card = {}; G.out = {}; G.log = []; G.fin = null; G.rows = null;
+  G.P.forEach(p => send(p.id, { t: 'cancel' })); mergeQueue(); lobbyPush();
+}
 function gone(id) {
-  if (!G) return; const p = G.P.find(x => x.id === id); if (!p) return;
-  if (G.ph === 'lobby') { G.P = G.P.filter(x => x !== p); delete sim[id]; lobbyPush(); }
+  if (!G) return;
+  G.queue = G.queue.filter(q => q.id !== id);
+  if (G.dc && G.dc[id]) { clearTimeout(G.dc[id]); delete G.dc[id]; }
+  const p = G.P.find(x => x.id === id); if (!p) return;
+  if (G.ph === 'lobby') { G.P = G.P.filter(x => x !== p); lobbyPush(); }
   else if (G.ph === 'res') again(id, 0);
   else if (!G.out[id]) {
-    if (id === G.joker) return cancel();
-    G.out[id] = { left: 1 }; logx(id);
-    if (!alive().some(x => x.id !== G.joker)) return cancel(); sync();
+    G.out[id] = { left: 1 };
+    if (id === G.joker) return cancel();             // انقطاع صاحب الجوكر يلغي الجولة
+    logx(id);
+    if (!alive().some(x => x.id !== G.joker)) return cancel();
+    sync();
   }
 }
 function hRecv(id, m) {
   if (!G) return;
   if (m.t === 'join') {
-    if (G.P.some(p => p.id === id)) return;
-    if (G.ph !== 'lobby') return send(id, { t: 'rej', why: 'المباراة بدأت بالفعل' });
+    const ex = G.P.find(p => p.id === id);
+    if (ex) {                                        // عودة لاعب: يرجع إلى مكانه وحالته
+      if (G.dc && G.dc[id]) { clearTimeout(G.dc[id]); delete G.dc[id]; }
+      if (G.ph === 'lobby') return lobbyPush();
+      if (G.ph === 'res') return send(id, { t: 'res', rows: G.rows });
+      if (G.out[id] && G.out[id].left) return send(id, { t: 'rej', why: 'خرجت من الجولة الحالية' });
+      return sync();
+    }
+    const np = { id, name: String(m.name || 'لاعب').slice(0, 14), char: CH.includes(m.char) ? m.char : 'a1' };
+    if (G.ph !== 'lobby') {                          // الغرفة مقفلة: ينتظر الجولة القادمة
+      if (!G.queue.some(q => q.id === id)) G.queue.push(np);
+      return send(id, { t: 'queued' });
+    }
     if (G.P.length >= G.cap) return send(id, { t: 'rej', why: 'الغرفة ممتلئة' });
-    G.P.push({ id, name: String(m.name || 'لاعب').slice(0, 14), char: CH.includes(m.char) ? m.char : 'a1' }); return lobbyPush();
+    G.P.push(np); return lobbyPush();
   }
-  if (!G.P.some(p => p.id === id)) return;
-  if (m.t === 'leave') gone(id);
+  if (!G.P.some(p => p.id === id)) { if (m.t === 'leave') G.queue = G.queue.filter(q => q.id !== id); return; }
+  if (m.t === 'leave') {
+    if (G.ph === 'play' && !G.out[id]) {             // انقطاع مؤقت: ينتظر GRACE قبل أن يُحسب خروجاً
+      G.dc = G.dc || {}; clearTimeout(G.dc[id]);
+      G.dc[id] = setTimeout(() => { if (G && G.dc && G.dc[id]) { delete G.dc[id]; gone(id); } }, GRACE);
+      return;
+    }
+    gone(id);
+  }
   else if (m.t === 'deal') { if (G.ph === 'lobby' && id === G.starter && G.P.length >= MIN) deal(); }
   else if (m.t === 'pick') pick(id, m.to, false);
   else if (m.t === 'final') pick(id, m.to, true);
-  else if (m.t === 'drop') { if (G.ph === 'play' && id === G.joker && !G.out[id]) { G.out[id] = { drop: 1 }; logx(id); sync(); } }
+  else if (m.t === 'drop') { if (G.ph === 'play' && id === G.joker && !G.out[id]) { G.out[id] = { drop: 1 }; logx(id); sync(); } else reject(); }
   else if (m.t === 'again') again(id, m.yes);
 }
 function setCap(d) {
   if (!G || G.ph !== 'lobby') return; const lo = Math.max(MIN, G.P.length), n = G.cap + d;
-  if (n > MAX) return toast('الحد الأقصى ' + MAX + ' مقعداً'); if (n < lo) return toast('لا يمكن أقل من ' + lo + ' مقاعد');
+  if (n > MAX) return toast('الحد الأقصى ' + MAX + ' لاعبين'); if (n < lo) return toast('لا يمكن أقل من ' + lo + ' لاعبين');
   G.cap = n; lobbyPush();
 }
 function kick(id) { if (!G || G.ph !== 'lobby' || id === 'h') return; send(id, { t: 'bye' }); gone(id); }
-function addSim() {
-  if (!G || G.ph !== 'lobby') return; if (G.P.length >= G.cap) return toast('لا توجد مقاعد فارغة');
-  const id = 's' + (G.n = (G.n || 0) + 1); let t;
-  sim[id] = m => {
-    /* the bot that the room picks as starter deals, otherwise the room would wait forever */
-    if (m.t === 'lobby') { clearTimeout(t); if (m.L.starter === id) t = setTimeout(() => hRecv(id, { t: 'deal' }), 1200); return; }
-    if (m.t === 'res') { clearTimeout(t); t = setTimeout(() => hRecv(id, { t: 'again', yes: 1 }), 1200); return; }
-    if (m.t !== 'st') return; clearTimeout(t);
-    const o = m.P.filter(p => p.id !== id), pk = () => o[Math.random() * o.length | 0].id;
-    if (m.mode === 'pick') t = setTimeout(() => hRecv(id, { t: 'pick', to: pk() }), 2500 + Math.random() * 7000);
-    else if (m.mode === 'final') t = setTimeout(() => hRecv(id, { t: 'final', to: pk() }), 3000);
-    else if (m.mode === 'joker') t = setTimeout(() => hRecv(id, { t: 'drop' }), 6000 + Math.random() * 9000);
-  };
-  hRecv(id, { t: 'join', name: 'لاعب ' + G.n, char: CH[Math.random() * CH.length | 0] });
-}
 
 /* ================= اللاعب (الواجهة) ================= */
 function cRecv(m) {
-  if (m.t === 'lobby') { ME = m.you; L = m.L; V = null; if (cur === 'game') nav('room'); showRoom(true); }
-  else if (m.t === 'rej') { toast(m.why); L = null; showRoom(false); }
+  if (m.t === 'lobby') { Q = false; ME = m.you; L = m.L; V = null; if (cur === 'game') nav('room'); showRoom(true); }
+  else if (m.t === 'queued') { Q = true; L = null; V = null; if (cur === 'game') nav('room'); showRoom(true); }
+  else if (m.t === 'rej') { toast(m.why); L = null; Q = false; showRoom(false); }
   else if (m.t === 'st') { if (!V || V.card !== m.card) showC = false; V = m; if (cur !== 'game') nav('game'); renderGame(); }
-  else if (m.t === 'res') { V = null; if (cur !== 'game') nav('game'); renderRes(m.rows); }
-  else if (m.t === 'cancel') toast('أُلغيت الجولة بسبب انقطاع لاعب');
-  else if (m.t === 'bye') { toast(isHost ? '' : 'تم إخراجك من الغرفة'); L = null; nav('lobby'); }
+  else if (m.t === 'res') {
+    V = null; if (cur !== 'game') nav('game'); renderRes(m.rows);
+    const key = JSON.stringify(m.rows);                       // الخبرة تُحسب مرة واحدة لكل جولة
+    if (key !== lastRes) { lastRes = key; const me = m.rows.find(r => r.id === ME); if (me) { if (me.st === 'فائز') addWin(); else resetStreak(); } }
+  }
+  else if (m.t === 'cancel') toast('أُلغيت الجولة بسبب انقطاع لاعب، والغرفة رجعت للانتظار');
+  else if (m.t === 'bye') { toast(isHost ? '' : 'تم إخراجك من الغرفة'); L = null; Q = false; nav('lobby'); }
 }
 function createRoom() {
   isHost = true; ME = 'h'; code = rand(); L = null; V = null;
-  G = { code, cap: 6, P: [{ id: 'h', name: S.name, char: S.char }], ph: 'lobby', starter: null, n: 0, log: [] };
+  G = { code, cap: MAX, P: [{ id: 'h', name: S.name, char: S.char }], ph: 'lobby', starter: null, log: [], queue: [], dc: {}, out: {}, card: {}, again: {}, fin: null, rows: null, joker: null };
   $('kr').className = 'host'; $('ttl').textContent = 'إنشاء غرفة'; $('ksa').innerHTML = '';
   nav('room'); if (nat() && nat().host) nat().host(code); lobbyPush(); fire('createroom', { code });
 }
 function joinRoom() {
-  isHost = false; ME = null; L = null; G = null; V = null; $('kr').className = 'join'; $('ttl').textContent = 'الانضمام إلى غرفة';
+  isHost = false; ME = null; L = null; G = null; V = null; Q = false; $('kr').className = 'join'; $('ttl').textContent = 'الانضمام إلى غرفة';
   $('ci').value = ''; showRoom(false); nav('room'); fire('joinroom');
 }
 function enterRoom(c) {
@@ -589,8 +617,9 @@ function seatInner(p, i) {
   return num + `<div class="kav"><img src="${face(p.char)}" alt=""></div><div class="ksn" dir="auto">${esc(p.name)}</div><div class="kbg">${p.id === 'h' ? '<b class="ho">المضيف</b>' : ''}${p.id === ME && p.id !== 'h' ? '<b class="hu">أنت</b>' : ''}</div>${isHost && p.id !== ME ? `<button class="kx" data-a="rm" data-id="${p.id}" aria-label="إزالة">✕</button>` : ''}`;
 }
 function renderRoom() {
-  if (!L) return; const N = L.cap, n = L.players.length, box = $('ksa');
-  const c = N <= 4 ? 2 : N <= 6 ? 3 : N <= 12 ? 4 : 5, r = Math.ceil(N / c);
+  if (!L) { if (Q) { $('ksa').innerHTML = ''; $('kocn').textContent = '—'; $('go').style.display = 'none'; $('kwt').style.display = ''; $('kwtx').textContent = 'ستدخل الغرفة مع الجولة القادمة'; } return; }
+  const N = L.cap, n = L.players.length, box = $('ksa');
+  const c = N <= 4 ? 2 : 3, r = Math.ceil(N / c);
   box.style.setProperty('--c', c); box.style.setProperty('--r', r); box.className = r >= 3 ? 'dn' : '';
   if (box.children.length !== N) {
     box.innerHTML = '';
@@ -605,7 +634,6 @@ function renderRoom() {
   const go = n >= MIN && L.starter === ME;
   $('go').style.display = go ? '' : 'none'; $('kwt').style.display = go ? 'none' : '';
   $('kwtx').textContent = n < MIN ? 'بانتظار اكتمال ' + MIN + ' لاعبين على الأقل' : 'بانتظار اللاعب المُختار ليبدأ التوزيع';
-  $('kdemo').style.display = isHost && !nat() ? 'block' : 'none';
 }
 $('ksa').onclick = e => { const b = e.target.closest('[data-a="rm"]'); if (b) kick(b.dataset.id); };
 function copyCode() { try { navigator.clipboard.writeText(code).then(() => toast('تم نسخ الرمز'), () => toast('الرمز: ' + code)); } catch (e) { toast('الرمز: ' + code); } }
@@ -619,12 +647,12 @@ function cardHTML() {
 }
 function flipCard() { if (!V) return; showC = !showC; cardHTML(); }
 function renderGame() {
-  $('gres').style.display = 'none'; $('glp').style.display = 'flex'; $('gmain').style.display = 'flex'; cardHTML();
+  $('go').style.display = 'none'; $('gres').style.display = 'none'; $('glp').style.display = 'flex'; $('gmain').style.display = 'flex'; cardHTML();
   const m = V.mode, T = {
     pick: 'لمّح للآخرين في الواقع، ثم اختر من تظن أنه صاحب الجوكر',
     joker: 'ورقتك هي الجوكر! لمّح للآخرين بذكاء، وأنزل ورقتك قبل أن تُكشف',
     wait: 'بانتظار بقية اللاعبين…', final: 'بقيت وحدك! خمّن من هو صاحب ورقة الجوكر',
-    out: 'خرجت من الطاولة. تابع بقية اللاعبين'
+    out: V.card === 'JK' ? 'نزّلت ورقتك وخرجت من الطاولة. تابع بقية اللاعبين' : 'تم تسجيل اختيارك. تابع بقية اللاعبين'
   }, B = { pick: ['kbl', 'اختيار صاحب الجوكر', () => askPick(false)], joker: ['kr', 'أنزل الورقة', dropCard], final: ['kr', 'من هو صاحب الجوكر؟', () => askPick(true)] }[m];
   $('gst').textContent = T[m]; const a = $('gact'); a.style.display = B ? '' : 'none';
   if (B) { a.className = 'kb ' + B[0]; a.innerHTML = '<span>' + B[1] + '</span>'; a.onclick = B[2]; }
@@ -638,6 +666,7 @@ function renderGame() {
 }
 function dropCard() { toHost({ t: 'drop' }); toast('نزّلت ورقتك'); }
 function askPick(fin) {
+  if (!V) return;
   const o = V.P.filter(p => p.id !== ME);
   openModal(`<h2>${fin ? 'من هو صاحب ورقة الجوكر؟' : 'اختر صاحب الجوكر'}</h2><div class="pl">${o.map(p => `<button class="kb kbl" data-id="${p.id}"><span>${esc(p.name)}</span></button>`).join('')}</div><button class="kb kr" onclick="closeModal()"><span>إلغاء</span></button>`);
   $('mc').onclick = e => { const b = e.target.closest('[data-id]'); if (!b) return; const id = b.dataset.id, p = o.find(x => x.id === id);
@@ -651,7 +680,7 @@ function renderRes(rows) {
   $('rsum').innerHTML = `<div>🃏 صاحب الجوكر: <b>${esc(j.name)}</b></div><div>✅ الفائزون: ${names(['فائز'])}</div><div>❌ الخاسرون: ${names(['خاسر', 'منسحب'])}</div><div>🚩 الغشاشون: ${names(['غشاش'])}</div>`;
   const C = { 'فائز': 'hu', 'خاسر': 'rd', 'غشاش': 'bt', 'منسحب': 'gy' };
   $('rtb').innerHTML = '<div class="rr h"><span>اللاعب</span><span>ورقته</span><span>اختياره</span><span>النتيجة</span></div>' +
-    rows.map(r => `<div class="rr${r.joker ? ' j' : ''}"><span dir="auto">${esc(r.name)}</span><span dir="ltr" style="text-align:right">${r.card === 'JK' ? '🃏' : r.card}</span><span dir="auto">${esc(r.pick) || '—'}</span><b class="${C[r.st]}">${r.st}</b></div>`).join('');
+    rows.map(r => `<div class="rr${r.joker ? ' j' : ''}"><span dir="auto">${esc(r.name)}</span><span dir="ltr" style="text-align:right">${r.card === 'JK' ? '🃏' : r.card}</span><span dir="auto">${r.pick ? (r.good ? '✓ ' : '✗ ') : ''}${esc(r.pick) || '—'}</span><b class="${C[r.st]}">${r.st}</b></div>`).join('');
 }
 const RAG = $('rag').innerHTML;
 function again2(y) {
@@ -662,10 +691,21 @@ function again2(y) {
 /* ---- قواعد اللعب ---- */
 function openRules() {
   openModal(`<h2>قواعد الجوكر</h2><div class="rules">
-  <p>كل لاعب يأخذ ورقة سرّية، وورقة واحدة فقط هي الجوكر.</p>
-  <p>الهدف: أن تُخرج صاحب الجوكر. في كل جولة يلمّح اللاعبون لبعضهم، ثم يختار كل لاعب من يظنه صاحب الجوكر فيخرج.</p>
-  <p>صاحب الجوكر يحاول إخفاء نفسه، وينزل ورقته ليخرج هو أيضاً.</p>
-  <p>عندما يبقى لاعب عادي واحد، يخمّن صاحب الجوكر، فيكسب الباقون إن أصاب.</p></div>
+  <p><b>الفكرة:</b> لعبة من 4 إلى 9 لاعبين تعتمد على التلميحات الواقعية. كل لاعب يأخذ ورقة، ولاعب واحد فقط يأخذ الجوكر. من يخمّن صاحب الجوكر يكسب، ومن يدّعي المعرفة وهو مخطئ يصير غشاشاً.</p>
+  <p><b>الأدوار:</b> صاحب الجوكر لاعب واحد في كل جولة. اللاعب الأخير هو آخر لاعب عادي على الطاولة، وهو الوحيد الذي يجيب على «من صاحب الجوكر؟».</p>
+  <p><b>المراحل:</b> الغرفة، ثم التوزيع، ثم اللعب بالتلميح، ثم المرحلة الأخيرة، ثم النتيجة.</p>
+  <p><b>اللعب:</b> يختار كل لاعب عادي من يظنه صاحب الجوكر فيخرج، ويؤكد اختياره ولا يمكن التراجع. صاحب الجوكر ينزل ورقته في أي وقت ليخرج. آخر لاعب عادي لا يخرج قبل أن ينزل صاحب الجوكر ورقته.</p>
+  <p><b>المرحلة الأخيرة:</b> عندما يبقى لاعب عادي واحد، يختار من بين كل الآخرين، حتى من خرج، من يظنه صاحب الجوكر.</p>
+  <p><b>النتيجة:</b></p>
+  <table class="rt"><tr><th>اللاعب</th><th>الحالة</th><th>النتيجة</th></tr>
+  <tr><td>عادي</td><td>خرج واختار صاحب الجوكر صح</td><td>فائز</td></tr>
+  <tr><td>عادي</td><td>خرج واختار غلط</td><td>غشاش (خاسر)</td></tr>
+  <tr><td>اللاعب الأخير</td><td>اختار صاحب الجوكر صح</td><td>فائز</td></tr>
+  <tr><td>اللاعب الأخير</td><td>اختار غلط</td><td>خاسر (وليس غشاشاً)</td></tr>
+  <tr><td>صاحب الجوكر</td><td>اللاعب الأخير اختار غيره</td><td>فائز</td></tr>
+  <tr><td>صاحب الجوكر</td><td>اللاعب الأخير اختاره</td><td>خاسر</td></tr></table>
+  <p><b>الانقطاع:</b> لاعب عادي ينقطع يُحسب خروجاً بدون اختيار ويخسر (منسحب). انقطاع صاحب الجوكر يلغي الجولة وترجع الغرفة للانتظار. من ينقطع ويعود بسرعة يرجع إلى مكانه.</p>
+  <p><b>الغرفة:</b> من ينضم بعد بدء الجولة ينتظر الجولة القادمة.</p></div>
   <button class="kb kr" onclick="closeModal()"><span>حسناً</span></button>`);
 }
 /* ---- QR / camera ---- */
