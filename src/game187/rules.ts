@@ -11,6 +11,20 @@ export const RANKS_187: Rank187[] = [2, 14, 13, 12, 11, 10, 9, 8, 7, 6];
 export const TOTAL_GAME_POINTS = 187;
 export const MIN_BID = 75;
 export const MAX_BID = 185;
+/** Each raise of the bid (القيد) is 5 points. */
+export const BID_STEP_187 = 5;
+
+/** Lowest bid a player may offer now: 75 at first, then 5 above the current high bid. */
+export function minAllowedBid187(highBid: number | null): number {
+  return highBid ? highBid + BID_STEP_187 : MIN_BID;
+}
+
+/** Snap a dragged bid value to a legal step between `min` and 185. */
+export function snapBid187(value: number, min: number): number {
+  const lo = Math.min(Math.max(min, MIN_BID), MAX_BID);
+  const stepped = lo + Math.round((value - lo) / BID_STEP_187) * BID_STEP_187;
+  return Math.min(MAX_BID, Math.max(lo, stepped));
+}
 
 /** نقاط كل ورقة في لعبة 187 */
 export function getCardPoints(card: Card187): number {

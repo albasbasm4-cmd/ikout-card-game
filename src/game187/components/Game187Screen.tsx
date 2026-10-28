@@ -5,7 +5,9 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { GameEngine187 } from '../engine';
-import { Card187, GameState187, Player187, Suit187 } from '../types';
+import { Card187, GameState187, Player187, Suit187, TrickPlay187 } from '../types';
+import { calculateTrickPoints, resolveTrickWinner187 } from '../rules';
+import { loadSettings } from '../../store/useSettings';
 import { Table187 } from './Table187';
 import {
   evaluateBotBid,
@@ -25,6 +27,12 @@ export interface Game187ScreenProps {
 }
 
 const STORAGE_KEY_187 = 'ikout_187_state';
+/** How long a completed trick stays on the table; longer than the 0.8s card flight so the last card lands first. */
+export const TRICK_HOLD_MS_187 = 1500;
+const speedFactor = () => {
+  const s = loadSettings().botSpeed;
+  return s === 'SLOW' ? 1.6 : s === 'FAST' ? 0.6 : 1;
+};
 
 export const Game187Screen: React.FC<Game187ScreenProps> = ({
   players,
@@ -100,6 +108,26 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
     }
   }, [mode]);
 
+  // Keep the completed trick visible briefly (presentation only; the engine has already scored it).
+  const [heldTrick, setHeldTrick] = useState<{ plays: TrickPlay187[]; winner: TrickPlay187; text: string } | null>(null);
+  const seenTricks = useRef(gameState.trickHistory.length);
+  useEffect(() => {
+    const n = gameState.trickHistory.length;
+    if (n < seenTricks.current) seenTricks.current = n;
+    if (n === seenTricks.current) return;
+    seenTricks.current = n;
+    const plays = gameState.trickHistory[n - 1];
+    if (!plays || plays.length === 0) return;
+    const winner = resolveTrickWinner187(plays, gameState.trump);
+    const who = gameState.players[winner.seat]?.name || `لاعب ${winner.seat + 1}`;
+    setHeldTrick({ plays, winner, text: `أكلة ${who} (+${calculateTrickPoints(plays)})` });
+  }, [gameState.trickHistory, gameState.trump, gameState.players]);
+  useEffect(() => {
+    if (!heldTrick) return;
+    const t = window.setTimeout(() => setHeldTrick(null), TRICK_HOLD_MS_187);
+    return () => window.clearTimeout(t);
+  }, [heldTrick]);
+
   // شبكة الغرفة المتزامنة
   useEffect(() => {
     if (mode === 'room' && roomCode) {
@@ -138,13 +166,15 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
         ch.close();
       };
     }
+    return undefined;
   }, [mode, roomCode, isHost, syncState]);
 
   // أتمتة حركات البوتات (على جهاز المضيف فقط)
   useEffect(() => {
-    if (!isHost) return;
+    if (!isHost || heldTrick) return;
     const eng = engineRef.current;
     if (!eng) return;
+    const k = speedFactor();
 
     const currentSeat = gameState.currentSeat;
     const currentPlayer = gameState.players[currentSeat];
@@ -163,7 +193,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
           eng.placeBid(currentSeat, 0);
           syncState();
         }
-      }, 550);
+      }, 650 * k);
     } else if (gameState.phase === 'DISCARD') {
       const hakemSeat = gameState.bidderSeat ?? 0;
       const hakemPlayer = gameState.players[hakemSeat];
@@ -173,7 +203,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
           const discards = chooseBotDiscards(hand, 'S');
           eng.giveAwayCards(hakemSeat, discards);
           syncState();
-        }, 600);
+        }, 700 * k);
       }
     } else if (gameState.phase === 'TRUMP') {
       const hakemSeat = gameState.bidderSeat ?? 0;
@@ -184,7 +214,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
           const trump = chooseBotTrump(hand);
           eng.declareTrump(hakemSeat, trump);
           syncState();
-        }, 600);
+        }, 700 * k);
       }
     } else if (gameState.phase === 'PLAY' && isBotTurn) {
       timer = window.setTimeout(() => {
@@ -196,13 +226,13 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
         } catch (err) {
           console.error('Bot play error:', err);
         }
-      }, 500);
+      }, 750 * k);
     }
 
     return () => {
       if (timer) window.clearTimeout(timer);
     };
-  }, [isHost, gameState, syncState]);
+  }, [isHost, gameState, syncState, heldTrick]);
 
   // الإجراءات
   const handleHumanPlayCard = (card: Card187) => {
@@ -267,6 +297,16 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
     }
   };
 
+  const handleRestart = () => {
+    if (!isHost) return;
+    const eng = new GameEngine187({ players: gameState.players.length ? gameState.players : players });
+    eng.startRound();
+    engineRef.current = eng;
+    setHeldTrick(null);
+    seenTricks.current = 0;
+    syncState();
+  };
+
   const handleExitGame = () => {
     playTapSound();
     try {
@@ -282,6 +322,11 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       <Table187
         state={gameState}
         mySeat={mySeat}
+        displayedTrick={heldTrick ? heldTrick.plays : gameState.currentTrick}
+        winningPlay={heldTrick?.winner ?? null}
+        trickAnnouncement={heldTrick?.text ?? null}
+        canAct={!heldTrick}
+        onRestart={isHost && mode !== 'room' ? handleRestart : undefined}
         onPlayCard={handleHumanPlayCard}
         onBid={handleHumanBid}
         onGiveAwayCards={handleHumanGiveAwayCards}

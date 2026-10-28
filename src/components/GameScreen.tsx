@@ -16,6 +16,9 @@ import { Card as CardType, Difficulty, Suit } from '../types/kout';
 import { strings } from '../i18n/ar';
 import { useSettings } from '../store/useSettings';
 import { useStageFit } from '../hooks/use-stage-fit';
+
+/** Game stage height in design units; width follows the screen's aspect ratio. */
+const STAGE_H = 450;
 import { playWinSound, playLoseSound, playTrickWinSound, playTapSound } from '../utils/audio';
 import {
   Trophy,
@@ -94,7 +97,26 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     players: initialPlayers,
   });
 
-  const { settings, toggleSound, setBotSpeed } = useSettings();
+  const { settings, toggleSound, setBotSpeed, toggleOrientationPreference } = useSettings();
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [stageW, setStageW] = useState(800);
+  useEffect(() => {
+    const calc = () => {
+      const vw = window.visualViewport?.width ?? window.innerWidth;
+      const vh = window.visualViewport?.height ?? window.innerHeight;
+      const rotated = settings.orientationPreference === 'landscape' && vh > vw;
+      const ratio = rotated ? vh / vw : vw / vh;
+      setStageW(Math.round(Math.min(1050, Math.max(700, STAGE_H * ratio))));
+    };
+    calc();
+    window.addEventListener('resize', calc);
+    window.addEventListener('orientationchange', calc);
+    return () => {
+      window.removeEventListener('resize', calc);
+      window.removeEventListener('orientationchange', calc);
+    };
+  }, [settings.orientationPreference]);
+  useStageFit(stageRef, stageW, STAGE_H, settings.orientationPreference);
   const [showScoreboardModal, setShowScoreboardModal] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [showRulesModal, setShowRulesModal] = useState<boolean>(false);
@@ -329,7 +351,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     >
       <div
         ref={stageRef}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1600px] h-[900px] bg-[var(--reference-felt)] shadow-2xl flex flex-col overflow-hidden"
+        // useStageFit owns the centering transform; Tailwind translate utilities would double it.
+        // The stage is 450 units high and as wide as the screen's aspect ratio (no side bars).
+        style={{
+          width: `${stageW}px`,
+          height: `${STAGE_H}px`,
+          ['--game-h' as string]: `${STAGE_H}px`,
+          ['--sa-t' as string]: '0px', ['--sa-r' as string]: '0px', ['--sa-b' as string]: '0px', ['--sa-l' as string]: '0px',
+          ['--kt-tscale' as string]: String(Math.min(1, (stageW - 380) / 467)),
+        }}
+        className="ik-game-stage absolute top-1/2 left-1/2 bg-[var(--reference-felt)] flex flex-col overflow-hidden"
       >
 
       <div className="relative w-full h-full flex flex-col overflow-hidden">
@@ -347,29 +378,19 @@ export const GameScreen: React.FC<GameScreenProps> = ({
           onSendSpeechBubble={sendSpeechBubble}
           headerControls={headerControls}
           className="w-full h-full"
+          centerOverlay={
+            state.phase === 'BID' && activeHumanSeat !== null && state.currentSeat === activeHumanSeat ? (
+              <BidPanel
+                currentHighBid={state.highBid}
+                isDealerForced={isDealerForced}
+                maxBid={isBO6 ? 9 : 8}
+                onBid={humanBid}
+              />
+            ) : state.phase === 'TRUMP' && activeHumanSeat !== null && state.bidderSeat === activeHumanSeat ? (
+              <TrumpPicker currentTrump={state.trump} onSelectTrump={humanDeclareTrump} />
+            ) : null
+          }
         />
-
-        {/* Floating Bid Panel when in BID phase and it's the active human's turn */}
-        {state.phase === 'BID' && activeHumanSeat !== null && state.currentSeat === activeHumanSeat && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center p-3 sm:p-4 reference-selection-overlay animate-in fade-in duration-200">
-            <BidPanel
-              currentHighBid={state.highBid}
-              isDealerForced={isDealerForced}
-              maxBid={isBO6 ? 9 : 8}
-              onBid={humanBid}
-            />
-          </div>
-        )}
-
-        {/* Floating Trump Picker when in TRUMP phase and the active human won the bid */}
-        {state.phase === 'TRUMP' && activeHumanSeat !== null && state.bidderSeat === activeHumanSeat && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center p-3 sm:p-4 reference-selection-overlay animate-in fade-in duration-200">
-            <TrumpPicker
-              currentTrump={state.trump}
-              onSelectTrump={humanDeclareTrump}
-            />
-          </div>
-        )}
 
         {/* لافتة الحكم على البلاغ */}
         {cheatVerdict && (

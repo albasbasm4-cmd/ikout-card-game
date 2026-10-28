@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'motion/react';
 import { GameState, Card as CardType, Suit, TrickPlay } from '../types/kout';
 import { Card, SuitSvg, JokerSvg } from './Card';
 import { Hand } from './Hand';
 import { Crown, X, Hand as PassHand, Bot } from 'lucide-react';
+import { CARD_FLIGHT_SECONDS, linearToScreen, peekCardLaunch } from '../utils/cardFlight';
 import { Button } from './ui/button';
 import { playBubbleSound, playTapSound } from '../utils/audio';
 import { CHARACTER_IDS, characterFace, useProfile } from '../utils/profile';
@@ -18,6 +19,8 @@ export interface TableProps {
  state?: GameState; mySeat?: number; onPlayCard?: (card: CardType) => void; onBid?: (bid: number) => void; onDeclareTrump?: (suit: Suit) => void;
  displayedTrick?: TrickPlay[]; winningTrickPlay?: TrickPlay | null; trickWinnerAnnouncement?: string | null;
  speechBubbles?: Record<number,string>; legalCardIds?: Set<string>; onSendSpeechBubble?: (message:string)=>void; headerControls?: React.ReactNode; className?: string; localHandSeat?: number;
+ /** Rendered inside the table surface (bid / trump pickers), like the reference. */
+ centerOverlay?: React.ReactNode;
 }
 
 export const MOCK_TABLE_STATE: GameState = {
@@ -73,13 +76,13 @@ export const MOCK_TABLE_STATE: GameState = {
 
 // خلايا الأوراق المنزلة: موضع ثابت لكل مقعد داخل صندوق سطح الطاولة (نسب مئوية قابلة للتعديل من مكان واحد)
 // 1 أعلى اليسار، 2 أعلى الوسط، 3 أعلى اليمين، 4 أسفل اليسار، 5 أسفل الوسط (أنا)، 6 أسفل اليمين
-export const TRICK_SLOTS: Record<number, { left: number; top: number; from: [number, number] }> = {
-  1: { left: 24, top: 9, from: [-250, 20] },
-  2: { left: 43.1, top: 9, from: [0, -210] },
-  3: { left: 62.2, top: 9, from: [250, 20] },
-  4: { left: 24, top: 53, from: [-250, 40] },
-  5: { left: 43.1, top: 53, from: [0, 220] },
-  6: { left: 62.2, top: 53, from: [250, 40] },
+export const TRICK_SLOTS: Record<number, { left: number; top: number }> = {
+  1: { left: 26.1, top: 18.3 },
+  2: { left: 43.1, top: 14 },
+  3: { left: 60, top: 18.3 },
+  4: { left: 26.1, top: 51.6 },
+  5: { left: 43.1, top: 56 },
+  6: { left: 60, top: 51.6 },
 };
 export const trickSlotFor = (relative: number, count: number): number => {
   if (relative === 0) return 5;
@@ -94,7 +97,7 @@ export const trickSlotFor = (relative: number, count: number): number => {
   return relative === 3 ? 1 : 3;
 };
 
-export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat = 0, onPlayCard, displayedTrick, winningTrickPlay, trickWinnerAnnouncement, speechBubbles = {}, legalCardIds, onSendSpeechBubble, headerControls, className = '', localHandSeat }) => {
+export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat = 0, onPlayCard, displayedTrick, winningTrickPlay, trickWinnerAnnouncement, speechBubbles = {}, legalCardIds, onSendSpeechBubble, headerControls, className = '', localHandSeat, centerOverlay }) => {
  const profile = useProfile();
  // Stable per-seat characters: the human's profile character, bots drawn from the restored 36.
  const seatCharacters = useMemo<Record<number, CharacterId>>(() => {
@@ -230,6 +233,10 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
    }
  }, [state.phase, state.roundNo]);
  const bubble = (seat: number) => {
+   // Bids, passes and trump calls are shown by the seat's badge (like the reference), not as text bubbles.
+   const raw = speechBubbles[seat];
+   const isCall = !!raw && /^(pass|bid:|trump:)/.test(raw);
+   if (isCall && (!reactions[seat] || reactionCause.current[seat] === `bubble-${seat}`)) return undefined;
    if (reactions[seat]) return reactions[seat];
    const message = speechBubbles[seat];
    if (!message) return undefined;
@@ -243,82 +250,159 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
  const myTurn = state.currentSeat === handSeat && state.phase === 'PLAY';
  const name = (seat:number) => state.players?.[seat]?.name || `لاعب ${seat + 1}`;
  const active = state.phase === 'TRUMP' ? state.bidderSeat : state.currentSeat;
- return <div dir="rtl" className={`reference-game table-theme-${profile.table} card-theme-${profile.cards} ${className}`}>
-  <section className="reference-arena table-felt" aria-label="طاولة كوت" style={{ backgroundImage: 'url(/assets/ikout/backgrounds/wood-bg.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-    <div className="reference-tools" dir="ltr">{headerControls}</div>
-    <header className="reference-scorebar" dir="ltr">
-      <div className="reference-score-row">
-        <span className="reference-score team-red"><strong>{state.scores[0]}</strong></span>
-        <span className="reference-score-mid"><strong>{state.highBid ?? '-'}</strong></span>
-        <span className="reference-score team-blue"><strong>{state.scores[1]}</strong></span>
+
+ const myTeam = mySeat % 2;
+ const totalTricks = count === 6 ? 9 : 8;
+ const bidderTeam = state.bidderSeat !== null && state.bidderSeat !== undefined ? state.bidderSeat % 2 : null;
+ const needed = (team: number) => state.highBid && bidderTeam !== null ? (bidderTeam === team ? state.highBid : totalTricks - state.highBid + 1) : null;
+ const myTricks = state.tricksWon[myTeam] ?? 0;
+ const oppTricks = state.tricksWon[1 - myTeam] ?? 0;
+ const seatPos = (relative: number): string => count === 6
+   ? (['', 'R2', 'R1', 'T', 'L1', 'L2'][relative] ?? 'T')
+   : (['', 'R', 'T', 'L'][relative] ?? 'T');
+ const badgeFor = (seat: number): React.ReactNode => {
+   if (state.phase === 'BID') {
+     const bid = state.bids.find(b => b.seat === seat)?.bid;
+     if (bid === undefined) return null;
+     return bid ? <strong>{bid}</strong> : <PassHand className="kt-badge-hand" strokeWidth={2.4} />;
+   }
+   if (state.bidderSeat === seat && state.highBid && state.phase !== 'GAME_END') {
+     return <><strong>{state.highBid}</strong>{state.trump && <SuitSvg suit={state.trump} className="kt-badge-suit" />}</>;
+   }
+   return null;
+ };
+ const isBot = (seat: number) => state.players?.[seat]?.kind === 'AI_BOT';
+
+ return <div dir="rtl" className={`kt-root table-theme-${profile.table} card-theme-${profile.cards} ${centerOverlay ? 'kt-picking' : ''} ${className}`}>
+  <section className="kt-arena" aria-label="طاولة كوت">
+    <div className="kt-tools" dir="ltr">{headerControls}</div>
+
+    <header className="kt-score" dir="ltr" aria-label="النتيجة">
+      <div className="kt-score-top">
+        <strong className="kt-c-team">{state.scores[myTeam]}</strong>
+        <strong className="kt-score-limit" title="حد القيد">{state.targetScore}</strong>
+        <strong className="kt-c-opp">{state.scores[1 - myTeam]}</strong>
       </div>
-      <div className="reference-trick-row">
-        <span className="reference-trick-count team-red">{state.tricksWon[0]}</span>
-        <span className="reference-trick-dots" aria-label="أشواط محرزة">
-          {Array.from({ length: Math.max(state.hands[mySeat]?.length ?? 0, 1) }, (_, i) => {
-            const red = i < state.tricksWon[0];
-            const blue = i >= (state.hands[mySeat]?.length ?? 0) - state.tricksWon[1];
-            return <i key={i} className={`reference-dot ${red ? 'dot-red' : blue ? 'dot-blue' : ''}`} />;
+      <div className="kt-score-bottom">
+        <span className="kt-c-team"><b>{myTricks}</b>{needed(myTeam) !== null && <small>/{needed(myTeam)}</small>}</span>
+        <span className="kt-dots" aria-label="الأكلات">
+          {Array.from({ length: totalTricks }, (_, i) => {
+            const cls = i < myTricks ? 'dot-team' : i >= totalTricks - oppTricks ? 'dot-opp' : (i === myTricks && state.phase === 'PLAY') ? 'dot-now' : '';
+            return <i key={i} className={cls} />;
           })}
         </span>
-        <span className="reference-trick-count team-blue">{state.tricksWon[1]}</span>
+        <span className="kt-c-opp"><b>{oppTricks}</b>{needed(1 - myTeam) !== null && <small>/{needed(1 - myTeam)}</small>}</span>
       </div>
     </header>
-    <div className="reference-table">
-      <div className="reference-table-frame" aria-hidden="true">
-        <span className="reference-table-handle handle-left" /><span className="reference-table-handle handle-right" />
-        <div className="reference-table-surface" />
+
+    <div className="kt-table">
+      <span className="kt-handle kt-handle-l" aria-hidden="true" /><span className="kt-handle kt-handle-r" aria-hidden="true" />
+      <div className="kt-frame" aria-hidden="true"><div className="kt-surface" /></div>
+      <span className="kt-plate kt-plate-top" aria-hidden="true" /><span className="kt-plate kt-plate-bottom" aria-hidden="true" />
+      <div className="kt-trick" aria-label="الأوراق على الطاولة">
+        <AnimatePresence>{trick.map((play, i) => {
+          const relative = (play.seat - mySeat + count) % count;
+          const slotDef = TRICK_SLOTS[trickSlotFor(relative, count)];
+          const winnerRel = ((winningTrickPlay?.seat ?? play.seat) - mySeat + count) % count;
+          const winSlot = TRICK_SLOTS[trickSlotFor(winnerRel, count)];
+          const winning = winningTrickPlay?.card.id === play.card.id;
+          return <TrickCard key={play.card.id} play={play} left={slotDef.left} top={slotDef.top} zIndex={winning ? 50 : i + 1} winning={winning}
+            exitX={(winSlot.left - slotDef.left) * 4.67} exitY={(winSlot.top - slotDef.top) * 2.63} reducedMotion={!!reducedMotion} />;
+        })}</AnimatePresence>
+        {trickWinnerAnnouncement && <span className="kt-winner">{trickWinnerAnnouncement}</span>}
       </div>
-    <div className="reference-trick" aria-label="الأوراق على الطاولة">
-      <AnimatePresence>{trick.map((play, i) => {
-        const relative = (play.seat - mySeat + count) % count;
-        const slot = trickSlotFor(relative, count);
-        const slotDef = TRICK_SLOTS[slot];
-        const winnerRel = ((winningTrickPlay?.seat ?? play.seat) - mySeat + count) % count;
-        const winSlot = TRICK_SLOTS[trickSlotFor(winnerRel, count)];
-        return <motion.div key={play.card.id} className={`reference-trick-card ${winningTrickPlay?.card.id === play.card.id ? 'trick-winning' : ''}`} style={{ left: `${slotDef.left}%`, top: `${slotDef.top}%`, zIndex: winningTrickPlay?.card.id === play.card.id ? 50 : i + 1 }} initial={reducedMotion ? false : { x: slotDef.from[0], y: slotDef.from[1], scale: 1.12, opacity: 0 }} animate={{ x: 0, y: 0, scale: 1, opacity: 1, rotate: 0 }} exit={{ x: (winSlot.left - slotDef.left) * 6.5, y: (winSlot.top - slotDef.top) * 3.9, scale: .35, opacity: 0, transition: { duration: .4, ease: 'easeIn' } }} transition={reducedMotion ? { duration: 0 } : { duration: .45, ease: 'easeOut' }}><Card card={play.card} size="sm" /></motion.div>;
-      })}</AnimatePresence>
-      {trickWinnerAnnouncement && <span className="reference-winner">{trickWinnerAnnouncement}</span>}
+      {centerOverlay && <div className="kt-center">{centerOverlay}</div>}
     </div>
-    </div>
-    <div className="reference-trump">{state.trump && <><SuitSvg suit={state.trump} className="w-5 h-5" /><strong>{state.highBid}</strong></>}</div>
+
     {Array.from({ length: count }, (_, seat) => {
       if (seat === mySeat) return null;
       const relative = (seat - mySeat + count) % count;
-      const bid = state.bids.find(b => b.seat === seat)?.bid;
-      const topRel = count === 6 ? 3 : 2;
-      const fanSide = relative === topRel ? 'top' : relative > topRel ? 'left' : 'right';
-      return <div key={seat} className={`reference-seat seat-${count}-${relative} ${seat % 2 === mySeat % 2 ? 'seat-team' : 'seat-opponent'} ${active === seat ? 'seat-active' : ''} ${speakingSeat === seat ? 'seat-speaking' : ''} fan-${fanSide}`}>
-        <div className="reference-avatar-wrap">
-          <img className="reference-portrait" src={portraitFor(seat)} alt={name(seat)} draggable={false} />
-          {bid !== undefined && state.phase === 'BID' && <span className="reference-bid-badge">{bid || <PassHand size={18}/>}</span>}
-          {state.bidderSeat === seat && <Crown className="reference-crown w-4 h-4" />}
-          {<span className="reference-player-name">{name(seat)}{state.players?.[seat]?.kind === 'AI_BOT' && <Bot className="reference-bot-icon" />}</span>}
-        </div>
-        {!(bid !== undefined && state.phase === 'BID') && (() => {
-          const held = state.hands[seat]?.length ?? 0;
-          const fanMid = (held - 1) / 2;
-          return <div className={`reference-opponent-hand fan-${fanSide}`} aria-label={`${held} أوراق`}>
-            <div className="fan-ring">
-              {Array.from({ length: held }, (_, i) => <span key={i} className="reference-mini-back" style={{ '--r': `${(i - fanMid) * 4}deg` } as React.CSSProperties}><img src={FAN_BACK} alt="" draggable={false} /><i /></span>)}
-            </div>
-          </div>;
-        })()}
-        <AnimatePresence>{bubble(seat) && <motion.div key={bubble(seat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(seat)}</motion.div>}</AnimatePresence>
+      const pos = seatPos(relative);
+      const side = pos.startsWith('L') ? 'left' : pos.startsWith('R') ? 'right' : 'top';
+      const badge = badgeFor(seat);
+      const held = state.hands[seat]?.length ?? 0;
+      const fanMid = (held - 1) / 2;
+      return <div key={seat} data-seat-origin={seat} className={`kt-seat kt-pos-${pos} kt-side-${side} ${seat % 2 === myTeam ? 'kt-team' : 'kt-opp'} ${active === seat ? 'kt-active' : ''} ${speakingSeat === seat ? 'kt-speaking' : ''}`}>
+        <div className="kt-avatar"><img src={portraitFor(seat)} alt={name(seat)} draggable={false} /></div>
+        {state.bidderSeat === seat && state.phase !== 'BID' && <Crown className="kt-crown" />}
+        <div className="kt-name">{isBot(seat) && <Bot className="kt-bot" />}<span>{name(seat)}</span></div>
+        {held > 0 && <div className={`kt-fan kt-fan-${side}`} aria-label={`${held} أوراق`}>
+          <div className="kt-fan-ring">
+            {Array.from({ length: held }, (_, i) => <span key={i} className="kt-mini" style={{ '--r': `${(i - fanMid) * 3}deg` } as React.CSSProperties}><img src={FAN_BACK} alt="" draggable={false} /></span>)}
+          </div>
+        </div>}
+        {badge && <span className="kt-badge">{badge}</span>}
+        <AnimatePresence>{bubble(seat) && <motion.div key={bubble(seat)} className="kt-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(seat)}</motion.div>}</AnimatePresence>
       </div>;
     })}
+
     <AnimatePresence>{slam && <motion.div key={slam.id} className={`reference-slam slam-${slam.kind}`} initial={reducedMotion ? false : { scale: .35, opacity: 0, rotate: -12 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 1.2, opacity: 0 }} transition={{ duration: reducedMotion ? 0 : .32 }}>
       <div className="reference-slam-ring" />
       <div className="reference-slam-symbol">{slam.kind === 'trump-ace' && slam.suit ? <SuitSvg suit={slam.suit} className="reference-slam-icon" /> : <JokerSvg isRed={slam.kind === 'joker'} className="reference-slam-joker" />}</div>
       <strong>{slam.kind === 'joker' ? 'الجيكر' : slam.kind === 'maker' ? 'الميكر' : 'أكة الحكم'}</strong>
     </motion.div>}</AnimatePresence>
-    <div className="reference-local-hand"><Hand cards={(handSeat !== undefined ? state.hands[handSeat] : state.hands[mySeat]) || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" /></div>
-    <div className={`reference-local-seat ${speakingSeat === mySeat ? 'seat-speaking' : ''}`}>
-      <AnimatePresence>{bubble(mySeat) && <motion.div key={bubble(mySeat)} className="reference-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(mySeat)}</motion.div>}</AnimatePresence>
-      <div className="reference-avatar-wrap"><img className="reference-portrait reference-chat-trigger" src={portraitFor(mySeat)} alt={name(mySeat)} title="رسائل الدردشة" aria-label="رسائل الدردشة" draggable={false} onClick={()=>{playTapSound();setChatOpen(v=>!v);}} /><span className="reference-player-name">{name(mySeat)}{state.players?.[mySeat]?.kind === 'AI_BOT' && <Bot className="reference-bot-icon" />}</span></div>
+
+    <div className="kt-hand"><Hand cards={(handSeat !== undefined ? state.hands[handSeat] : state.hands[mySeat]) || []} trump={state.trump} legalCardIds={state.phase === 'PLAY' ? legalCardIds : undefined} isMyTurn={myTurn} onPlayCard={onPlayCard} cardSize="md" cardStep={37} /></div>
+
+    <div data-seat-origin={mySeat} className={`kt-local kt-team ${active === mySeat ? 'kt-active' : ''} ${speakingSeat === mySeat ? 'kt-speaking' : ''}`}>
+      <AnimatePresence>{bubble(mySeat) && <motion.div key={bubble(mySeat)} className="kt-speech" initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>{bubble(mySeat)}</motion.div>}</AnimatePresence>
+      <div className="kt-avatar kt-chat-trigger" role="button" tabIndex={0} title="رسائل الدردشة" aria-label="رسائل الدردشة" onClick={()=>{playTapSound();setChatOpen(v=>!v);}} onKeyDown={(e)=>{ if (e.key === 'Enter') { playTapSound(); setChatOpen(v=>!v); } }}><img src={portraitFor(mySeat)} alt={name(mySeat)} draggable={false} /></div>
+      {state.bidderSeat === mySeat && state.phase !== 'BID' && <Crown className="kt-crown" />}
+      {badgeFor(mySeat) && <span className="kt-badge">{badgeFor(mySeat)}</span>}
+      <div className="kt-name">{isBot(mySeat) && <Bot className="kt-bot" />}<span>{name(mySeat)}</span></div>
     </div>
-    {chatOpen && <div className="reference-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{voiceSet(characterFor(mySeat)).chat.filter(clip => clip.text && clip.text.trim()).map(clip => <Button key={clip.file} variant="ghost" onClick={()=>{playBubbleSound(); setReactions(current => ({ ...current, [mySeat]: clip.text })); playCharacterClip(characterFor(mySeat), clip, mySeat); onSendSpeechBubble?.(`clip:${clip.file}`); setChatOpen(false);}}>{clip.text}</Button>)}</div></div>}
+
+    {chatOpen && <div className="kt-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{voiceSet(characterFor(mySeat)).chat.filter(clip => clip.text && clip.text.trim()).map(clip => <Button key={clip.file} variant="ghost" onClick={()=>{playBubbleSound(); setReactions(current => ({ ...current, [mySeat]: clip.text })); playCharacterClip(characterFor(mySeat), clip, mySeat); onSendSpeechBubble?.(`clip:${clip.file}`); setChatOpen(false);}}>{clip.text}</Button>)}</div></div>}
   </section>
  </div>;
 };
+
+interface TrickCardProps { play: TrickPlay; left: number; top: number; zIndex: number; winning: boolean; exitX: number; exitY: number; reducedMotion: boolean }
+
+/**
+ * A card on the table. On mount it flies from where it came from — the exact
+ * spot the local player released/tapped it, or the bot's avatar — to its slot.
+ * Pure presentation: engine timing and rules are untouched.
+ */
+function TrickCard({ play, left, top, zIndex, winning, exitX, exitY, reducedMotion }: TrickCardProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const started = useRef(false);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const scale = useMotionValue(1);
+  const rotate = useMotionValue(0);
+  const opacity = useMotionValue(1);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || started.current || reducedMotion) return;
+    started.current = true;
+    const own = el.getBoundingClientRect();
+    if (!own.width) return;
+    const launch = peekCardLaunch(play.card.id);
+    let src: { cx: number; cy: number; w: number; rot: number; fade: boolean } | null = null;
+    if (launch) {
+      src = { cx: launch.rect.left + launch.rect.width / 2, cy: launch.rect.top + launch.rect.height / 2, w: launch.rect.width, rot: launch.rotate, fade: false };
+    } else {
+      const origin = el.closest('.kt-root')?.querySelector(`[data-seat-origin="${play.seat}"] .kt-avatar`);
+      if (origin) {
+        const r = origin.getBoundingClientRect();
+        src = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: own.width * 0.55, rot: 0, fade: true };
+      }
+    }
+    if (!src) return;
+    const inv = linearToScreen(el.parentElement).inverse();
+    const d = inv.transformPoint(new DOMPoint(src.cx - (own.left + own.width / 2), src.cy - (own.top + own.height / 2)));
+    x.set(d.x); y.set(d.y); scale.set(Math.max(0.3, Math.min(2.2, src.w / own.width))); rotate.set(src.rot - 14 * Math.sign(d.x || 1));
+    if (src.fade) opacity.set(0.2);
+    const opts = { duration: CARD_FLIGHT_SECONDS, ease: [0.22, 1, 0.36, 1] as const };
+    animate(x, 0, opts); animate(y, 0, opts); animate(scale, 1, opts); animate(rotate, 0, opts);
+    if (src.fade) animate(opacity, 1, { duration: CARD_FLIGHT_SECONDS * 0.4 });
+  }, []);
+  return <motion.div ref={ref} className={`kt-trick-card ${winning ? 'kt-trick-winning' : ''}`}
+    style={{ left: `${left}%`, top: `${top}%`, zIndex, x, y, scale, rotate, opacity }}
+    exit={{ x: exitX, y: exitY, scale: .35, opacity: 0, transition: { duration: .4, ease: 'easeIn' } }}>
+    <Card card={play.card} size="sm" />
+  </motion.div>;
+}
+
 export default Table;

@@ -10,3 +10,4 @@
 - [x] Verify & fix reported issues (AI cardStrength args, joker lead suit, BO6 partner, bubbles for reactions, seat overlap, winning card on top, less bouncy spring, trick collection, deal animation)
 - [x] Profile screen: choose table style + card style, saved with profile, applied in game
 - [x] Final screenshots: profile screen + game screen
+- [x] 187 table: iKout look for 5 players, drag/tap + card flight, scoreboard, slider bid 75–185, same settings; no iKout voices.

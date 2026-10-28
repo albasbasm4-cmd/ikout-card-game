@@ -179,7 +179,7 @@ export function useGame(options: UseGameOptions = {}) {
 
       // Check if this card completes the trick
       if (currentTrick.length === numSeats - 1) {
-        // Complete trick: show all cards for 1100ms before advancing
+        // Complete trick: show all cards for 1500ms (lets the last card finish flying) before advancing
         isResolvingTrickRef.current = true;
         const fullTrick = [...currentTrick, { seat, card }];
         const winner = trickWinner(fullTrick, engine.state.trump);
@@ -215,7 +215,7 @@ export function useGame(options: UseGameOptions = {}) {
             setTrickWinnerAnnouncement(null);
             setDisplayedTrick([]);
           }
-        }, 1100);
+        }, 1500);
       } else {
         // Non-final card play: instant update
         const nextState = engine.playCard(seat, card, playOptions);
