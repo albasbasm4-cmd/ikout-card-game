@@ -38,6 +38,13 @@ function baseState(overrides: Partial<GameState> = {}): GameState {
 }
 
 describe('generateFallbackDecision (AI timeout safety net)', () => {
+  it('keeps partner protection even when the worker fails', () => {
+    const hand: Card[] = [{ id: 'JOKER-RED', joker: 'RED' }, { id: 'JOKER-BLACK', joker: 'BLACK' }, { id: 'H-14', suit: 'H', rank: 14 }, { id: 'H-7', suit: 'H', rank: 7 }];
+    const state = baseState({ phase: 'PLAY', trump: 'H', hands: [hand, [], [], [], [], []], currentTrick: [{ seat: 4, card: { id: 'H-13', suit: 'H', rank: 13 } }] });
+    const decision = generateFallbackDecision(state, 0);
+    expect(decision.type).toBe('PLAY');
+    if (decision.type === 'PLAY') expect(decision.card.id).toBe('H-7');
+  });
   it('never bids above 6 on a weak hand when the worker times out', () => {
     // A hand with no aces, kings or jokers can never justify 8 or 9.
     const weakHand: Card[] = [

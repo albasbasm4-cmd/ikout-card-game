@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { GameState, Card, TrickPlay } from '../types/kout';
+import { GameState, Card, TrickPlay, Difficulty } from '../types/kout';
 import { getLegalCards } from '../rules/cards';
 import { getPlayedCards } from '../engine/KoutTricks';
 import { chooseCard, inferPlayerVoids, determinizeHands } from './ISMCTS';
@@ -75,6 +75,22 @@ function createMockGameState(overrides: Partial<GameState> = {}): GameState {
 }
 
 describe('ISMCTS chooseCard', () => {
+  for (const difficulty of ['EASY', 'MEDIUM', 'EXPERT'] as Difficulty[]) {
+    for (const protectedCard of [
+      { id: 'JOKER-RED', joker: 'RED' } as Card,
+      { id: 'JOKER-BLACK', joker: 'BLACK' } as Card,
+      { id: 'H-14', suit: 'H', rank: 14 } as Card,
+    ]) {
+      it(`${difficulty} saves ${protectedCard.id} when partner wins`, () => {
+        const state = createMockGameState({ hands: [[protectedCard, { id: 'H-7', suit: 'H', rank: 7 }], [], [], [], [], []], currentTrick: [{ seat: 4, card: { id: 'H-13', suit: 'H', rank: 13 } }] });
+        expect(chooseCard(state, 0, { difficulty }).id).toBe('H-7');
+      });
+    }
+  }
+  it('obeys follow suit even when the only legal card is protected', () => {
+    const state = createMockGameState({ hands: [[{ id: 'H-14', suit: 'H', rank: 14 }, { id: 'S-7', suit: 'S', rank: 7 }], [], [], [], [], []], currentTrick: [{ seat: 4, card: { id: 'H-13', suit: 'H', rank: 13 } }] });
+    expect(chooseCard(state, 0).id).toBe('H-14');
+  });
   it('always returns a legal card when leading a trick (EASY mode / 0 iterations)', () => {
     const state = createMockGameState({ currentTrick: [], currentSeat: 0 });
     const hand = state.hands[0];

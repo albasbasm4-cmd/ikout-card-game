@@ -2,40 +2,41 @@ import React from 'react';
 import { Hand } from 'lucide-react';
 import { Bid } from '../types/kout';
 import { playTapSound } from '../utils/audio';
+import { Button } from './ui/button';
 
 export interface BidPanelProps { currentHighBid: Bid | null; isDealerForced?: boolean; maxBid?: number; onBid: (bid: Bid) => void; className?: string }
 
-/** Bid picker drawn inside the table: teal ribbon + 3×2 stone tiles (طاف، 5..9) like the reference. */
+/** Voluntary bids start at six; the pass tile becomes mandatory five only for the final forced dealer. */
 export const BidPanel: React.FC<BidPanelProps> = ({ currentHighBid, isDealerForced = false, maxBid = 9, onBid, className = '' }) => {
   const choose = (bid: Bid) => { playTapSound(); onBid(bid); };
-  const bids: Bid[] = [5, 6, 7, 8, 9] as Bid[];
+  const bids: Bid[] = [6, 7, 8, 9];
   return (
     <div className={`kt-picker ${className}`} role="group" aria-label="المزايدة" dir="ltr">
       <span className="kt-ribbon"><span>اختر طلبتك</span></span>
       <div className="kt-tiles">
-        <button
+        <Button
           type="button"
           className="kt-tile kt-tile-pass"
-          disabled={isDealerForced}
-          aria-label="طاف"
+          aria-label={isDealerForced ? 'ملزوم 5' : 'طاف'}
           title={isDealerForced ? 'ملزوم' : 'طاف'}
-          onClick={() => choose(0 as Bid)}
+          onClick={() => choose(isDealerForced ? 5 : 0)}
         >
-          <Hand className="kt-tile-hand" strokeWidth={2.4} />
+          {isDealerForced ? <span>5</span> : <Hand className="kt-tile-hand" strokeWidth={2.4} />}
           {isDealerForced && <small>ملزوم</small>}
-        </button>
+        </Button>
         {bids.map((bid) => (
-          <button
+          <Button
             key={bid}
             type="button"
             className={`kt-tile ${currentHighBid === bid ? 'kt-tile-current' : ''}`}
-            disabled={bid > maxBid || bid <= (currentHighBid ?? 0) || (bid === 5 && !isDealerForced)}
+            disabled={bid > maxBid || bid <= (currentHighBid ?? 0)}
             aria-label={`طلب ${bid}`}
             onClick={() => choose(bid)}
           >
             <span>{bid}</span>
-          </button>
+          </Button>
         ))}
+        <span className="kt-bid-spacer" aria-hidden="true" />
       </div>
     </div>
   );

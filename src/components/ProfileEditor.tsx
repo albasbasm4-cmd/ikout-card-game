@@ -15,6 +15,8 @@ import { useXp } from '../utils/xp';
 
 export interface ProfileEditorProps {
   onClose: () => void;
+  /** 187 never plays iKout character voices, so its profile preview stays silent. */
+  game?: 'kout' | '187';
 }
 
 type Tab = 'character' | 'table' | 'cards' | 'flag';
@@ -33,7 +35,7 @@ const TABS: { id: Tab; label: string }[] = [
  * character's real voice), table style, card backs and the country flag.
  * Every change applies immediately, exactly like the design.
  */
-export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose }) => {
+export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = 'kout' }) => {
   const { level, inLevel, needed } = useXp();
   const [profile, setProfile] = useState<PlayerProfile>(() => loadProfile());
   const [tab, setTab] = useState<Tab>('character');
@@ -48,7 +50,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose }) => {
     playTapSound();
     apply({ characterId: id });
     // Preview: ONE random clip from the tapped character's own bundle.
-    playRandomCharacterClip(id as CharacterId, 0);
+    if (game === 'kout') playRandomCharacterClip(id as CharacterId, 0);
   };
 
   const popOnce = (text: string) => {

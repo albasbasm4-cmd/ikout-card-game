@@ -6,6 +6,7 @@
 import { Card187, GameState187, Player187, Suit187 } from '../types';
 
 export type Client187Packet =
+  | { type: 'CHAT'; seat: number; message: string }
   | { type: 'JOIN'; playerName: string; characterId?: string; clientToken: string }
   | { type: 'LEAVE'; clientToken: string }
   | { type: 'BID'; seat: number; bid: number }
@@ -16,6 +17,7 @@ export type Client187Packet =
   | { type: 'CHEAT_REPORT'; reporterSeat: number; accusedSeat: number; suit: Suit187 };
 
 export type Host187Packet =
+  | { type: 'CHAT_BUBBLE'; seat: number; message: string }
   | { type: 'ROOM_SEATS_UPDATE'; seats: (Player187 | null)[] }
   | { type: 'GAME_START'; state: GameState187; yourSeat: number }
   | { type: 'STATE_UPDATE'; state: GameState187 }

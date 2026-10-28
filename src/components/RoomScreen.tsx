@@ -63,6 +63,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
 }) => {
   const isHost = mode === 'host';
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const { settings } = useSettings();
   useStageFit(stageRef, 2400, 1080, settings.orientationPreference);
   const profile = useProfile();
   const { level, inLevel, needed } = useXp();

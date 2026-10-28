@@ -132,7 +132,7 @@ describe('getLegalCards & Joker Rules', () => {
       blackJoker,
       redJoker,
     ];
-    const ctx = {
+    const ctx: { playedCards: Card[] } = {
       playedCards: [{ id: 'C-7', suit: 'C', rank: 7 }], // trick 1 was played
     };
     const legal = getLegalCards(hand, [], trump, ctx);

@@ -12,6 +12,15 @@ import {
   SUITS_187,
 } from './rules';
 
+export const BOT_MAX_BID_187 = 140;
+
+/** Ten points in reserve; 140 ends bot participation, not human bidding. */
+export function bidFromPointCapacity187(capacity: number, high: number | null): number {
+  if ((high ?? 0) >= BOT_MAX_BID_187) return 0;
+  const bid = Math.min(BOT_MAX_BID_187, Math.floor((capacity - 10) / 5) * 5);
+  return bid >= 75 && bid > (high ?? 0) ? bid : 0;
+}
+
 /** تقييم يد البوت لتقديم مزايدة */
 export function evaluateBotBid(hand: Card187[], currentHighBid: number | null): number {
   // تجميع الأوراق حسب النوع
@@ -29,24 +38,19 @@ export function evaluateBotBid(hand: Card187[], currentHighBid: number | null): 
   const maxSuitCount = Math.max(...Object.values(suitCounts));
   const estimatedStrength = highCardPoints + maxSuitCount * 8;
 
-  // تحديد المزايدة المقترحة
-  let suggested = 0;
-  if (estimatedStrength >= 75) suggested = 130;
-  else if (estimatedStrength >= 65) suggested = 120;
-  else if (estimatedStrength >= 55) suggested = 110;
-  else if (estimatedStrength >= 45) suggested = 100;
-  else if (estimatedStrength >= 38) suggested = 90;
-  else if (estimatedStrength >= 32) suggested = 80;
-  else if (estimatedStrength >= 26) suggested = 75;
-
-  const minAcceptable = currentHighBid ? currentHighBid + 5 : 75;
-
-  if (suggested >= minAcceptable && suggested <= 160) {
-    return minAcceptable;
-  }
-
-  // إذا لم تكن يده قوية كفاية -> انسحاب
-  return 0;
+  // Preserve the hand estimator, interpreting its bands as capacity,
+  // then reserve ten points rather than bidding to its limit.
+  let capacity = 0;
+  if (estimatedStrength >= 95) capacity = 150;
+  else if (estimatedStrength >= 85) capacity = 140;
+  else if (estimatedStrength >= 75) capacity = 130;
+  else if (estimatedStrength >= 65) capacity = 120;
+  else if (estimatedStrength >= 55) capacity = 110;
+  else if (estimatedStrength >= 45) capacity = 100;
+  else if (estimatedStrength >= 38) capacity = 90;
+  else if (estimatedStrength >= 32) capacity = 80;
+  else if (estimatedStrength >= 26) capacity = 75;
+  return bidFromPointCapacity187(capacity, currentHighBid);
 }
 
 /** اختيار أفضل نوع حكم ليد الحاكم */

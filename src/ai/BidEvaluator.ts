@@ -87,6 +87,14 @@ export function scoreHandForSuit(hand: Card[], trumpCandidate: Suit): number {
   return score;
 }
 
+/** Conservative contract: capacity 6 passes, 7→6, 8→7, 9→8. */
+export function bidFromTrickCapacity(capacity: number): Bid {
+  if (capacity < 7) return 0;
+  if (capacity < 8) return 6;
+  if (capacity < 9) return 7;
+  return 8;
+}
+
 /**
  * Evaluates the best bid and trump suit for a player's hand:
  * - Scores each suit by trump length, jokers, Aces, and Kings
@@ -95,7 +103,7 @@ export function scoreHandForSuit(hand: Card[], trumpCandidate: Suit): number {
  *     - MEDIUM: Standard balanced bidding
  *     - EXPERT: Stricter thresholds (risk-averse) and accounts for partner position
  * - Enforces forced dealer bid (Malzom: minimum 5) if isDealerForced is true
- * - Returns Bid (0 for pass, 6..9 voluntary; 5 only as forced Malzom) and bestSuit
+ * - Returns Bid (0 for pass, 6..8 voluntary; 5 only as forced Malzom) and bestSuit
  */
 export function evaluateBid(
   hand: Card[],
@@ -137,32 +145,8 @@ export function evaluateBid(
     expectedTricks += 0.5;
   }
 
-  // Derive bid from expected tricks
-  let rawBid: Bid = 0;
-
-  if (difficulty === 'EXPERT') {
-    // Strict thresholds for Expert
-    if (expectedTricks >= 8.8) rawBid = 9;
-    else if (expectedTricks >= 7.8) rawBid = 8;
-    else if (expectedTricks >= 6.8) rawBid = 7;
-    else if (expectedTricks >= 5.8) rawBid = 6;
-    else rawBid = 0;
-  } else if (difficulty === 'EASY') {
-    // Looser thresholds for Easy
-    const rounded = Math.round(expectedTricks);
-    if (rounded >= 9) rawBid = 9;
-    else if (rounded >= 8) rawBid = 8;
-    else if (rounded >= 7) rawBid = 7;
-    else if (rounded >= 6) rawBid = 6;
-    else rawBid = 0;
-  } else {
-    // Medium thresholds
-    if (expectedTricks >= 8.5) rawBid = 9;
-    else if (expectedTricks >= 7.5) rawBid = 8;
-    else if (expectedTricks >= 6.5) rawBid = 7;
-    else if (expectedTricks >= 5.5) rawBid = 6;
-    else rawBid = 0;
-  }
+  // Keep one complete trick in reserve on every difficulty.
+  const rawBid = bidFromTrickCapacity(expectedTricks);
 
   // Enforce auction rules:
   // Non-pass bid must be strictly higher than currentHighBid

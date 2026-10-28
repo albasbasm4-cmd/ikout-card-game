@@ -175,7 +175,8 @@ function simulateRollout(
       highBid: (highBid as any) ?? 5,
     });
 
-    const chosenCard = legal[Math.floor(Math.random() * legal.length)];
+    const candidates = partnerSafeCards(legal, trick, trump, seat);
+    const chosenCard = candidates[Math.floor(Math.random() * candidates.length)];
     const cIdx = hand.findIndex((c) => c.id === chosenCard.id);
     if (cIdx !== -1) hand.splice(cIdx, 1);
 
@@ -194,6 +195,14 @@ function simulateRollout(
   }
 
   return tricksWon;
+}
+
+/** Bot policy only: never spend protected cards on an ally's winning trick
+ * when another legal card is available. Never relax follow-suit rules. */
+export function partnerSafeCards(legal: Card[], trick: TrickPlay[], trump: Suit | null, seat: number): Card[] {
+  if (!trick.length || trickWinner(trick, trump).seat % 2 !== seat % 2) return legal;
+  const ordinary = legal.filter(c => !c.joker && !(trump && c.suit === trump && c.rank === 14));
+  return ordinary.length ? ordinary : legal;
 }
 
 /**
@@ -281,10 +290,10 @@ export function chooseCard(
 ): Card {
   const hand = state.hands[seat] || [];
   const playedCards = getPlayedCards(state.trickHistory, state.currentTrick);
-  const legalCards = getLegalCards(hand, state.currentTrick, state.trump, {
+  const legalCards = partnerSafeCards(getLegalCards(hand, state.currentTrick, state.trump, {
     playedCards,
     highBid: state.highBid,
-  });
+  }), state.currentTrick, state.trump, seat);
 
   if (legalCards.length === 0) {
     throw new Error(`Seat ${seat} has no legal cards to play.`);

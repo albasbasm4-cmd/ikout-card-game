@@ -8,7 +8,7 @@ import { RULES } from '../rules/config';
 import { getLegalCards } from '../rules/cards';
 import { getPlayedCards } from '../engine/KoutTricks';
 import { evaluateBid } from './BidEvaluator';
-import { chooseCard } from './ISMCTS';
+import { chooseCard, partnerSafeCards } from './ISMCTS';
 import type { WorkerDecision, WorkerResponse, WorkerRequest } from './kout-ai.worker';
 
 export type { WorkerDecision, WorkerResponse, WorkerRequest };
@@ -58,9 +58,10 @@ export function generateFallbackDecision(
     highBid: state.highBid,
   });
 
+  const candidates = partnerSafeCards(legalCards, state.currentTrick, state.trump, seat);
   const chosenCard =
-    legalCards.length > 0
-      ? legalCards[Math.floor(Math.random() * legalCards.length)]
+    candidates.length > 0
+      ? candidates[Math.floor(Math.random() * candidates.length)]
       : hand[0];
 
   return { type: 'PLAY', card: chosenCard };

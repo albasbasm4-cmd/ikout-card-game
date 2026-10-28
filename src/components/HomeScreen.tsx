@@ -5,6 +5,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ProfileEditor } from './ProfileEditor';
+import { Button } from './ui/button';
+import { UserRound } from 'lucide-react';
 import { SettingsPanel } from './SettingsPanel';
 import { useProfile, characterFace } from '../utils/profile';
 import { countryName, flagUrl } from '../utils/countries';
@@ -100,6 +102,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, onEnter187
           enabled label="187" onClick={() => { playTapSound(); onEnter187?.(); }} />
         <ModeCard id="c3" left={842} width={220} delay={0.19} image="/assets/ikout/home/c3.webp" label="قريبا" />
         <ModeCard id="c4" left={1082} width={218} delay={0.26} image="/assets/ikout/home/c4.webp" label="قريبا" />
+
+        <Button variant="ghost" className="pc-open" aria-label="خيارات اللاعب" title="خيارات اللاعب" onClick={() => { playTapSound(); setProfileOpen(true); }}><UserRound /></Button>
 
         {/* Settings gear — top-right */}
         <button

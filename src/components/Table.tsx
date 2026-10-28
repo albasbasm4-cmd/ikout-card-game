@@ -7,13 +7,12 @@ import { Crown, X, Hand as PassHand, Bot } from 'lucide-react';
 import { CARD_FLIGHT_SECONDS, linearToScreen, peekCardLaunch } from '../utils/cardFlight';
 import { Button } from './ui/button';
 import { playBubbleSound, playTapSound } from '../utils/audio';
-import { CHARACTER_IDS, characterFace, useProfile } from '../utils/profile';
+import { CHARACTER_IDS, characterFace, useProfile, cardBack, tableImage } from '../utils/profile';
 import { playReferenceAudio, stopReferenceAudio } from '../utils/referenceAudio';
 import { playCharacterVoice, playCharacterClip, subscribeCharacterVoice, preloadCharacterVoices, stopCharacterVoice } from '../utils/characterAudio';
 import { characterPhrase, contextKeyForMessage, specialPlay, voiceSet, type CharacterId, type PhraseKey, type SpecialPlay } from '../utils/gamePresentation';
 import { addXpForGame } from '../utils/xp';
 // ظهر الأوراق في مراوح الخصوم: الأزرق المطابق للمرجع
-const FAN_BACK = '/assets/ikout/cards/CardBack-BlueFlask.png';
 
 export interface TableProps {
  state?: GameState; mySeat?: number; onPlayCard?: (card: CardType) => void; onBid?: (bid: number) => void; onDeclareTrump?: (suit: Suit) => void;
@@ -297,7 +296,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
 
     <div className="kt-table">
       <span className="kt-handle kt-handle-l" aria-hidden="true" /><span className="kt-handle kt-handle-r" aria-hidden="true" />
-      <div className="kt-frame" aria-hidden="true"><div className="kt-surface" /></div>
+      <div className="kt-frame kt-themed" aria-hidden="true"><img className="kt-table-theme-image" src={tableImage(profile.table)} alt="" /></div>
       <span className="kt-plate kt-plate-top" aria-hidden="true" /><span className="kt-plate kt-plate-bottom" aria-hidden="true" />
       <div className="kt-trick" aria-label="الأوراق على الطاولة">
         <AnimatePresence>{trick.map((play, i) => {
@@ -328,7 +327,7 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
         <div className="kt-name">{isBot(seat) && <Bot className="kt-bot" />}<span>{name(seat)}</span></div>
         {held > 0 && <div className={`kt-fan kt-fan-${side}`} aria-label={`${held} أوراق`}>
           <div className="kt-fan-ring">
-            {Array.from({ length: held }, (_, i) => <span key={i} className="kt-mini" style={{ '--r': `${(i - fanMid) * 3}deg` } as React.CSSProperties}><img src={FAN_BACK} alt="" draggable={false} /></span>)}
+            {Array.from({ length: held }, (_, i) => <span key={i} className="kt-mini" style={{ '--r': `${(i - fanMid) * 3}deg` } as React.CSSProperties}><img src={cardBack(profile.cards)} alt="" draggable={false} /></span>)}
           </div>
         </div>}
         {badge && <span className="kt-badge">{badge}</span>}

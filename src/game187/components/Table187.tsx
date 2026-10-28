@@ -32,14 +32,16 @@ import {
   Check,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
-import { characterFace, CHARACTER_IDS, useProfile } from '../../utils/profile';
+import { characterFace, CHARACTER_IDS, useProfile, cardBack, tableImage } from '../../utils/profile';
 import { playTapSound, playWinSound, playLoseSound } from '../../utils/audio';
 import { useStageFit } from '../../hooks/use-stage-fit';
 import { useSettings, type BotSpeed } from '../../store/useSettings';
 import { BidSlider187 } from './BidSlider187';
 import { TrickCard187 } from './TrickCard187';
+import { MESSAGES_187, bubbleText187, chatClips187, chatCode187 } from '../messages';
+import { play187Sound } from '../audio';
+import { speak187 } from '../voices';
 
-const FAN_BACK = '/assets/ikout/cards/CardBack-BlueFlask.png';
 /** Game stage height in design units; width follows the screen's aspect ratio (same as the iKout table). */
 const STAGE_H = 450;
 const TOTAL_TRICKS = 8;
@@ -62,6 +64,8 @@ export interface Table187Props {
   onNextRound: () => void;
   onRestart?: () => void;
   onExit: () => void;
+  speechBubbles?: Record<number, string>;
+  onSendMessage?: (message: string) => void;
 }
 
 /** Seat positions around the table for 5 players: me (bottom right), then right, top right, top left, left. */
@@ -99,6 +103,8 @@ export const Table187: React.FC<Table187Props> = ({
   onNextRound,
   onRestart,
   onExit,
+  speechBubbles = {},
+  onSendMessage,
 }) => {
   const profile = useProfile();
   const reducedMotion = useReducedMotion();
@@ -151,6 +157,7 @@ export const Table187: React.FC<Table187Props> = ({
   const [showSettings, setShowSettings] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showSheet, setShowSheet] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const [selectedCheatPlayer, setSelectedCheatPlayer] = useState<number | null>(null);
   const [selectedCheatSuit, setSelectedCheatSuit] = useState<Suit187 | null>(null);
 
@@ -309,6 +316,31 @@ export const Table187: React.FC<Table187Props> = ({
     centerOverlay = <TrumpPicker currentTrump={state.trump} onSelectTrump={(s) => onDeclareTrump(s as Suit187)} />;
   }
 
+  // 187 character voices: welcome once per match, bot passes, and the round result. Only safe clips play.
+  const voiceMemo = useRef({ round: 0, passed: [] as boolean[], winner: null as string | null });
+  useEffect(() => {
+    const memo = voiceMemo.current;
+    const botSeats = [0, 1, 2, 3, 4].filter(seat => seat !== mySeat && state.players?.[seat]?.kind === 'AI_BOT');
+    const pick = (seats: number[]) => seats[Math.floor(Math.random() * seats.length)];
+    if (state.roundNo !== memo.round) {
+      memo.round = state.roundNo; memo.passed = []; memo.winner = null;
+      if (state.roundNo === 1 && botSeats.length) { const seat = pick(botSeats); speak187(seat, seatCharacters[seat], 'welcome'); }
+      return;
+    }
+    state.passedSeats.forEach((passed, seat) => {
+      if (passed && !memo.passed[seat] && botSeats.includes(seat)) speak187(seat, seatCharacters[seat], 'pass');
+    });
+    memo.passed = [...state.passedSeats];
+    if (state.winner && !memo.winner) {
+      memo.winner = state.winner;
+      const hakemWon = state.winner === 'HAKEM';
+      const winners = botSeats.filter(seat => (seat === state.bidderSeat) === hakemWon);
+      const losers = botSeats.filter(seat => (seat === state.bidderSeat) !== hakemWon);
+      if (winners.length) { const seat = pick(winners); speak187(seat, seatCharacters[seat], 'win'); }
+      else if (losers.length) { const seat = pick(losers); speak187(seat, seatCharacters[seat], 'lose'); }
+    }
+  }, [state.roundNo, state.passedSeats, state.winner, state.bidderSeat, state.players, mySeat, seatCharacters]);
+
   const discarding = state.phase === 'DISCARD' && isHumanHakem;
   const myPlayTurn = state.phase === 'PLAY' && isMyTurn && canAct;
 
@@ -321,7 +353,7 @@ export const Table187: React.FC<Table187Props> = ({
           width: `${stageW}px`,
           height: `${STAGE_H}px`,
           ['--game-h' as string]: `${STAGE_H}px`,
-          ['--kt-tscale' as string]: String(Math.min(1, (stageW - 380) / 467)),
+          ['--kt-tscale' as string]: '1',
         }}
         className="absolute top-1/2 left-1/2 overflow-hidden"
       >
@@ -353,7 +385,7 @@ export const Table187: React.FC<Table187Props> = ({
             <div className="kt-table">
               <span className="kt-handle kt-handle-l" aria-hidden="true" />
               <span className="kt-handle kt-handle-r" aria-hidden="true" />
-              <div className="kt-frame" aria-hidden="true"><div className="kt-surface" /></div>
+              <div className="kt-frame kt-themed" aria-hidden="true"><img className="kt-table-theme-image" src={tableImage(profile.table)} alt="" /></div>
               <span className="kt-plate kt-plate-top" aria-hidden="true" />
               <span className="kt-plate kt-plate-bottom" aria-hidden="true" />
               <div className="kt-trick" aria-label="الأوراق على الطاولة">
@@ -405,14 +437,15 @@ export const Table187: React.FC<Table187Props> = ({
                     <div className={`kt-fan kt-fan-${side}`} aria-label={`${held} أوراق`}>
                       <div className="kt-fan-ring">
                         {Array.from({ length: held }, (_, i) => (
-                          <span key={i} className="kt-mini" style={{ '--r': `${(i - fanMid) * 3}deg` } as React.CSSProperties}>
-                            <img src={FAN_BACK} alt="" draggable={false} />
+                          <span key={i} className="kt-mini" style={{ '--r': `${(i - fanMid) * 3}deg`, '--dx': side === 'top' ? `${(i - fanMid) * 9}px` : '0px', '--dy': side === 'top' ? '0px' : `${(i - fanMid) * 7}px` } as React.CSSProperties}>
+                            <img src={cardBack(profile.cards)} alt="" draggable={false} />
                           </span>
                         ))}
                       </div>
                     </div>
                   )}
                   {badge && <span className="kt-badge">{badge}</span>}
+                  {speechBubbles[seat] && <div className="kt-speech" role="status">{bubbleText187(speechBubbles[seat], seatCharacters[seat])}</div>}
                 </div>
               );
             })}
@@ -436,11 +469,13 @@ export const Table187: React.FC<Table187Props> = ({
             </div>
 
             <div data-seat-origin={mySeat} className={`kt-local kt-team ${active === mySeat ? 'kt-active' : ''}`}>
-              <div className="kt-avatar"><img src={characterFace(seatCharacters[mySeat])} alt={name(mySeat)} draggable={false} /></div>
+              <Button variant="ghost" className="kt-avatar kt-chat-trigger" aria-label="رسائل الدردشة" title="رسائل الدردشة" onClick={() => { playTapSound(); setChatOpen(v => !v); }}><img src={characterFace(seatCharacters[mySeat])} alt={name(mySeat)} draggable={false} /></Button>
+              {speechBubbles[mySeat] && <div className="kt-speech" role="status">{bubbleText187(speechBubbles[mySeat], seatCharacters[mySeat])}</div>}
               {isHumanHakem && state.phase !== 'BID' && <Crown className="kt-crown" />}
               {badgeFor(mySeat) && <span className="kt-badge">{badgeFor(mySeat)}</span>}
               <div className="kt-name"><span>{name(mySeat)}</span></div>
             </div>
+            {chatOpen && <div className="kt-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={() => setChatOpen(false)}><X /></Button><div>{MESSAGES_187.map(message => <Button key={message} variant="ghost" onClick={() => { play187Sound('message'); onSendMessage?.(message); setChatOpen(false); }}>{message}</Button>)}{chatClips187(seatCharacters[mySeat]).map(clip => <Button key={clip.file} variant="ghost" onClick={() => { play187Sound('message'); onSendMessage?.(chatCode187(clip)); setChatOpen(false); }}>{clip.text}</Button>)}</div></div>}
           </section>
         </div>
 
@@ -598,12 +633,12 @@ export const Table187: React.FC<Table187Props> = ({
               <Trophy className="w-8 h-8 fill-current" />
             </div>
             <h2 className="text-2xl font-black text-amber-300">
-              {(state.matchWinner ?? state.winner) === 'HAKEM' ? 'فاز الحاكم بالمباراة! 🏆' : 'فاز الخصوم بالمباراة! 🏆'}
+              {state.winner === 'HAKEM' ? 'فاز الحاكم بالمباراة! 🏆' : 'فاز الخصوم بالمباراة! 🏆'}
             </h2>
             <div className="bg-black/60 border border-amber-400/30 rounded-2xl p-3 my-4 flex justify-around">
-              <div><span className="text-[11px] text-cyan-300 block font-bold">الحاكم</span><span className="text-2xl font-black text-white">{state.matchScores?.HAKEM ?? state.hakemPoints}</span></div>
+              <div><span className="text-[11px] text-cyan-300 block font-bold">الحاكم</span><span className="text-2xl font-black text-white">{state.hakemPoints}</span></div>
               <span className="text-xl font-black text-amber-400/60">:</span>
-              <div><span className="text-[11px] text-rose-300 block font-bold">الخصوم</span><span className="text-2xl font-black text-white">{state.matchScores?.OPPONENTS ?? state.opponentsPoints}</span></div>
+              <div><span className="text-[11px] text-rose-300 block font-bold">الخصوم</span><span className="text-2xl font-black text-white">{state.opponentsPoints}</span></div>
             </div>
             <Button onClick={() => { playTapSound(); onExit(); }}
               className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-black text-sm shadow-xl cursor-pointer flex items-center justify-center gap-2">

@@ -15,7 +15,10 @@ import {
   chooseBotDiscards,
   chooseBotCardToPlay,
 } from '../ai';
-import { playCardSound, playTapSound } from '../../utils/audio';
+import { playTapSound } from '../../utils/audio';
+import { play187Sound } from '../audio';
+import { isMessage187 } from '../messages';
+import { playChatVoice187 } from '../voices';
 import { Room187Channel, Client187Packet, Host187Packet } from '../network/network187';
 
 export interface Game187ScreenProps {
@@ -108,6 +111,28 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
     }
   }, [mode]);
 
+  const [speechBubbles, setSpeechBubbles] = useState<Record<number, string>>({});
+  const playersRef = useRef(gameState.players);
+  playersRef.current = gameState.players;
+  const bubbleTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+  const showMessage = useCallback((seat: number, message: string) => {
+    if (!Number.isInteger(seat) || seat < 0 || seat > 4 || !isMessage187(message, playersRef.current[seat]?.characterId)) return;
+    playChatVoice187(playersRef.current[seat]?.characterId, message, seat);
+    const previous = bubbleTimers.current.get(seat);
+    if (previous) clearTimeout(previous);
+    setSpeechBubbles(current => ({ ...current, [seat]: message }));
+    bubbleTimers.current.set(seat, setTimeout(() => {
+      setSpeechBubbles(current => { const next = { ...current }; delete next[seat]; return next; });
+      bubbleTimers.current.delete(seat);
+    }, 3400));
+  }, []);
+  useEffect(() => () => { bubbleTimers.current.forEach(clearTimeout); }, []);
+  const sendMessage = (message: string) => {
+    if (!isMessage187(message, playersRef.current[mySeat]?.characterId)) return;
+    showMessage(mySeat, message);
+    channelRef.current?.send(isHost ? { type: 'CHAT_BUBBLE', seat: mySeat, message } : { type: 'CHAT', seat: mySeat, message });
+  };
+
   // Keep the completed trick visible briefly (presentation only; the engine has already scored it).
   const [heldTrick, setHeldTrick] = useState<{ plays: TrickPlay187[]; winner: TrickPlay187; text: string } | null>(null);
   const seenTricks = useRef(gameState.trickHistory.length);
@@ -135,7 +160,12 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       channelRef.current = ch;
 
       ch.onMessage((msg: Client187Packet | Host187Packet) => {
-        if (isHost && engineRef.current) {
+        if (isHost && msg.type === 'CHAT' && isMessage187(msg.message)) {
+          showMessage(msg.seat, msg.message);
+          ch.send({ type: 'CHAT_BUBBLE', seat: msg.seat, message: msg.message });
+        } else if (!isHost && msg.type === 'CHAT_BUBBLE') {
+          showMessage(msg.seat, msg.message);
+        } else if (isHost && engineRef.current) {
           const eng = engineRef.current;
           if (msg.type === 'BID') {
             eng.placeBid(msg.seat, msg.bid);
@@ -147,7 +177,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
             eng.declareTrump(msg.seat, msg.trump);
             syncState();
           } else if (msg.type === 'PLAY_CARD') {
-            playCardSound();
+            play187Sound('card');
             eng.playCard(msg.seat, msg.card);
             syncState();
           } else if (msg.type === 'EARLY_SETTLE') {
@@ -167,7 +197,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       };
     }
     return undefined;
-  }, [mode, roomCode, isHost, syncState]);
+  }, [mode, roomCode, isHost, syncState, showMessage]);
 
   // أتمتة حركات البوتات (على جهاز المضيف فقط)
   useEffect(() => {
@@ -220,7 +250,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       timer = window.setTimeout(() => {
         try {
           const card = chooseBotCardToPlay(gameState, currentSeat);
-          playCardSound();
+          play187Sound('card');
           eng.playCard(currentSeat, card);
           syncState();
         } catch (err) {
@@ -236,7 +266,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
 
   // الإجراءات
   const handleHumanPlayCard = (card: Card187) => {
-    playCardSound();
+    play187Sound('card');
     if (isHost && engineRef.current) {
       engineRef.current.playCard(mySeat, card);
       syncState();
@@ -321,6 +351,8 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
     <div className="w-full h-full relative">
       <Table187
         state={gameState}
+        speechBubbles={speechBubbles}
+        onSendMessage={sendMessage}
         mySeat={mySeat}
         displayedTrick={heldTrick ? heldTrick.plays : gameState.currentTrick}
         winningPlay={heldTrick?.winner ?? null}

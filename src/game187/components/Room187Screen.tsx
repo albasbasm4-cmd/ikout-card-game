@@ -323,7 +323,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
               style={{ width: 44, height: 30, objectFit: 'cover', borderRadius: 6, border: '2px solid #fff' }}
             />
           ) : (
-            <div className="r187-fb">🇰🇼</div>
+            <div className="r187-fb">🌐</div>
           )}
           <div className="r187-un" dir="ltr">{profile.name || 'أنت'}</div>
         </div>
@@ -543,7 +543,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         )}
 
         {/* Profile Editor Modal */}
-        {profileOpen && <ProfileEditor onClose={() => setProfileOpen(false)} />}
+        {profileOpen && <ProfileEditor game="187" onClose={() => setProfileOpen(false)} />}
 
         {/* QR Code Modal */}
         {qrOpen && (

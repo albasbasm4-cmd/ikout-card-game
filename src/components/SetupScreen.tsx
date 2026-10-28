@@ -136,6 +136,7 @@ const Su2Clouds: React.FC = () => {
  */
 export const SetupScreen: React.FC<SetupScreenProps> = ({ onBack, onStartGame, onResumeGame, onHostRoom, onJoinRoom, className = '' }) => {
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const { settings } = useSettings();
   useStageFit(stageRef, 2400, 1080, settings.orientationPreference);
   const profile = useProfile();
   const { level, inLevel, needed } = useXp();

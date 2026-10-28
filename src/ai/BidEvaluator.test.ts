@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { Card } from '../types/kout';
-import { evaluateBid, scoreHandForSuit } from './BidEvaluator';
+import { evaluateBid, scoreHandForSuit, bidFromTrickCapacity } from './BidEvaluator';
 
 describe('BidEvaluator', () => {
   // Hand 1: Monster Hand (Red Joker, Black Joker, Trump Ace/King/Queen/10 of Spades, side Aces)
@@ -48,18 +48,18 @@ describe('BidEvaluator', () => {
   ];
 
   describe('Sample Hand 1: Monster Hand', () => {
-    it('identifies Spades as best suit and places a high bid (8 or 9)', () => {
+    it('identifies Spades as best suit and reserves a trick', () => {
       const evalResult = evaluateBid(monsterHand, null, false, 'EXPERT');
 
       expect(evalResult.bestSuit).toBe('S');
       expect(evalResult.suit).toBe('S');
-      expect(evalResult.bid).toBeGreaterThanOrEqual(8);
+      expect(evalResult.bid).toBe(bidFromTrickCapacity(evalResult.expectedTricks));
       expect(evalResult.score).toBeGreaterThan(6.0);
     });
 
-    it('can outbid an existing high bid of 7 with an 8 or 9', () => {
+    it('outbids 7 with a safe 8, never 9', () => {
       const evalResult = evaluateBid(monsterHand, 7, false, 'EXPERT');
-      expect(evalResult.bid).toBeGreaterThan(7);
+      expect(evalResult.bid).toBe(8);
       expect(['S', 'H', 'D', 'C']).toContain(evalResult.bestSuit);
     });
   });
@@ -110,8 +110,17 @@ describe('BidEvaluator', () => {
 
     it('EASY produces a valid Bid or pass (0 or 5..9)', () => {
       const easyResult = evaluateBid(moderateHand, null, false, 'EASY');
-      expect([0, 6, 7, 8, 9]).toContain(easyResult.bid);
+      expect([0, 6, 7, 8]).toContain(easyResult.bid);
       expect(['S', 'H', 'D', 'C']).toContain(easyResult.bestSuit);
     });
   });
+});
+
+describe('Conservative Kout contracts', () => {
+  it('passes at capacity 6', () => expect(bidFromTrickCapacity(6)).toBe(0));
+  it('bids 6 at capacity 7', () => expect(bidFromTrickCapacity(7)).toBe(6));
+  it('bids 7 at capacity 8', () => expect(bidFromTrickCapacity(8)).toBe(7));
+  it('bids 8 at capacity 9', () => expect(bidFromTrickCapacity(9)).toBe(8));
+  it('never bids 9 even at capacity 12', () => expect(bidFromTrickCapacity(12)).toBe(8));
+  it('does not round a capacity of 6.9 up to 7', () => expect(bidFromTrickCapacity(6.9)).toBe(0));
 });
