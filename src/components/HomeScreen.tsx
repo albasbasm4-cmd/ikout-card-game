@@ -18,6 +18,8 @@ import { playTapSound } from '../utils/audio';
 export interface HomeScreenProps {
   onEnterSetup: () => void;
   onEnter187?: () => void;
+  onEnterUno?: () => void;
+  onEnterJoker?: () => void;
   className?: string;
 }
 
@@ -27,7 +29,7 @@ export interface HomeScreenProps {
  * the city skyline, the profile cluster, the settings gear in the top-right
  * and the four game cards rising right after the creeper intro.
  */
-export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, onEnter187, className = '' }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, onEnter187, onEnterUno, onEnterJoker, className = '' }) => {
   const profile = useProfile();
   const { level, inLevel, needed } = useXp();
   const { settings } = useSettings();
@@ -100,8 +102,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onEnterSetup, onEnter187
           enabled label="كوت" onClick={() => { playTapSound(); onEnterSetup(); }} />
         <ModeCard id="c2" left={602} width={220} delay={0.12} image="/assets/ikout/home/c2.webp"
           enabled label="187" onClick={() => { playTapSound(); onEnter187?.(); }} />
-        <ModeCard id="c3" left={842} width={220} delay={0.19} image="/assets/ikout/home/c3.webp" label="قريبا" />
-        <ModeCard id="c4" left={1082} width={218} delay={0.26} image="/assets/ikout/home/c4.webp" label="قريبا" />
+        <ModeCard id="c3" left={842} width={220} delay={0.19} image="/assets/ikout/home/c3.webp" enabled label="أونو" onClick={() => { playTapSound(); onEnterUno?.(); }} />
+        <ModeCard id="c4" left={1082} width={218} delay={0.26} image="/assets/ikout/home/c4.webp" enabled label="الجوكر" onClick={() => { playTapSound(); onEnterJoker?.(); }} />
 
         <Button variant="ghost" className="pc-open" aria-label="خيارات اللاعب" title="خيارات اللاعب" onClick={() => { playTapSound(); setProfileOpen(true); }}><UserRound /></Button>
 

@@ -1,4 +1,7 @@
 # iKout reference matching
+- [x] Import attached UNO rules, bots and screens; bundled back uploaded, unavailable legacy faces replaced with local vector card faces; Kout and 187 preserved.
+- [x] Connect existing standalone Joker through the game menu; preserve native-only cross-device limitation.
+- [x] Verify imported rules, game play, save/resume, local bot room and menu navigation; cross-device multiplayer absent in source.
 - [ ] Improve reversible card dragging and special-card motion without changing rules.
 - [ ] Add static character voice bank, spoken taunts and win/loss reactions with mute and cleanup.
 - [ ] Refine phone portrait/landscape layouts and verify real gameplay, audio loading and tests.
@@ -11,3 +14,10 @@
 - [x] Profile screen: choose table style + card style, saved with profile, applied in game
 - [x] Final screenshots: profile screen + game screen
 - [x] 187 table: iKout look for 5 players, drag/tap + card flight, scoreboard, slider bid 75–185, same settings; no iKout voices.
+- [x] UNO: background, table, avatars and character icons styled like Kout/187.
+- [x] Joker: top-right back button in setup screens returns to home menu without crashing.
+- [x] 187: first-dealt player bids first and leads; dealer rotates to the right each round.
+- [ ] 187: "give 4 cards" step shows real card faces; empty avatars fixed.
+- [x] 187: smoother bid slider dragging.
+- [x] Enlarge table in Kout, 187, UNO, Joker to match reference screenshot.
+- [ ] Audit and fix other bugs; list them.

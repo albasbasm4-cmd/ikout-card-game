@@ -149,6 +149,16 @@ export class GameEngine187 {
     };
   }
 
+  /** جولة جديدة: التوزيع ينتقل للاعب الذي على يمين الموزع السابق */
+  nextRound(seed?: number) {
+    this._state = {
+      ...this._state,
+      dealer: (this._state.dealer + 1) % 5,
+      roundNo: this._state.roundNo + 1,
+    };
+    this.startRound(seed);
+  }
+
   /** تقديم مزايدة أو الانسحاب */
   placeBid(seat: number, bid: number) {
     if (this._state.phase !== 'BID') {
@@ -296,8 +306,8 @@ export class GameEngine187 {
       ...this._state,
       trump: suit,
       phase: 'PLAY',
-      // الحاكم يبدأ الأكلة الأولى
-      currentSeat: hakemSeat,
+      // أول لاعب وُزّع له (يمين الموزع) يرمي أول ورقة
+      currentSeat: (this._state.dealer + 1) % 5,
       version: this._state.version + 1,
     };
   }

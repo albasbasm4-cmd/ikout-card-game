@@ -1,6 +1,12 @@
-[
-{"capability":"code","source":"React/Vite SPA","outcome":"migrate","status":"verified-pending","next_action":"build check"},
-{"capability":"schema/records/auth","source":"none (localStorage only)","outcome":"not applicable","status":"verified","next_action":"none"},
-{"capability":"AI (Gemini)","source":".env.example only, no call sites","outcome":"not applicable","status":"verified","next_action":"none"},
-{"capability":"nodejs-mobile LAN relay","source":"nodejs-project/","outcome":"kept as source; only runs inside a native mobile wrapper","status":"accepted","next_action":"none on web"}
-]
+{
+  "source": "ikout-card-game-preview-main.zip",
+  "capabilities": [
+    {"capability":"UNO code and rules", "source":"src/lib/uno", "outcome":"migrate", "status":"verified", "next_action":null},
+    {"capability":"Joker game", "source":"Existing public/joker/index.html; no standalone Joker source in attached archive", "outcome":"preserve and link", "status":"preview verified; native multiplayer unverified", "next_action":"Native multiplayer requires the original mobile bridge; unavailable in browser."},
+    {"capability":"Local saved matches", "source":"uno.savedGame.v1", "outcome":"preserve", "status":"verified", "next_action":null},
+    {"capability":"Card artwork", "source":"uno-back.jpg and legacy card-urls.json", "outcome":"Bundled back uploaded; unreachable legacy faces replaced with local vector artwork", "status":"replacement verified", "next_action":"Original face image bytes needed only for exact source artwork restoration."},
+    {"capability":"Cross-device rooms", "source":"Room and join screens explicitly mark multiplayer unavailable", "outcome":"preserve limitation", "status":"not implemented in source", "next_action":"Retain accurate unavailable state; do not claim working multiplayer."},
+    {"capability":"Database, records, auth, roles, external providers, endpoints, webhooks, schedules and secrets", "source":"No application call sites in UNO source", "outcome":"not applicable", "status":"inspected", "next_action":null},
+    {"capability":"Verification", "source":"Imported engine tests and real browser flow", "outcome":"verify", "status":"UNO new match, play, save/resume, local bot room and Joker preview verified; build OK", "next_action":null}
+  ]
+}

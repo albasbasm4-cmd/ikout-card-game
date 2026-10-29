@@ -679,11 +679,27 @@ function DiscardFan({ cards, selected, onToggle }: { cards: Card187[]; selected:
   const suitOrder: Record<string, number> = { S: 0, H: 1, C: 2, D: 3 };
   const sorted = [...cards].sort((a, b) => (suitOrder[a.suit] - suitOrder[b.suit]) || b.rank - a.rank);
   const count = sorted.length;
-  const cardW = 83;
-  const overlap = count > 1 ? Math.min(-20, (376 - count * cardW) / (count - 1), 37 - cardW) : 0;
+  const box = useRef<HTMLDivElement>(null);
+  const [fanW, setFanW] = useState(520);
+  const [cardW, setCardW] = useState(76);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const measure = () => {
+      setFanW(el.clientWidth - 24);
+      const c = el.querySelector<HTMLElement>('.playing-card');
+      if (c) setCardW(c.offsetWidth);
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, [count]);
+  // Spread the cards across the available hand width (same rule as the play hand) so they never stack.
+  const overlap = count > 1 ? Math.min(-12, (fanW - count * cardW) / (count - 1)) : 0;
   const fanStep = count > 1 ? Math.min(2.6, 22 / (count - 1)) : 0;
   return (
-    <div dir="ltr" className="relative w-full flex flex-col items-center justify-center pt-3 pb-2 px-1 select-none overflow-visible">
+    <div ref={box} dir="ltr" className="relative w-full flex flex-col items-center justify-center pt-3 pb-2 px-1 select-none overflow-visible">
       <div className="relative flex items-end justify-center hand-fan-height">
         {sorted.map((card, index) => {
           const n = index - (count - 1) / 2;

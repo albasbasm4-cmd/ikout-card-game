@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { GameScreen } from './GameScreen';
 import { RoomScreen } from './RoomScreen';
 import { HomeScreen } from './HomeScreen';
@@ -21,6 +22,7 @@ import type { GameState187, Player187 } from '../game187/types';
 type View = 'splash' | 'home' | 'setup' | 'game' | 'lobby' | 'join' | '187';
 
 export default function App() {
+  const navigate = useNavigate();
   const [view, setView] = useState<View>('splash');
   // The splash stays mounted above the home menu until the boom fades out.
   const [splashVisible, setSplashVisible] = useState(true);
@@ -58,6 +60,8 @@ export default function App() {
       <div className="fixed inset-0 w-full h-[100dvh] overflow-hidden bg-black select-none">
         {view === 'home' && (
           <HomeScreen
+            onEnterUno={() => navigate({ to: '/uno' })}
+            onEnterJoker={() => navigate({ to: '/joker' })}
             onEnterSetup={() => setView('setup')}
             onEnter187={() => {
               setPlayers187(null);

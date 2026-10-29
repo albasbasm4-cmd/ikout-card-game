@@ -10,33 +10,90 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as JokerRouteImport } from './routes/joker'
+import { Route as UnoIndexRouteImport } from './routes/uno.index'
+import { Route as UnoJoinRouteImport } from './routes/uno.join'
+import { Route as UnoPlayRouteImport } from './routes/uno.play'
+import { Route as UnoRoomRouteImport } from './routes/uno.room'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JokerRoute = JokerRouteImport.update({
+  id: '/joker',
+  path: '/joker',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnoIndexRoute = UnoIndexRouteImport.update({
+  id: '/uno/',
+  path: '/uno/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnoJoinRoute = UnoJoinRouteImport.update({
+  id: '/uno/join',
+  path: '/uno/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnoPlayRoute = UnoPlayRouteImport.update({
+  id: '/uno/play',
+  path: '/uno/play',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnoRoomRoute = UnoRoomRouteImport.update({
+  id: '/uno/room',
+  path: '/uno/room',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/joker': typeof JokerRoute
+  '/uno/join': typeof UnoJoinRoute
+  '/uno/play': typeof UnoPlayRoute
+  '/uno/room': typeof UnoRoomRoute
+  '/uno/': typeof UnoIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/joker': typeof JokerRoute
+  '/uno/join': typeof UnoJoinRoute
+  '/uno/play': typeof UnoPlayRoute
+  '/uno/room': typeof UnoRoomRoute
+  '/uno': typeof UnoIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/joker': typeof JokerRoute
+  '/uno/join': typeof UnoJoinRoute
+  '/uno/play': typeof UnoPlayRoute
+  '/uno/room': typeof UnoRoomRoute
+  '/uno/': typeof UnoIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/joker' | '/uno/join' | '/uno/play' | '/uno/room' | '/uno/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/joker' | '/uno/join' | '/uno/play' | '/uno/room' | '/uno'
+  id:
+    | '__root__'
+    | '/'
+    | '/joker'
+    | '/uno/join'
+    | '/uno/play'
+    | '/uno/room'
+    | '/uno/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  JokerRoute: typeof JokerRoute
+  UnoJoinRoute: typeof UnoJoinRoute
+  UnoPlayRoute: typeof UnoPlayRoute
+  UnoRoomRoute: typeof UnoRoomRoute
+  UnoIndexRoute: typeof UnoIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +105,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/joker': {
+      id: '/joker'
+      path: '/joker'
+      fullPath: '/joker'
+      preLoaderRoute: typeof JokerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/uno/': {
+      id: '/uno/'
+      path: '/uno'
+      fullPath: '/uno/'
+      preLoaderRoute: typeof UnoIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/uno/join': {
+      id: '/uno/join'
+      path: '/uno/join'
+      fullPath: '/uno/join'
+      preLoaderRoute: typeof UnoJoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/uno/play': {
+      id: '/uno/play'
+      path: '/uno/play'
+      fullPath: '/uno/play'
+      preLoaderRoute: typeof UnoPlayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/uno/room': {
+      id: '/uno/room'
+      path: '/uno/room'
+      fullPath: '/uno/room'
+      preLoaderRoute: typeof UnoRoomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  JokerRoute: JokerRoute,
+  UnoJoinRoute: UnoJoinRoute,
+  UnoPlayRoute: UnoPlayRoute,
+  UnoRoomRoute: UnoRoomRoute,
+  UnoIndexRoute: UnoIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

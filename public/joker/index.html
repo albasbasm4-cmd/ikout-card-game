@@ -420,7 +420,11 @@ function nav(to) {
 }
 function goBack() {
   fire('goback', { from: cur });
-  if (cur === 'room' || cur === 'game') { leave(); nav('lobby'); } else if (cur === 'lobby') location.href = '/';
+  if (cur === 'room' || cur === 'game') { leave(); nav('lobby'); } else { try { leave(); } catch (_) {} goHome(); }
+}
+function goHome() {
+  try { if (window.parent !== window) { window.parent.postMessage({ type: 'joker:home' }, location.origin); return; } } catch (_) {}
+  location.href = '/';
 }
 addEventListener('keydown', e => { if (e.key === 'Escape' && cur !== 'home' && !$('md').classList.contains('on') && !$('ov').classList.contains('on')) goBack(); });
 

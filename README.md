@@ -1,12 +1,12 @@
-# Replit Project Migration
+# Ikout Card Game
 
-/skill:migrate-external-project Source: Replit. Migrate the attached project into Lovable.
+جيب لي مشروع ikout-card-game من https://github.com/albasbasm4-cmd/ikout-card-game ابغى اسوي له معاينة
 
 This project was built with [Lovable](https://lovable.dev).
 
 ## Build with Lovable
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/00802862-24f3-44db-9e05-6b2878c25f97).
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/bdfe71c9-5423-4f86-8f22-9fcfc0dc023b).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
 - **Stay in sync**: every change made in Lovable is committed straight to this repository.

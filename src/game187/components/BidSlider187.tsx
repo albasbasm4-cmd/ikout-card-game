@@ -1,5 +1,5 @@
 import React from 'react';
-import * as SliderPrimitive from '@radix-ui/react-slider';
+import { screenDeltaToLocal } from '../../utils/cardFlight';
 import { Check, Hand as PassHand } from 'lucide-react';
 import { playTapSound } from '../../utils/audio';
 import { BID_STEP_187, MAX_BID, snapBid187 } from '../rules';
@@ -54,22 +54,12 @@ export const BidSlider187: React.FC<BidSlider187Props> = ({ min, value, onChange
           <small>تأكيد</small>
         </button>
       </div>
-      <SliderPrimitive.Root
-        dir="rtl"
-        className="kt187-slider"
+      <BidTrack187
         min={Math.min(min, MAX_BID)}
-        max={MAX_BID}
-        step={BID_STEP_187}
-        value={[shown]}
+        value={shown}
         disabled={!canBid || min >= MAX_BID}
-        onValueChange={([v]) => onChange(snapBid187(v, min))}
-        aria-label="اسحب لليسار لرفع القيد"
-      >
-        <SliderPrimitive.Track className="kt187-track">
-          <SliderPrimitive.Range className="kt187-range" />
-        </SliderPrimitive.Track>
-        <SliderPrimitive.Thumb className="kt187-thumb" aria-label="القيد" />
-      </SliderPrimitive.Root>
+        onChange={(v) => onChange(snapBid187(v, min))}
+      />
       <div className="kt187-scale" aria-hidden="true">
         <span>{MAX_BID}</span>
         <em>اسحب الخط لليسار لرفع القيد</em>
@@ -78,5 +68,58 @@ export const BidSlider187: React.FC<BidSlider187Props> = ({ min, value, onChange
     </div>
   );
 };
+
+/**
+ * Pointer-driven track that converts the finger position into the stage's
+ * local frame, so dragging stays smooth even when the stage is scaled or
+ * rotated (portrait phones). Left = higher bid.
+ */
+function BidTrack187({ min, value, disabled, onChange }: { min: number; value: number; disabled: boolean; onChange: (v: number) => void }) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const span = Math.max(1, MAX_BID - min);
+  const fraction = (MAX_BID - value) / span; // 0 = left (185), 1 = right (min)
+  const update = (clientX: number, clientY: number) => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const local = screenDeltaToLocal(el, clientX - (r.left + r.width / 2), clientY - (r.top + r.height / 2));
+    const f = Math.min(1, Math.max(0, 0.5 + local.x / el.offsetWidth));
+    const raw = MAX_BID - f * span;
+    onChange(Math.round(raw / BID_STEP_187) * BID_STEP_187);
+  };
+  return (
+    <div
+      ref={ref}
+      className="kt187-slider"
+      role="slider"
+      tabIndex={disabled ? -1 : 0}
+      aria-label="اسحب لليسار لرفع القيد"
+      aria-valuemin={min}
+      aria-valuemax={MAX_BID}
+      aria-valuenow={value}
+      aria-disabled={disabled}
+      onPointerDown={(e) => {
+        if (disabled) return;
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        update(e.clientX, e.clientY);
+      }}
+      onPointerMove={(e) => {
+        if (disabled || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
+        update(e.clientX, e.clientY);
+      }}
+      onKeyDown={(e) => {
+        if (disabled) return;
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); onChange(Math.min(MAX_BID, value + BID_STEP_187)); }
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); onChange(Math.max(min, value - BID_STEP_187)); }
+      }}
+    >
+      <div className="kt187-track">
+        <div className="kt187-range" style={{ left: `${fraction * 100}%`, right: 0 }} />
+      </div>
+      <span className="kt187-thumb" style={{ left: `${fraction * 100}%` }} />
+    </div>
+  );
+}
 
 export default BidSlider187;

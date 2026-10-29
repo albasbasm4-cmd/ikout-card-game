@@ -322,7 +322,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
 
   const handleNextRound = () => {
     if (isHost && engineRef.current) {
-      engineRef.current.startRound();
+      engineRef.current.nextRound();
       syncState();
     }
   };
