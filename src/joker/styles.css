@@ -1845,28 +1845,28 @@
 }
 .joker-app .joker-tool {
   position: absolute;
-  right: 26px;
-  top: 20px;
+  right: 24px;
+  top: 12px;
   z-index: 30;
   display: flex;
-  gap: 16px;
+  gap: 10px;
 }
-/* أزرار الصوت والقواعد والرئيسية: أكبر وأوضح فوق اليمين */
+/* أزرار الصوت والقواعد والرئيسية: مقاس معتدل يتناسق مع شريط الأعلى */
 .joker-app .joker-tool button {
-  width: 108px;
-  height: 108px;
-  border-radius: 28px;
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
   background: var(--joker-color-3);
-  border: 3px solid var(--joker-color-66);
-  box-shadow: 0 6px 12px var(--joker-color-75);
+  border: 2px solid var(--joker-color-66);
+  box-shadow: 0 3px 6px var(--joker-color-75);
   color: var(--joker-color-25);
 }
 .joker-app .joker-tool button svg {
-  width: 58px;
-  height: 58px;
+  width: 38px;
+  height: 38px;
 }
 .joker-app .joker-tool button:active {
-  transform: translateY(3px);
+  transform: translateY(2px);
 }
 @media (prefers-reduced-motion: reduce) {
   .joker-app *,
