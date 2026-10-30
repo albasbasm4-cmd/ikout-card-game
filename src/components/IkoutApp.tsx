@@ -4,8 +4,8 @@ import { NetworkLatencyProvider } from "../network/NetworkLatencyContext";
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useRouter } from '@tanstack/react-router';
 import { GameScreen } from './GameScreen';
 import { RoomScreen } from './RoomScreen';
 import { HomeScreen } from './HomeScreen';
@@ -15,6 +15,7 @@ import { RoomConfig } from '../store/useRoom';
 import { ErrorBoundary } from './ErrorBoundary';
 import { loadSavedGameState } from '../utils/persist';
 import { useKeepAwake } from '../store/useSettings';
+import { setAppBackHandler, getAppBackHandler } from '../utils/appBackNav';
 import type { GameState } from '../types/kout';
 import { Room187Screen } from '../game187/components/Room187Screen';
 import { Game187Screen } from '../game187/components/Game187Screen';
@@ -40,6 +41,37 @@ export default function App() {
 
   // Keep screen awake while using the app
   useKeepAwake(true);
+
+  // حارس الرجوع النظامي: زر رجوع الجهاز/المتصفح يوجَّه إلى منطق الرجوع الداخلي
+  // بدلاً من القفز إلى مسارات راوتر قديمة في سجل التنقل (سبب فتح أونو/الجوكر/الكوت
+  // فجأة بعد الانترو). على الشاشة الرئيسية يُترك السلوك الافتراضي (خروج من التطبيق).
+  const router = useRouter();
+  useEffect(() => {
+    const pushGuard = () => { try { window.history.pushState(window.history.state, ''); } catch { /* noop */ } };
+    pushGuard();
+    const onPop = () => {
+      const h = getAppBackHandler();
+      if (h) { pushGuard(); h(); }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [router]);
+
+  // تسجيل نقطة الرجوع لشاشات الكوت و187 (خطوة واحدة للخلف، وطاولة اللعب → الرئيسية مباشرة).
+  // شاشتا أونو والجوكر تسجّلان نفسهما داخلياً (useAppBack) لأن لهما شاشات فرعية.
+  useEffect(() => {
+    if (view === 'uno' || view === 'joker') return;
+    if (view === 'setup' || view === 'game') { setAppBackHandler(() => setView('home')); return; }
+    if (view === 'lobby' || view === 'join') { setAppBackHandler(() => setView('setup')); return; }
+    if (view === '187' && !players187) { setAppBackHandler(() => setView('home')); return; }
+    if (view === '187') {
+      setAppBackHandler(() => {
+        setPlayers187(null);
+        setResumedState187(null);
+        setView('home');
+      });
+    }
+  }, [view, players187]);
 
   const handleStartGame = (config: RoomConfig) => {
     setRoomConfig(config);
@@ -164,6 +196,7 @@ export default function App() {
             onExit={() => {
               setPlayers187(null);
               setResumedState187(null);
+              setView('home');
             }}
           />
         )}

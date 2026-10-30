@@ -1,5 +1,6 @@
 import { NetworkLatencyBadge } from "@/components/NetworkLatencyBadge";
 import { useEffect, useRef, useState } from 'react';
+import { useAppBack } from '@/utils/appBackNav';
 import { useNavigate } from '@tanstack/react-router';
 import { ArrowRight, Minus, Plus, Globe, Volume2, VolumeX, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -55,7 +56,13 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
     if (game.results.find(r => r.id === human)?.outcome === 'فائز') playWinSound(); else playLoseSound();
     setModal(null);
   }, [game]);
-  const back = () => { setGame(null); setModal(null); if (screen === 'entry') { if (onBack) onBack(); else nav({ to: '/' }); } else setScreen('entry'); };
+  const goHome = () => { if (onBack) onBack(); else nav({ to: '/' }); };
+  // التدفق المطلوب: من طاولة الجوكر الزرجوع يعود إلى الشاشة الرئيسية مباشرة،
+  // ومن شاشة إعداد المباراة خطوة واحدة إلى شاشة الدخول، ومن الدخول إلى الرئيسية.
+  const back = () => { setGame(null); setModal(null); if (screen === 'room') setScreen('entry'); else goHome(); };
+
+  // زر الرجوع النظامي يتبع نفس منطق زر الرجوع داخل الجوكر.
+  useAppBack(() => back());
   const mode = game ? jokerMode(game, human) : 'wait';
   const card = game?.cards[human];
   return <main className="joker-app" dir="rtl">

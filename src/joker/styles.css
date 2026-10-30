@@ -203,7 +203,9 @@ position:fixed;inset:0;overflow:hidden}
 .kres.show{animation:kslide .4s}
 @keyframes kslide{from{opacity:0;transform:translateY(-14px) scale(.96)}}
 /* room card */
-#kr,#kg{position:absolute;left:340px;top:290px;width:1720px;height:660px;border:10px solid var(--joker-color-66);border-radius:28px;overflow:hidden;background:linear-gradient(var(--joker-color-52),var(--joker-color-48));box-shadow:0 10px 0 var(--joker-color-68),0 0 44px var(--joker-color-69);animation:kup .55s backwards}
+#kr{position:absolute;left:340px;top:290px;width:1720px;height:660px;border:10px solid var(--joker-color-66);border-radius:28px;overflow:hidden;background:linear-gradient(var(--joker-color-52),var(--joker-color-48));box-shadow:0 10px 0 var(--joker-color-68),0 0 44px var(--joker-color-69);animation:kup .55s backwards}
+/* طاولة الجوكر: لوحة أكبر تملأ المسرح مثل طاولات الكوت و187 (المسرح الداخلي 2400×1080 مُقاس بـ.64) */
+#kg{position:absolute;left:240px;top:170px;width:2020px;height:800px;border:10px solid var(--joker-color-66);border-radius:28px;overflow:hidden;background:linear-gradient(var(--joker-color-52),var(--joker-color-48));box-shadow:0 10px 0 var(--joker-color-68),0 0 44px var(--joker-color-69);animation:kup .55s backwards}
 .kd{position:absolute;left:0;right:0;top:66px;bottom:0}
 #kr.host .j-only,#kr.join .h-only{display:none!important}
 .kdk{background:var(--joker-color-102);border-radius:16px}
@@ -275,16 +277,16 @@ position:fixed;inset:0;overflow:hidden}
 .kstp{display:flex;align-items:center;gap:18px;font:800 26px Cairo,sans-serif}.kstp .kchip{width:70px;height:54px;padding:0;font-size:38px}
 #kwt{top:454px;height:92px;font:800 24px/1.3 Cairo,sans-serif;padding:0 10px}
 #kr.join .h-only{display:none!important}
-.glp{position:absolute;left:18px;top:14px;width:520px;height:546px;display:flex;flex-direction:column;gap:14px}
-.gcard{height:290px;flex:none;border-radius:24px;background:var(--joker-color-66);color:var(--joker-color-14);display:grid;place-items:center;text-align:center;font:900 140px/1 Cairo,sans-serif;cursor:pointer;border:6px solid var(--joker-color-59);box-shadow:0 6px 0 var(--joker-color-69)}
+.glp{position:absolute;left:18px;top:14px;width:480px;height:686px;display:flex;flex-direction:column;gap:14px}
+.gcard{height:340px;flex:none;border-radius:24px;background:var(--joker-color-66);color:var(--joker-color-14);display:grid;place-items:center;text-align:center;font:900 150px/1 Cairo,sans-serif;cursor:pointer;border:6px solid var(--joker-color-59);box-shadow:0 6px 0 var(--joker-color-69)}
 .gcard.back{background:repeating-linear-gradient(45deg,var(--joker-color-43) 0 16px,var(--joker-color-55) 16px 32px);color:var(--joker-color-66);font-size:42px}
 .gcard.r{color:var(--joker-color-50)}.gcard.jk{color:var(--joker-color-33);font-size:64px;line-height:1.3}
-.gst{flex:1;display:grid;place-items:center;text-align:center;font:800 28px/1.4 Cairo,sans-serif;padding:0 20px}
-.glp .kb{height:92px;flex:none;font-size:38px}
-.gmain{position:absolute;left:566px;top:14px;width:1116px;height:546px;display:flex;flex-direction:column;gap:14px}
-.grem{height:70px;flex:none;display:flex;align-items:center;justify-content:center;font:900 38px Cairo,sans-serif;background:var(--joker-color-99);border-radius:16px}
+.gst{flex:1;display:grid;place-items:center;text-align:center;font:800 34px/1.4 Cairo,sans-serif;padding:0 20px}
+.glp .kb{height:100px;flex:none;font-size:40px}
+.gmain{position:absolute;left:514px;top:14px;width:1470px;height:686px;display:flex;flex-direction:column;gap:14px}
+.grem{height:78px;flex:none;display:flex;align-items:center;justify-content:center;font:900 44px Cairo,sans-serif;background:var(--joker-color-99);border-radius:16px}
 .grem b{color:var(--joker-color-24);margin:0 10px}
-#glog{height:128px;flex:none;overflow:hidden;font:800 28px/1.45 Cairo,sans-serif;padding:8px 22px}
+#glog{height:150px;flex:none;overflow:hidden;font:800 32px/1.45 Cairo,sans-serif;padding:8px 22px}
 #glog div:first-child{color:var(--joker-color-63)}
 #gsa{flex:1;display:flex;flex-wrap:wrap;gap:12px;align-content:flex-start;overflow:auto}
 .gs{position:relative;width:calc((100% - 48px)/5);height:84px;border-radius:16px;background:var(--joker-color-102);display:flex;align-items:center;gap:8px;padding:0 12px;font:800 24px Cairo,sans-serif}
@@ -315,13 +317,13 @@ position:fixed;inset:0;overflow:hidden}
 .kcn{text-align:center;font:800 22px/1.4 Cairo,sans-serif;margin:0 0 14px;text-shadow:0 2px 0 var(--joker-color-71);min-height:30px}
 #gsa{display:block;overflow:hidden}
 .gtab{position:relative;width:100%;height:100%}
-.gtab>img{position:absolute;left:50%;top:50%;width:84%;height:92%;transform:translate(-50%,-50%);object-fit:contain;pointer-events:none}
-.gtab .gs{position:absolute;transform:translate(-50%,-50%);width:150px;height:auto;flex-direction:column;background:none;padding:0;gap:4px;z-index:2;font-size:18px}
+.gtab>img{position:absolute;left:50%;top:50%;width:96%;height:100%;transform:translate(-50%,-50%);object-fit:contain;pointer-events:none}
+.gtab .gs{position:absolute;transform:translate(-50%,-50%);width:210px;height:auto;flex-direction:column;background:none;padding:0;gap:6px;z-index:2;font-size:23px}
 .gtab .gs i{display:none}
 .gav{width:76px;height:76px;border-radius:14px;object-fit:cover;background:var(--joker-color-49);border:3px solid var(--joker-color-66);box-shadow:0 4px 9px var(--joker-color-75)}
 .gs.me .gav{box-shadow:0 0 0 3px var(--joker-color-21),0 0 16px var(--joker-color-98)}
 .gs.o .gav{filter:grayscale(1) brightness(.55)}
-.gtab .gs span{background:var(--joker-color-3);color:var(--joker-color-25);font:800 18px/1.3 Cairo,sans-serif;border-radius:4px;padding:0 8px;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gtab .gs span{background:var(--joker-color-3);color:var(--joker-color-25);font:800 23px/1.3 Cairo,sans-serif;border-radius:6px;padding:2px 10px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gtab .gs.o::after{left:50%;top:26px;bottom:auto;transform:translateX(-50%)}
 .rules{font:700 18px/1.6 Cairo,sans-serif;text-align:right;margin-bottom:12px;max-height:56vh;overflow:auto;padding-left:6px}
 .rules p{margin:6px 0}
@@ -331,21 +333,21 @@ position:fixed;inset:0;overflow:hidden}
 }
 .joker-app #st{transform:none}.joker-app #scr{display:block}.joker-app #kin{background: url(/assets/ikout/backgrounds/wood-bg.png) center/cover}.joker-app #prof{z-index:10}.joker-app .kb svg{width:32px;height:32px}.joker-app .joker-actions{display:flex;gap:16px}.joker-app .joker-actions .kb{flex:1}.joker-app .pc-catalog{z-index:50}.joker-app #mc{max-height:96%;overflow:auto}.joker-app .joker-results-title{font-size:34px;text-align:center}.joker-app .joker-score{position:absolute;top:90px;right:28px;font-size:20px}.joker-app .joker-tool{position:absolute;right:30px;top:15px;z-index:10}
 @media (prefers-reduced-motion:reduce){.joker-app *, .joker-app *::before,.joker-app *::after{animation:none!important;transition:none!important}}
-.joker-app .gtab .gs{width:130px;font-size:18px}
-.joker-app .gtab .gav{width:66px;height:66px}
+.joker-app .gtab .gs{width:210px;font-size:23px}
+.joker-app .gtab .gav{width:100px;height:100px}
 .joker-app .kb.ready{animation:none}
 
 /* ---- بطاقات الطاولة المقلوبة في الجوكر مع خاصية الكشف بالضغط المستمر ---- */
 .joker-table-card {
-  width: 48px;
-  height: 68px;
-  border-radius: 8px;
-  border: 2.5px solid var(--joker-color-59);
+  width: 76px;
+  height: 108px;
+  border-radius: 12px;
+  border: 3.5px solid var(--joker-color-59);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  font: 900 24px/1 Cairo, sans-serif;
+  font: 900 38px/1 Cairo, sans-serif;
   user-select: none;
   cursor: pointer;
   touch-action: none;

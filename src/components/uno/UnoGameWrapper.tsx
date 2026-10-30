@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAppBack } from '@/utils/appBackNav';
 import UnoLobby from './UnoLobby';
 import { Play } from '@/routes/uno.play';
 import { Room } from '@/routes/uno.room';
@@ -18,6 +19,12 @@ interface UnoGameWrapperProps {
  */
 export default function UnoGameWrapper({ onBack }: UnoGameWrapperProps) {
   const [screen, setScreen] = useState<UnoScreen>('lobby');
+
+  // زر الرجوع النظامي يتبع نفس منطق أزرار الرجوع داخل أونو: طاولة → لوبي → الرئيسية.
+  useAppBack(() => {
+    if (screen === 'lobby') onBack();
+    else setScreen('lobby');
+  });
 
   if (screen === 'play') {
     return (
