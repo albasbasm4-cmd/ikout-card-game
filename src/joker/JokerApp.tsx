@@ -231,6 +231,33 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                     {game.phase === "play" ? (
                       <>
                         <div className="glp">
+                          <Button
+                            id="gcard"
+                            variant="ghost"
+                            className={`gcard ${holdingId !== human ? "back" : card === "JK" ? "jk" : /[\u2665\u2666]/.test(card ?? "") ? "r" : ""}`}
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              setHoldingId(human);
+                              playCardSound();
+                            }}
+                            onPointerUp={() => setHoldingId(null)}
+                            onPointerLeave={() => setHoldingId(null)}
+                            onPointerCancel={() => setHoldingId(null)}
+                            onTouchStart={(e) => {
+                              e.preventDefault();
+                              setHoldingId(human);
+                              playCardSound();
+                            }}
+                            onTouchEnd={() => setHoldingId(null)}
+                            onTouchCancel={() => setHoldingId(null)}
+                            onContextMenu={(e) => e.preventDefault()}
+                          >
+                            {holdingId === human
+                              ? card === "JK"
+                                ? "🃏 الجوكر"
+                                : card
+                              : "اضغط باستمرار"}
+                          </Button>
                           <div id="gst" className="gst kdk ghints">
                             {HINTS.map((h, i) => (
                               <div key={i}>
@@ -271,9 +298,11 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                           <div id="gsa">
                             <div className="gtab">
                               {game.players.map((p, i) => {
-                                // صف أفقي واحد يمتد بعرض الطاولة مع فاصل أوسع بين اللاعبين
+                                // صف أفقي واحد في المنتصف: عرض المقعد 210px وفاصل بين مقعدين نصف عرض المقعد
                                 const n = game.players.length;
-                                const rowLeft = n > 1 ? 96 - (92 * i) / (n - 1) : 50;
+                                const stepPct = (315 / 2400) * 100;
+                                const rowLeft =
+                                  n > 1 ? 50 - ((n - 1) * stepPct) / 2 + stepPct * i : 50;
                                 const isHolding = holdingId === p.id;
                                 const playerCard = game.cards[p.id];
                                 const isRed = /[♥♦]/.test(playerCard ?? "");

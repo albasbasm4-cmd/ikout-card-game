@@ -1426,6 +1426,39 @@
     flex-direction: column;
     gap: 14px;
   }
+  .gcard {
+    height: 340px;
+    flex: none;
+    border-radius: 24px;
+    background: var(--joker-color-66);
+    color: var(--joker-color-14);
+    display: grid;
+    place-items: center;
+    text-align: center;
+    font:
+      900 150px/1 Cairo,
+      sans-serif;
+    cursor: pointer;
+    border: 6px solid var(--joker-color-59);
+    box-shadow: 0 6px 0 var(--joker-color-69);
+  }
+  .gcard.back {
+    background: repeating-linear-gradient(
+      45deg,
+      var(--joker-color-43) 0 16px,
+      var(--joker-color-55) 16px 32px
+    );
+    color: var(--joker-color-66);
+    font-size: 42px;
+  }
+  .gcard.r {
+    color: var(--joker-color-50);
+  }
+  .gcard.jk {
+    color: var(--joker-color-33);
+    font-size: 64px;
+    line-height: 1.3;
+  }
   .gst {
     flex: 1;
     display: grid;
@@ -1948,7 +1981,7 @@
 }
 
 .joker-table-card.bot-peeking {
-  transform: translateY(-4px) rotate(-6deg);
+  transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.45);
 }
 
