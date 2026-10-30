@@ -1845,9 +1845,28 @@
 }
 .joker-app .joker-tool {
   position: absolute;
-  right: 30px;
-  top: 15px;
-  z-index: 10;
+  right: 26px;
+  top: 20px;
+  z-index: 30;
+  display: flex;
+  gap: 16px;
+}
+/* أزرار الصوت والقواعد والرئيسية: أكبر وأوضح فوق اليمين */
+.joker-app .joker-tool button {
+  width: 108px;
+  height: 108px;
+  border-radius: 28px;
+  background: var(--joker-color-3);
+  border: 3px solid var(--joker-color-66);
+  box-shadow: 0 6px 12px var(--joker-color-75);
+  color: var(--joker-color-25);
+}
+.joker-app .joker-tool button svg {
+  width: 58px;
+  height: 58px;
+}
+.joker-app .joker-tool button:active {
+  transform: translateY(3px);
 }
 @media (prefers-reduced-motion: reduce) {
   .joker-app *,

@@ -2,7 +2,7 @@ import { NetworkLatencyBadge } from "@/components/NetworkLatencyBadge";
 import { useEffect, useRef, useState } from "react";
 import { useAppBack } from "@/utils/appBackNav";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Minus, Plus, Globe, Volume2, VolumeX, BookOpen } from "lucide-react";
+import { ArrowRight, Minus, Plus, Globe, Volume2, VolumeX, BookOpen, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProfileEditor } from "@/components/ProfileEditor";
 import { characterFace, CHARACTER_IDS, useProfile } from "@/utils/profile";
@@ -121,9 +121,11 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
       <div ref={stage} id="st">
         <div id="scr" className={screen === "game" ? "wood" : ""}>
           <div id="kin">
-            <Button id="kback" variant="ghost" aria-label="رجوع" onClick={back}>
-              <ArrowRight />
-            </Button>
+            {screen !== "game" && (
+              <Button id="kback" variant="ghost" aria-label="رجوع" onClick={back}>
+                <ArrowRight />
+              </Button>
+            )}
             {screen === "entry" && (
               <div className="kpg" id="kp1" style={{ display: "block" }}>
                 <div className="kc" id="kc2">
@@ -273,7 +275,9 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                           <div id="gsa">
                             <div className="gtab">
                               {game.players.map((p, i) => {
-                                const a = Math.PI / 2 + (2 * Math.PI * i) / game.players.length;
+                                // صف أفقي واحد يبدأ من اليمين قليلاً فوق منتصف الشاشة
+                                const n = game.players.length;
+                                const rowLeft = n > 1 ? 90 - (80 * i) / (n - 1) : 50;
                                 const isHolding = holdingId === p.id;
                                 const playerCard = game.cards[p.id];
                                 const isRed = /[♥♦]/.test(playerCard ?? "");
@@ -286,8 +290,8 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                                     key={p.id}
                                     className={`gs ${isDropped ? "o" : ""} ${p.id === human ? "me" : ""}`}
                                     style={{
-                                      left: `${50 + 40 * Math.cos(a)}%`,
-                                      top: `${50 + 38 * Math.sin(a)}%`,
+                                      left: `${rowLeft}%`,
+                                      top: `47%`,
                                     }}
                                   >
                                     <img className="gav" src={characterFace(p.char)} alt="" />
@@ -400,15 +404,17 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
             )}
           </div>
         </div>
-        <Button
-          id="prof"
-          variant="ghost"
-          aria-label="خيارات اللاعب"
-          onClick={() => setProfileOpen(true)}
-        >
-          <img className="av" src={characterFace(profile.characterId)} alt="" />
-          <span className="un">{profile.name}</span>
-        </Button>
+        {screen !== "game" && (
+          <Button
+            id="prof"
+            variant="ghost"
+            aria-label="خيارات اللاعب"
+            onClick={() => setProfileOpen(true)}
+          >
+            <img className="av" src={characterFace(profile.characterId)} alt="" />
+            <span className="un">{profile.name}</span>
+          </Button>
+        )}
         <div className="joker-tool">
           <Button variant="ghost" size="icon" aria-label="كتم الصوت" onClick={toggleSound}>
             {settings.soundEnabled ? <Volume2 /> : <VolumeX />}
@@ -420,6 +426,9 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
             onClick={() => setModal("rules")}
           >
             <BookOpen />
+          </Button>
+          <Button variant="ghost" size="icon" aria-label="الشاشة الرئيسية" onClick={back}>
+            <Home />
           </Button>
         </div>
         {profileOpen && <ProfileEditor onClose={() => setProfileOpen(false)} />}
