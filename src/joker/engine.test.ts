@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { actJoker, createJokerGame, dealJoker, jokerMode, type JokerGame } from "./engine";
+import {
+  actJoker,
+  chooseJokerBot,
+  createJokerGame,
+  dealJoker,
+  jokerMode,
+  type JokerGame,
+} from "./engine";
 const players = Array.from({ length: 4 }, (_, i) => ({
   id: `p${i}`,
   name: `P${i}`,
@@ -46,5 +53,41 @@ describe("original Joker game loop", () => {
     s = actJoker(s, "p3", "p1");
     expect(s.results[0].outcome).toBe("فائز");
     expect(s.results[3].outcome).toBe("خاسر");
+  });
+});
+
+describe("bot target selection", () => {
+  it("never accuses an already-out player, except the known dropped Joker", () => {
+    for (let seed = 0; seed < 200; seed++) {
+      let rnd = seed;
+      const random = () => {
+        rnd = (rnd * 1103515245 + 12345) % 2147483648;
+        return rnd / 2147483648;
+      };
+      let s = dealJoker(createJokerGame(players), random);
+      for (let step = 0; step < 30 && s.phase === "play"; step++) {
+        // كل الأدوار تلعب (البشر يمثلون باختيار عشوائي) حتى تكتمل الجولة
+        const actor = s.players.find((p) =>
+          ["joker", "pick", "final"].includes(jokerMode(s, p.id)),
+        );
+        if (!actor) break;
+        const mode = jokerMode(s, actor.id);
+        const target = chooseJokerBot(s, actor.id, random);
+        const before = s;
+        s = actJoker(s, actor.id, mode === "joker" ? undefined : target);
+        if (mode === "pick") {
+          expect(s).not.toBe(before);
+          expect(s.out[actor.id]?.pick).toBeTruthy();
+          for (const [pid, o] of Object.entries(s.out)) {
+            if (o.pick) expect(o.pick).not.toBe(pid);
+          }
+        } else {
+          expect(s).not.toBe(before);
+        }
+        const outIds = new Set(Object.keys(s.out));
+        if (target !== undefined && target !== s.joker) expect(outIds.has(target)).toBe(false);
+      }
+      expect(s.phase).toBe("results");
+    }
   });
 });

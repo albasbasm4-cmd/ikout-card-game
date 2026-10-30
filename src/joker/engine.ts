@@ -106,6 +106,8 @@ export function actJoker(prev: JokerGame, id: string, target?: string): JokerGam
 /** Bots only see their own card and public dropped status, never the secret Joker ID. */
 export function chooseJokerBot(s: JokerGame, id: string, random = Math.random): string | undefined {
   const known = s.players.find((p) => p.id !== id && s.out[p.id]?.dropped);
-  const candidates = s.players.filter((p) => p.id !== id);
-  return known?.id ?? candidates[Math.floor(random() * candidates.length)]?.id;
+  if (known) return known.id;
+  const candidates = s.players.filter((p) => p.id !== id && !s.out[p.id]);
+  if (!candidates.length) return undefined;
+  return candidates[Math.floor(random() * candidates.length)].id;
 }

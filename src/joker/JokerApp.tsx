@@ -40,6 +40,14 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   const [game, setGame] = useState<JokerGame | null>(null);
   const [holdingId, setHoldingId] = useState<string | null>(null);
   const [botPeekingId, setBotPeekingId] = useState<string | null>(null);
+  const peekClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const [modal, setModal] = useState<"rules" | "pick" | "confirm" | "network" | null>(null);
   const [target, setTarget] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -83,12 +91,16 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
       settings.botSpeed === "FAST" ? 650 : settings.botSpeed === "SLOW" ? 2200 : 1400,
     );
     const peekTimer = setTimeout(() => {
+      if (peekClearRef.current) clearTimeout(peekClearRef.current);
       setBotPeekingId(bot.id);
-      setTimeout(() => setBotPeekingId(null), 600);
+      peekClearRef.current = setTimeout(() => {
+        if (mountedRef.current) setBotPeekingId(null);
+      }, 600);
     }, 150);
     return () => {
       clearTimeout(timer);
       clearTimeout(peekTimer);
+      // مؤقت الإخفاء الداخلي يعيش بعد التنظيف ليخفي التلميح دائماً
     };
   }, [game, settings.botSpeed]);
   useEffect(() => {
@@ -300,7 +312,11 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                               {game.players.map((p, i) => {
                                 // صف أفقي واحد في المنتصف: عرض المقعد 210px وفاصل بين مقعدين نصف عرض المقعد
                                 const n = game.players.length;
-                                const stepPct = (315 / 2400) * 100;
+                                // مقعد 210px على لوحة 1340px: الخطوة تتقلص تلقائياً حتى لا يخرج الصف عن الطاولة
+                                const stepPct = Math.min(
+                                  (315 / 1340) * 100,
+                                  (100 - (210 / 1340) * 100) / Math.max(n - 1, 1),
+                                );
                                 const rowLeft =
                                   n > 1 ? 50 - ((n - 1) * stepPct) / 2 + stepPct * i : 50;
                                 const isHolding = holdingId === p.id;
