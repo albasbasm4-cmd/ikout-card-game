@@ -23,7 +23,12 @@ export function loadPlayerProfile(): PlayerProfile {
 
 export function hasPlayerProfile(): boolean {
   if (typeof window === "undefined") return false;
-  return localStorage.getItem(PLAYER_PROFILE_KEY) !== null;
+  try {
+    return localStorage.getItem(PLAYER_PROFILE_KEY) !== null;
+  } catch {
+    // التخزين محظور (وضع خاص/WebView صارم): اعتبر لا يوجد ملف شخصي
+    return false;
+  }
 }
 
 export function savePlayerProfile(profile: PlayerProfile): void {
@@ -32,7 +37,11 @@ export function savePlayerProfile(profile: PlayerProfile): void {
     nickname: profile.nickname.trim().slice(0, 20) || "لاعب",
     characterId: profile.characterId,
   };
-  localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify(clean));
+  try {
+    localStorage.setItem(PLAYER_PROFILE_KEY, JSON.stringify(clean));
+  } catch {
+    // التخزين غير متاح: تجاهل بهدوء بدل إسقاط الحفظ باسثناء غير معالج
+  }
 }
 
 export const CHARACTER_IDS = Array.from({ length: 36 }, (_, index) => `a${index + 1}`);
