@@ -1,3 +1,4 @@
+import { NetworkLatencyBadge } from "@/components/NetworkLatencyBadge";
 import { ClientOnly, createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, RotateCw, RotateCcw, Megaphone, Hand, Smartphone, Maximize, Minimize, Volume2, VolumeX, Home } from "lucide-react";
@@ -219,7 +220,17 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
             <Button size="sm" variant={me.hand.length <= 2 ? "default" : "secondary"} onClick={() => apply(sayUno(s, ME))}><Megaphone /> أونو</Button>
             {myTurn && s.drawnCardId && <Button size="sm" variant="outline" onClick={() => guard(() => apply(passTurn(s, ME, s.version)))}>تمرير</Button>}
           </div>
-        </div>
+        
+        {/* مؤشر سرعة الاتصال (البنق) في أسفل يسار طاولة أونو عند اللعب عبر Hotspot */}
+        <NetworkLatencyBadge
+          className="!static mt-1"
+          players={s.players.map((p, idx) => ({
+            seatIndex: idx,
+            name: p.name,
+            isBot: p.isBot,
+          }))}
+        />
+</div>
         <UnoHand cards={me.hand} width={stageW * .56} cardWidth={cardW} enabled={myTurn} isLegal={c => canPlay(s, c)} onPlay={onCard} />
         <div ref={setDialogHost} className="uno-dialog-host" />
       </div>

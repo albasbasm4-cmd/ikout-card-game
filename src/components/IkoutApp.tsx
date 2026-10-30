@@ -1,3 +1,4 @@
+import { NetworkLatencyProvider } from "../network/NetworkLatencyContext";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -58,6 +59,7 @@ export default function App() {
   };
 
   return (
+    <NetworkLatencyProvider>
     <ErrorBoundary>
       <div className="fixed inset-0 w-full h-[100dvh] overflow-hidden bg-black select-none">
         {view === 'home' && (
@@ -176,5 +178,6 @@ export default function App() {
         )}
       </div>
     </ErrorBoundary>
+    </NetworkLatencyProvider>
   );
 }

@@ -1,3 +1,4 @@
+import { NetworkLatencyBadge } from "../../components/NetworkLatencyBadge";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -476,7 +477,16 @@ export const Table187: React.FC<Table187Props> = ({
               <div className="kt-name"><span>{name(mySeat)}</span></div>
             </div>
             {chatOpen && <div className="kt-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={() => setChatOpen(false)}><X /></Button><div>{MESSAGES_187.map(message => <Button key={message} variant="ghost" onClick={() => { play187Sound('message'); onSendMessage?.(message); setChatOpen(false); }}>{message}</Button>)}{chatClips187(seatCharacters[mySeat]).map(clip => <Button key={clip.file} variant="ghost" onClick={() => { play187Sound('message'); onSendMessage?.(chatCode187(clip)); setChatOpen(false); }}>{clip.text}</Button>)}</div></div>}
-          </section>
+          
+            {/* مؤشر سرعة الاتصال (البنق) في أسفل يسار طاولة 187 */}
+            <NetworkLatencyBadge
+              players={Array.from({ length: 5 }, (_, idx) => ({
+                seatIndex: idx,
+                name: name(idx),
+                isBot: isBot(idx),
+              }))}
+            />
+</section>
         </div>
 
         {/* ===== 187 phase dialogs ===== */}

@@ -1,3 +1,4 @@
+import { NetworkLatencyBadge } from "./NetworkLatencyBadge";
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from 'motion/react';
 import { GameState, Card as CardType, Suit, TrickPlay } from '../types/kout';
@@ -352,7 +353,16 @@ export const Table: React.FC<TableProps> = ({ state = MOCK_TABLE_STATE, mySeat =
     </div>
 
     {chatOpen && <div className="kt-chat" dir="rtl"><Button variant="ghost" size="icon" aria-label="إغلاق التعليقات" onClick={()=>setChatOpen(false)}><X/></Button><div>{voiceSet(characterFor(mySeat)).chat.filter(clip => clip.text && clip.text.trim()).map(clip => <Button key={clip.file} variant="ghost" onClick={()=>{playBubbleSound(); setReactions(current => ({ ...current, [mySeat]: clip.text })); playCharacterClip(characterFor(mySeat), clip, mySeat); onSendSpeechBubble?.(`clip:${clip.file}`); setChatOpen(false);}}>{clip.text}</Button>)}</div></div>}
-  </section>
+  
+    {/* مؤشر سرعة الاتصال (البنق) في أسفل يسار الطاولة عند اللعب عبر Hotspot */}
+    <NetworkLatencyBadge
+      players={Array.from({ length: count }, (_, idx) => ({
+        seatIndex: idx,
+        name: name(idx),
+        isBot: isBot(idx),
+      }))}
+    />
+</section>
  </div>;
 };
 
