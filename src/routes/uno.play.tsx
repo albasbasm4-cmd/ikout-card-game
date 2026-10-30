@@ -42,7 +42,7 @@ interface FlyingUnoCard {
 }
 
 const ME = 0;
-const STAGE_H = 450;
+const STAGE_H = 660;
 const COLOR_BG: Record<Color, string> = { red: "bg-uno-red", blue: "bg-uno-blue", green: "bg-uno-green", yellow: "bg-uno-yellow" };
 const COLOR_AR: Record<Color, string> = { red: "أحمر", blue: "أزرق", green: "أخضر", yellow: "أصفر" };
 
@@ -72,7 +72,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       const vh = window.visualViewport?.height ?? window.innerHeight;
       const rotated = settings.orientationPreference === "landscape" && vh > vw;
       const ratio = rotated ? vh / vw : vw / vh;
-      setStageW(Math.round(Math.min(1050, Math.max(700, STAGE_H * ratio))));
+      setStageW(Math.round(Math.min(2400, Math.max(900, STAGE_H * ratio))));
     };
     const fs = () => setIsFullscreen(!!document.fullscreenElement);
     calc();
@@ -218,10 +218,15 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
 
   const opponents = s.players.map((p, i) => ({ p, i })).filter((x) => x.i !== ME);
   const n = opponents.length;
-  const avatar = n <= 3 ? 58 : n <= 6 ? 50 : 42;
+  // وحدة قياس مرنة: ارتفاع المسرح 660px، فتُحسب البطاقات والأفاتارات والخطوط
+  // كنسبة من ارتفاع المسرح لتملأ الشاشات الأفقية والمحمولة بوضوح.
+  const u = STAGE_H / 450;
+  const avatar = n <= 3 ? 84 : n <= 6 ? 72 : 60;
+  const pileW = Math.round(STAGE_H * 0.105);
+  const tableCardW = Math.round(STAGE_H * 0.125);
   const faceFor = (i: number) => characterFace(i === ME ? profile.characterId : CHARACTER_IDS[(i * 5 + 2) % CHARACTER_IDS.length]);
   const t = top(s);
-  const cardW = Math.max(40, Math.min(62, (stageW * 0.56) / Math.max(1, me.hand.length) + 30));
+  const cardW = Math.max(58, Math.min(96, (stageW * 0.52) / Math.max(1, me.hand.length) + 40));
 
   return (
     <LayoutGroup><div dir="rtl" className="fixed inset-0 select-none overflow-hidden bg-background">
@@ -246,7 +251,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
           <Button type="button" onClick={() => { if (onBack) onBack(); else nav({ to: "/uno" }); }} aria-label="الخروج (محفوظة)" title="الخروج (محفوظة)"><ArrowRight /></Button>
           <Button type="button" onClick={() => { if (onGoHome) onGoHome(); else if (onBack) onBack(); else nav({ to: "/" }); }} aria-label="الشاشة الرئيسية" title="الشاشة الرئيسية"><Home /></Button>
         </div>
-        <span className="uno-score absolute right-2 top-2 z-40 text-xs">الجولة {s.round} · الهدف {s.rules.targetScore}</span>
+        <span className="uno-score absolute right-3 top-3 z-40" style={{ fontSize: 18 }}>الجولة {s.round} · الهدف {s.rules.targetScore}</span>
 
         {opponents.map(({ p, i }, k) => {
           // Seats run around the table edge from the right side, over the top, to the left side.
@@ -258,13 +263,13 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
             <div key={p.id} className={cn("kt-opp absolute z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center", active && "kt-active")} style={{ left: `${x}%`, top: `${y}%` }}>
               <div className="relative">
                 <div className="kt-avatar" style={{ width: avatar, height: avatar }}><img src={faceFor(i)} alt={p.name} draggable={false} /></div>
-                <span className="absolute -bottom-1 -left-1 rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground">{p.hand.length}</span>
-                {p.hand.length === 1 && p.saidUno && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-accent px-1 text-[10px] font-extrabold text-accent-foreground">UNO</span>}
+                <span className="absolute -bottom-1 -left-1 rounded-full bg-primary px-1.5 font-bold text-primary-foreground" style={{ fontSize: 17 }}>{p.hand.length}</span>
+                {p.hand.length === 1 && p.saidUno && <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-accent px-1 font-extrabold text-accent-foreground" style={{ fontSize: 15 }}>UNO</span>}
               </div>
               <div className="kt-name"><span>{p.name}</span></div>
-              <span className="uno-sub text-[10px]">{DIFF_LABEL[p.difficulty]} · {p.score}</span>
+              <span className="uno-sub" style={{ fontSize: 15 }}>{DIFF_LABEL[p.difficulty]} · {p.score}</span>
               {s.unoVulnerable === i && (
-                <Button size="sm" variant="destructive" className="mt-1 h-6 px-2 text-xs" onClick={() => apply(catchUno(s, ME))}><Hand className="h-3 w-3" /> كشف</Button>
+                <Button size="sm" variant="destructive" className="mt-1" style={{ height: 40, paddingLeft: 14, paddingRight: 14, fontSize: 16 }} onClick={() => apply(catchUno(s, ME))}><Hand className="h-4 w-4" /> كشف</Button>
               )}
             </div>
           );
@@ -272,11 +277,11 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
 
         <div className="absolute left-1/2 top-[50%] z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-4" dir="ltr">
           <Button variant="ghost" onClick={() => guard(() => apply(drawCard(s, ME, s.version)))} disabled={!myTurn || !!s.drawnCardId} className="uno-draw relative h-auto p-0" aria-label="اسحب">
-            <UnoCard faceDown className={cn("w-12", myTurn && !s.drawnCardId && "ring-2 ring-accent")} />
-            <span className="absolute -bottom-4 inset-x-0 text-center text-[10px] uno-sub">{s.drawPile.length}</span>
+            <UnoCard faceDown style={{ width: pileW }} className={cn(myTurn && !s.drawnCardId && "ring-2 ring-accent")} />
+            <span className="absolute -bottom-5 inset-x-0 text-center uno-sub" style={{ fontSize: 15 }}>{s.drawPile.length}</span>
           </Button>
           <div className="relative">
-            <UnoCard card={t} className="w-14" />
+            <UnoCard card={t} style={{ width: tableCardW }} />
             <span className={cn("absolute -top-2 -right-2 h-5 w-5 rounded-full border-2 border-foreground", COLOR_BG[s.activeColor])} title={COLOR_AR[s.activeColor]} />
           </div>
           <div className="flex flex-col items-center gap-1 text-accent">
@@ -284,21 +289,21 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
             {s.pendingDraw > 0 && <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-extrabold text-destructive-foreground">+{s.pendingDraw}</span>}
           </div>
         </div>
-        <p className="uno-log absolute inset-x-0 top-[66%] z-20 text-center text-[11px]">{s.log.at(-1)}</p>
+        <p className="uno-log absolute inset-x-0 top-[66%] z-20 text-center" style={{ fontSize: 19 }}>{s.log.at(-1)}</p>
 
         {/* Local player: avatar bottom-right, actions bottom-left, hand across the bottom like Kout/187 */}
         <div className={cn("kt-team absolute bottom-3 right-3 z-30 flex flex-col items-center", myTurn && "kt-active")}>
-          <div className="kt-avatar" style={{ width: 54, height: 54 }}><img src={faceFor(ME)} alt={me.name} draggable={false} /></div>
+          <div className="kt-avatar" style={{ width: 76, height: 76 }}><img src={faceFor(ME)} alt={me.name} draggable={false} /></div>
           <div className="kt-name"><span>{me.name}</span></div>
-          <span className="uno-sub text-[10px]">نقاطك {me.score}</span>
+          <span className="uno-sub" style={{ fontSize: 15 }}>نقاطك {me.score}</span>
         </div>
         <div className="absolute bottom-3 left-3 z-30 flex flex-col items-start gap-1.5">
-          <span className={cn("rounded-full px-3 py-1 text-xs font-bold", myTurn ? "bg-accent text-accent-foreground" : "bg-secondary text-secondary-foreground")}>
+          <span className={cn("rounded-full px-3 py-1 font-bold", myTurn ? "bg-accent text-accent-foreground" : "bg-secondary text-secondary-foreground")} style={{ fontSize: 18 }}>
             {myTurn ? (s.pendingDraw > 0 ? `دورك — العب +2/+4 أو اسحب ${s.pendingDraw}` : "دورك") : `دور ${s.players[s.current].name}`}
           </span>
           <div className="flex gap-1.5">
-            <Button size="sm" variant={me.hand.length <= 2 ? "default" : "secondary"} onClick={() => apply(sayUno(s, ME))}><Megaphone /> أونو</Button>
-            {myTurn && s.drawnCardId && <Button size="sm" variant="outline" onClick={() => guard(() => apply(passTurn(s, ME, s.version)))}>تمرير</Button>}
+            <Button size="sm" variant={me.hand.length <= 2 ? "default" : "secondary"} style={{ height: 46, paddingLeft: 18, paddingRight: 18, fontSize: 19 }} onClick={() => apply(sayUno(s, ME))}><Megaphone /> أونو</Button>
+            {myTurn && s.drawnCardId && <Button size="sm" variant="outline" style={{ height: 44, fontSize: 18 }} onClick={() => guard(() => apply(passTurn(s, ME, s.version)))}>تمرير</Button>}
           </div>
         
         {/* مؤشر سرعة الاتصال (البنق) في أسفل يسار طاولة أونو عند اللعب عبر Hotspot */}
@@ -319,12 +324,12 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
             initial={{
               left: `${flyingCard.fromX}%`,
               top: `${flyingCard.fromY}%`,
-              scale: flyingCard.fromSeat === ME ? 1 : 0.62,
+              scale: flyingCard.fromSeat === ME ? 1 : 0.72,
               rotate: flyingCard.rotateStart,
               opacity: 0.95,
             }}
             animate={{
-              left: "calc(50% + 12px)",
+              left: `calc(50% + ${Math.round(12 * u)}px)`,
               top: "50%",
               scale: 1,
               rotate: 0,
@@ -335,26 +340,26 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
               ease: [0.22, 1, 0.36, 1],
             }}
           >
-            <UnoCard card={flyingCard.card} className="w-14 shadow-2xl ring-2 ring-primary/40 drop-shadow-2xl" />
+            <UnoCard card={flyingCard.card} style={{ width: tableCardW }} className="shadow-2xl ring-2 ring-primary/40 drop-shadow-2xl" />
           </motion.div>
         )}
-        <UnoHand cards={me.hand.filter((c) => c.id !== hiddenHandCardId)} width={stageW * .56} cardWidth={cardW} enabled={myTurn && flyingCard === null} isLegal={c => canPlay(s, c)} onPlay={onCard} />
+        <UnoHand cards={me.hand.filter((c) => c.id !== hiddenHandCardId)} width={stageW * .6} cardWidth={cardW} enabled={myTurn && flyingCard === null} isLegal={c => canPlay(s, c)} onPlay={onCard} />
         <div ref={setDialogHost} className="uno-dialog-host" />
       </div>
 
       <Dialog open={!!wildFor} onOpenChange={(o) => !o && setWildFor(null)}>
-        <DialogContent container={dialogHost} className="max-w-xs uno-stage-dialog" aria-describedby={undefined}>
+        <DialogContent container={dialogHost} className="max-w-md uno-stage-dialog" aria-describedby={undefined}>
           <DialogHeader><DialogTitle>اختر اللون</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             {COLORS.map((c) => (
-              <Button variant="ghost" key={c} onClick={() => onColor(c)} className={cn("h-20 rounded-xl text-lg font-extrabold text-background", COLOR_BG[c])}>{COLOR_AR[c]}</Button>
+              <Button variant="ghost" key={c} onClick={() => onColor(c)} className={cn("rounded-xl font-extrabold text-background", COLOR_BG[c])} style={{ height: 104, fontSize: 26 }}>{COLOR_AR[c]}</Button>
             ))}
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={s.status !== "playing"}>
-        <DialogContent container={dialogHost} className="max-w-sm uno-stage-dialog" aria-describedby={undefined} onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent container={dialogHost} className="max-w-lg uno-stage-dialog" aria-describedby={undefined} onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader><DialogTitle>{s.status === "matchOver" ? "انتهت المباراة" : "انتهت الجولة"}</DialogTitle></DialogHeader>
           <p className="text-center text-lg">{s.roundWinner !== null && s.players[s.roundWinner].name} {s.roundWinner === ME ? "فزت 🎉" : "فاز"}</p>
           <ul className="space-y-1">

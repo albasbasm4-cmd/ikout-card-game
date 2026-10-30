@@ -350,3 +350,11 @@
 
 }
 .uno-lobby #st{transform:none}.uno-lobby .av img{width:100%;height:100%;object-fit:contain}.uno-lobby #net .ic svg{width:200px;height:200px}.uno-lobby .ab svg{width:40px;height:40px;color:var(--reference-text)}.uno-lobby #back svg{width:70px;height:56px}.uno-lobby .pc-catalog{font-size:initial}.uno-lobby .resume{position:absolute;left:340px;top:950px;height:68px;font-size:28px}
+
+/* ======= شاشات الغرفة (إنشاء / انضمام) داخل React ======= */
+.uno-lobby #rscr{display:block}
+.uno-lobby .kav img{width:44px;height:44px;border-radius:12px;object-fit:cover}
+.uno-lobby .kav2 img{width:100%;height:100%;object-fit:cover}
+.uno-lobby .kscan{width:460px;height:320px;object-fit:cover;border-radius:18px;border:4px solid var(--uno-lobby-color-49);box-shadow:0 6px 0 var(--uno-lobby-color-50)}
+.uno-lobby #ci:focus{outline:3px solid var(--uno-lobby-color-4)}
+.uno-lobby .kchip:disabled,.uno-lobby .kb:disabled{cursor:not-allowed}

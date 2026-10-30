@@ -1292,7 +1292,7 @@
 .uno-app section.relative { min-height: 220px; }
 /* UNO table borrows the Kout/187 room look (wood room, themed table image, portraits) */
 .uno-app .uno-room { background: radial-gradient(ellipse at 50% 45%, #9a6a3e, #6e4423 70%, #4a2c15); }
-.uno-app .uno-table-image, .uno-stage .uno-table-image { position: absolute; left: 50%; top: 47%; width: 58%; height: 66%; transform: translate(-50%, -50%); object-fit: fill; pointer-events: none; filter: drop-shadow(0 18px 24px rgba(0,0,0,.5)); }
+.uno-app .uno-table-image, .uno-stage .uno-table-image { position: absolute; left: 50%; top: 49%; width: 64%; height: 78%; transform: translate(-50%, -50%); object-fit: fill; pointer-events: none; filter: drop-shadow(0 18px 24px rgba(0,0,0,.5)); }
 .uno-app .uno-tool, .uno-app .uno-score { background: rgba(12,12,12,.78); border: 1px solid rgba(255,255,255,.28); border-radius: 8px; padding: 4px 10px; color: #fff; }
 .uno-app .uno-me-avatar { width: 44px; height: 44px; }
 .uno-card { height: auto!important; padding: 0!important; border-radius: 6px; }
@@ -1319,3 +1319,9 @@
 .uno-stage .uno-score { background: rgba(12,12,12,.78); border: 1px solid rgba(255,255,255,.28); border-radius: 8px; padding: 4px 10px; color: #fff; }
 .uno-stage .uno-sub { color: rgba(255,255,255,.8); text-shadow: 0 1px 2px rgba(0,0,0,.7); }
 .uno-stage .uno-log { color: rgba(255,255,255,.85); text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+
+/* Uno play stage (660px design height): scale the shared Kout chrome */
+.uno-stage .kt-tools { top: 12px; left: 12px; gap: 8px; }
+.uno-stage .kt-tools button { width: 48px; height: 48px; min-width: 48px; border-radius: 12px; }
+.uno-stage .kt-tools svg { width: 26px; height: 26px; }
+.uno-stage .kt-name { max-width: 170px; font-size: 15px; line-height: 20px; border-radius: 6px; padding: 2px 8px; }

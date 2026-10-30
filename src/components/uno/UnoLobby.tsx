@@ -17,9 +17,11 @@ const LABELS = ['سهل', 'متوسط', 'صعب'];
 export interface UnoLobbyProps {
   onBack?: () => void;
   onStartPlay?: () => void;
+  onCreateRoom?: () => void;
+  onJoinRoom?: () => void;
 }
 
-export default function UnoLobby({ onBack, onStartPlay }: UnoLobbyProps = {}) {
+export default function UnoLobby({ onBack, onStartPlay, onCreateRoom, onJoinRoom }: UnoLobbyProps = {}) {
   const nav = useNavigate();
   const profile = useProfile();
   const { settings } = useSettings();
@@ -44,7 +46,7 @@ export default function UnoLobby({ onBack, onStartPlay }: UnoLobbyProps = {}) {
       <div className="lb" style={{ top: 4 }}>اللاعبين:</div><div className="sp" style={{ top: 40 }}><Button className="ab l" aria-label="تقليل اللاعبين" disabled={players <= 2} onClick={() => setPlayers(p => p - 1)}><ChevronLeft /></Button><div className="nm">{players}</div><Button className="ab r" aria-label="زيادة اللاعبين" disabled={players >= 10} onClick={() => setPlayers(p => p + 1)}><ChevronRight /></Button></div>
       <div className="lb" style={{ top: 118 }}>مستوى البوتات:</div><div className="sp" style={{ top: 154 }}><Button className="ab l" aria-label="مستوى أسهل" disabled={level === 0} onClick={() => setLevel(l => l - 1)}><ChevronLeft /></Button><div className="nm t">{LABELS[level]}</div><Button className="ab r" aria-label="مستوى أصعب" disabled={level === 2} onClick={() => setLevel(l => l + 1)}><ChevronRight /></Button></div><Button className="btn nb" onClick={start}>ابدأ</Button>
     </div></div></div>
-    <div id="net"><div className="hd">لعب مشترك</div><div className="bd"><div className="ic"><Globe /></div><Button className="btn red c1" onClick={() => nav({ to: '/uno/room' })}>إنشاء غرفة</Button><Button className="btn red" onClick={() => nav({ to: '/uno/join' })}>الانضمام إلى غرفة</Button></div></div>
+    <div id="net"><div className="hd">لعب مشترك</div><div className="bd"><div className="ic"><Globe /></div><Button className="btn red c1" onClick={() => { if (onCreateRoom) onCreateRoom(); else nav({ to: '/uno/room' }); }}>إنشاء غرفة</Button><Button className="btn red" onClick={() => { if (onJoinRoom) onJoinRoom(); else nav({ to: '/uno/join' }); }}>الانضمام إلى غرفة</Button></div></div>
     {hasSave && <Button className="resume" onClick={() => { if (onStartPlay) onStartPlay(); else nav({ to: '/uno/play' }); }}><RotateCcw />استئناف المباراة</Button>}
     {profileOpen && <ProfileEditor onClose={() => setProfileOpen(false)} />}
   </div></main>;

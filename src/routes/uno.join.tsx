@@ -1,9 +1,14 @@
-import { ClientOnly, createFileRoute, Link } from "@tanstack/react-router";
+import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Camera } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { characterFace, useProfile } from "@/utils/profile";
+import { useSettings } from "@/store/useSettings";
+import { useStageFit } from "@/hooks/use-stage-fit";
+import { ProfileEditor } from "@/components/ProfileEditor";
+import { CitySkyline, Clouds } from "@/components/HomeScreen";
+import { playTapSound } from "@/utils/audio";
+import "@/components/uno/lobby.css";
 
 export const Route = createFileRoute("/uno/join")({
   head: () => ({
@@ -16,15 +21,31 @@ export const Route = createFileRoute("/uno/join")({
       { property: "og:description", content: "انضم إلى غرفة أونو برمز أو QR." },
     ],
   }),
-  component: () => <ClientOnly><div className="uno-app"><Join /></div></ClientOnly>,
+  component: () => <ClientOnly><Join /></ClientOnly>,
 });
 
-function Join() {
+export interface JoinProps {
+  onBack?: () => void;
+}
+
+/**
+ * شاشة الانضمام لغرفة أونو — مسرح أفقي 1536×691 مطابق لهوية لوبي أونو.
+ * زر الرجوع يعود دائماً إلى لوبي أونو مباشرة (/uno) وليس شاشة إنشاء الغرفة.
+ */
+export function Join({ onBack }: JoinProps = {}) {
+  const nav = useNavigate();
+  const { settings } = useSettings();
+  const profile = useProfile();
+  const stage = useRef<HTMLDivElement>(null);
+  useStageFit(stage, 1536, 691, settings.orientationPreference);
   const [code, setCode] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const activeStream = useRef<MediaStream | null>(null);
   useEffect(() => () => { activeStream.current?.getTracks().forEach((t) => t.stop()); activeStream.current = null; }, []);
+
+  const goLobby = () => { playTapSound(); if (onBack) onBack(); else nav({ to: "/uno" }); };
 
   const join = (c = code) => {
     const v = c.trim().toUpperCase();
@@ -63,15 +84,33 @@ function Join() {
   };
 
   return (
-    <main className="mx-auto min-h-screen max-w-md px-5 py-8">
-      <Link to="/uno/room" className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowRight className="h-4 w-4" /> رجوع</Link>
-      <h1 className="mt-3 font-display text-4xl text-accent">الانضمام لغرفة</h1>
-      <div className="mt-6 flex gap-2">
-        <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="رمز الغرفة" maxLength={6} dir="ltr" className="h-12 text-center text-xl tracking-widest uppercase" />
-        <Button size="icon" variant="secondary" className="h-12 w-12" aria-label="مسح QR" onClick={scan}><Camera /></Button>
+    <main className="uno-lobby" dir="rtl">
+      <div id="rscr" ref={stage}>
+        <Clouds />
+        <CitySkyline />
+        <div className="ksun" />
+        <div className="ik-gd" />
+        <button id="kback" aria-label="رجوع إلى لوبي أونو" onClick={goLobby}><ArrowRight /></button>
+        <div id="kprof" role="button" tabIndex={0} aria-label="الملف الشخصي" onClick={() => setProfileOpen(true)} onKeyDown={(e) => e.key === "Enter" && setProfileOpen(true)}>
+          <div className="kav2"><img src={characterFace(profile.characterId)} alt="" /></div>
+          <div className="kun">{profile.name}</div>
+        </div>
+        <div id="kr" className="join">
+          <div id="ttl">الانضمام لغرفة</div>
+          <div id="kjv">
+            <div className="kjp">
+              <div className="kjl">أدخل رمز الغرفة</div>
+              <input id="ci" dir="ltr" maxLength={6} placeholder="• • • • •" autoComplete="off" aria-label="رمز الغرفة"
+                value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && join()} />
+              <button className="kb kr2" onClick={() => join()}><span>انضمام</span></button>
+              <div className="kor">— أو —</div>
+              <button className="kb kbl" onClick={scan}><span>📷 مسح رمز QR</span></button>
+              {scanning && <video ref={video} className="kscan" muted playsInline />}
+            </div>
+          </div>
+        </div>
+        {profileOpen && <ProfileEditor onClose={() => setProfileOpen(false)} />}
       </div>
-      <Button className="mt-3 h-12 w-full" onClick={() => join()}>انضمام</Button>
-      {scanning && <video ref={video} className="mt-4 w-full rounded-xl" muted playsInline />}
     </main>
   );
 }
