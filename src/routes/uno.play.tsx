@@ -33,6 +33,14 @@ export const Route = createFileRoute("/uno/play")({
   component: () => <ClientOnly><div className="uno-app"><Play /></div></ClientOnly>,
 });
 
+interface FlyingUnoCard {
+  card: import("@/lib/uno/engine").Card;
+  fromSeat: number;
+  fromX: number;
+  fromY: number;
+  rotateStart: number;
+}
+
 const ME = 0;
 const STAGE_H = 450;
 const COLOR_BG: Record<Color, string> = { red: "bg-uno-red", blue: "bg-uno-blue", green: "bg-uno-green", yellow: "bg-uno-yellow" };
@@ -50,6 +58,8 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
   const [s, setS] = useState<GameState | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [wildFor, setWildFor] = useState<string | null>(null);
+  const [flyingCard, setFlyingCard] = useState<FlyingUnoCard | null>(null);
+  const [hiddenHandCardId, setHiddenHandCardId] = useState<string | null>(null);
   const busy = useRef(false);
   const { settings, toggleSound, toggleOrientationPreference } = useSettings();
   const stageRef = useRef<HTMLDivElement>(null);
@@ -92,9 +102,65 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
     return true;
   }, []);
 
-  // Bot turns
+  const playWithAnimation = useCallback(
+    (playerIndex: number, card: import("@/lib/uno/engine").Card, color?: Color) => {
+      if (!s || busy.current) return;
+      busy.current = true;
+
+      const r = playCard(s, playerIndex, card.id, color, s.version);
+      if (!r.ok) {
+        toast.error(r.error);
+        busy.current = false;
+        return;
+      }
+
+      // حساب إحداثيات انطلاق الورقة من مقعد اللاعب
+      let fromX = 50;
+      let fromY = 88;
+      let rotateStart = 0;
+
+      if (playerIndex === ME) {
+        fromX = 50;
+        fromY = 88;
+        rotateStart = 0;
+        setHiddenHandCardId(card.id);
+      } else {
+        const opps = s.players.map((p, i) => ({ p, i })).filter((x) => x.i !== ME);
+        const oppIdx = opps.findIndex((o) => o.i === playerIndex);
+        if (oppIdx !== -1) {
+          const ang = (Math.PI * (oppIdx + 0.5)) / opps.length;
+          fromX = 50 + 36 * Math.cos(ang);
+          fromY = 54 - 40 * Math.sin(ang);
+          rotateStart = Math.round((((Math.PI / 2 - ang) * 180) / Math.PI) * 0.4);
+        }
+      }
+
+      playCardSound();
+
+      setFlyingCard({
+        card,
+        fromSeat: playerIndex,
+        fromX,
+        fromY,
+        rotateStart,
+      });
+
+      const flightDurationMs = reduced ? 80 : 540;
+      setTimeout(() => {
+        setS(r.state);
+        saveGame(r.state);
+        setFlyingCard(null);
+        setHiddenHandCardId(null);
+        busy.current = false;
+      }, flightDurationMs);
+    },
+    [s, reduced]
+  );
+
+
+  // Bot turns مع أنيميشن انطلاق الورقة من مقعد البوت إلى الطاولة
   useEffect(() => {
-    if (!s || s.status !== "playing") return;
+    if (!s || s.status !== "playing" || flyingCard !== null) return;
     const p = s.players[s.current];
     if (!p.isBot) return;
     const t = setTimeout(() => {
@@ -107,12 +173,18 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
         const r = sayUno(st, st.current); if (r.ok) st = r.state;
       }
       const m = chooseMove(st, st.current);
-      const r = m.type === "play" ? playCard(st, st.current, m.cardId, m.color, st.version)
-        : m.type === "draw" ? drawCard(st, st.current, st.version) : passTurn(st, st.current, st.version);
+      if (m.type === "play") {
+        const cardToPlay = p.hand.find((c) => c.id === m.cardId);
+        if (cardToPlay) {
+          playWithAnimation(st.current, cardToPlay, m.color);
+          return;
+        }
+      }
+      const r = m.type === "draw" ? drawCard(st, st.current, st.version) : passTurn(st, st.current, st.version);
       apply(r, true);
-    }, 900);
+    }, 850);
     return () => clearTimeout(t);
-  }, [s, apply]);
+  }, [s, flyingCard, apply, playWithAnimation]);
 
   if (!loaded) return <div className="min-h-screen" />;
   if (!s) return (
@@ -127,14 +199,22 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
   const guard = (fn: () => void) => { if (busy.current) return; busy.current = true; try { fn(); } finally { setTimeout(() => (busy.current = false), 250); } };
 
   const onCard = (id: string) => guard(() => {
-    if (!myTurn) { toast.error("ليس دورك"); return; }
+    if (!myTurn || flyingCard !== null) { if (!myTurn) toast.error("ليس دورك"); return; }
     const card = me.hand.find((c) => c.id === id);
     if (!card) return;
     if (!canPlay(s, card)) { apply(playCard(s, ME, id, undefined, s.version)); return; }
     if (card.kind === "wild" || card.kind === "wild4") { setWildFor(id); return; }
-    if (apply(playCard(s, ME, id, undefined, s.version))) playCardSound();
+    playWithAnimation(ME, card);
   });
-  const onColor = (c: Color) => guard(() => { if (wildFor && apply(playCard(s, ME, wildFor, c, s.version))) playCardSound(); setWildFor(null); });
+  const onColor = (c: Color) => guard(() => {
+    if (wildFor) {
+      const card = me.hand.find((item) => item.id === wildFor);
+      if (card) {
+        playWithAnimation(ME, card, c);
+      }
+    }
+    setWildFor(null);
+  });
 
   const opponents = s.players.map((p, i) => ({ p, i })).filter((x) => x.i !== ME);
   const n = opponents.length;
@@ -196,7 +276,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
             <span className="absolute -bottom-4 inset-x-0 text-center text-[10px] uno-sub">{s.drawPile.length}</span>
           </Button>
           <div className="relative">
-            <motion.div key={t.id} layoutId={`uno-${t.id}`} transition={{ duration: reduced ? 0 : CARD_FLIGHT_SECONDS }}><UnoCard card={t} className="w-14" /></motion.div>
+            <UnoCard card={t} className="w-14" />
             <span className={cn("absolute -top-2 -right-2 h-5 w-5 rounded-full border-2 border-foreground", COLOR_BG[s.activeColor])} title={COLOR_AR[s.activeColor]} />
           </div>
           <div className="flex flex-col items-center gap-1 text-accent">
@@ -231,7 +311,34 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
           }))}
         />
 </div>
-        <UnoHand cards={me.hand} width={stageW * .56} cardWidth={cardW} enabled={myTurn} isLegal={c => canPlay(s, c)} onPlay={onCard} />
+        {/* أنيميشن طيران الورقة عند إنزالها من أي لاعب (بوت أو بشري) باتجاه كومة اللعب في الوسط */}
+        {flyingCard && (
+          <motion.div
+            key={`flying-${flyingCard.card.id}`}
+            className="pointer-events-none absolute z-50 -translate-x-1/2 -translate-y-1/2"
+            initial={{
+              left: `${flyingCard.fromX}%`,
+              top: `${flyingCard.fromY}%`,
+              scale: flyingCard.fromSeat === ME ? 1 : 0.62,
+              rotate: flyingCard.rotateStart,
+              opacity: 0.95,
+            }}
+            animate={{
+              left: "calc(50% + 12px)",
+              top: "50%",
+              scale: 1,
+              rotate: 0,
+              opacity: 1,
+            }}
+            transition={{
+              duration: reduced ? 0.05 : 0.52,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+          >
+            <UnoCard card={flyingCard.card} className="w-14 shadow-2xl ring-2 ring-primary/40 drop-shadow-2xl" />
+          </motion.div>
+        )}
+        <UnoHand cards={me.hand.filter((c) => c.id !== hiddenHandCardId)} width={stageW * .56} cardWidth={cardW} enabled={myTurn && flyingCard === null} isLegal={c => canPlay(s, c)} onPlay={onCard} />
         <div ref={setDialogHost} className="uno-dialog-host" />
       </div>
 

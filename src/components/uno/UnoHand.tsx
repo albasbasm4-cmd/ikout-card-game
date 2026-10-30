@@ -45,7 +45,7 @@ export function UnoHand({ cards, width, cardWidth, isLegal, onPlay, enabled }: {
           } else { suppressClick.current = true; tap(card.id); setTimeout(() => { suppressClick.current = false; }, 0); }
           drag.current = null; setOffset(null);
         }}>
-        <motion.div layoutId={`uno-${card.id}`} animate={{ x: active ? offset.x : 0, y: active ? offset.y : selected === card.id ? -24 : legal ? -8 : 0 }} transition={{ duration: active || reduced ? 0 : .2, layout: { duration: reduced ? 0 : CARD_FLIGHT_SECONDS } }}>
+        <motion.div animate={{ x: active ? offset.x : 0, y: active ? offset.y : selected === card.id ? -24 : legal ? -8 : 0 }} transition={{ duration: active || reduced ? 0 : .2 }}>
           <UnoCard card={card} disabled={!enabled} highlight={legal} style={{ width: cardWidth }} onClick={() => {
             if (suppressClick.current) return;
             tap(card.id);

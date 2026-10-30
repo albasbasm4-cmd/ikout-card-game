@@ -334,3 +334,55 @@ position:fixed;inset:0;overflow:hidden}
 .joker-app .gtab .gs{width:130px;font-size:18px}
 .joker-app .gtab .gav{width:66px;height:66px}
 .joker-app .kb.ready{animation:none}
+
+/* ---- بطاقات الطاولة المقلوبة في الجوكر مع خاصية الكشف بالضغط المستمر ---- */
+.joker-table-card {
+  width: 48px;
+  height: 68px;
+  border-radius: 8px;
+  border: 2.5px solid var(--joker-color-59);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 900 24px/1 Cairo, sans-serif;
+  user-select: none;
+  cursor: pointer;
+  touch-action: none;
+  transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 0.22s ease, border-color 0.2s ease;
+  transform-style: preserve-3d;
+  margin-top: 2px;
+}
+
+.joker-table-card.face-down {
+  background: repeating-linear-gradient(45deg, var(--joker-color-43) 0 8px, var(--joker-color-55) 8px 16px);
+  border-color: var(--joker-color-63);
+  color: transparent;
+}
+
+.joker-table-card.revealed {
+  background: var(--joker-color-66);
+  color: var(--joker-color-14);
+  border-color: var(--joker-color-21);
+  transform: translateY(-8px) scale(1.18);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.65), 0 0 16px var(--joker-color-98);
+}
+
+.joker-table-card.revealed.r {
+  color: var(--joker-color-50);
+}
+
+.joker-table-card.revealed.jk {
+  color: var(--joker-color-33);
+  font-size: 20px;
+}
+
+.joker-table-card.bot-peeking {
+  transform: translateY(-4px) rotate(-6deg);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.45);
+}
+
+.joker-table-card.dropped {
+  opacity: 0.52;
+  transform: translateY(4px) scale(0.92);
+}
