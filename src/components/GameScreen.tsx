@@ -123,6 +123,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   const [showRulesModal, setShowRulesModal] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showCheatModal, setShowCheatModal] = useState<boolean>(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   // بوابة تسليم الجهاز في اللعب الجماعي (هوت سبوت): تظهر بين دور بشري وآخر
   const [handoffSeat, setHandoffSeat] = useState<number | null>(null);
   const lastHumanSeatRef = useRef<number | null>(null);
@@ -305,6 +306,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
           type="button"
           onClick={() => {
             playTapSound();
+            setReportError(null);
             setShowCheatModal(true);
           }}
           className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black/75 border border-rose-400/50 text-rose-300 flex items-center justify-center shadow-lg backdrop-blur-md active:scale-95 cursor-pointer hover:bg-black/90 hover:border-rose-300"
@@ -452,9 +454,18 @@ export const GameScreen: React.FC<GameScreenProps> = ({
               players={state.players || []}
               reporterSeat={activeHumanSeat ?? 0}
               seatsCount={numSeats}
+              error={reportError}
               onClose={() => setShowCheatModal(false)}
               onSubmit={(accusedSeat: number, cardType: ReportedCardType) => {
-                reportCheat(accusedSeat, cardType);
+                const applied = reportCheat(accusedSeat, cardType);
+                // applied=false يعني أن البلاغ لم يُقبل أصلاً (زميل في الفريق، نفاد المحاولات، أو التبريد الزمني).
+                if (!applied) {
+                  setReportError(
+                    "لم يُقبل البلاغ: اختر لاعباً من الفريق المقابل فقط، وتأكد من بقاء محاولات الجولة والفاصل الزمني بين البلاغات.",
+                  );
+                  return;
+                }
+                setReportError(null);
                 setShowCheatModal(false);
               }}
             />

@@ -60,24 +60,30 @@ export function verifyCheatReport(
     const accusedPlay = plays.find((p) => p.seat === accusedSeat);
     if (!accusedPlay) continue;
 
-    // هل النوع المبلغ عنه يطابق الورقة المطلوبة في الأكلة؟
-    const matchesTarget = t === ledSuit || (ledSuit === trump && (t === "MAKER" || t === trump));
+    // هل النوع المُبلَّغ عنه يطابق الورقة المطلوبة في الأكلة، أم الورقة التي نزلها المتهم فعلاً
+    // (كما ترشد نافذة البلاغ)؟ كلا المعنيين مقبول حتى لا يُحكم بلاغ صادق بأنه كاذب.
+    const playedCard = accusedPlay.card;
+    const playedType: ReportedCardType | null =
+      playedCard.joker === "RED"
+        ? "JOKER"
+        : playedCard.joker === "BLACK"
+          ? "MAKER"
+          : (playedCard.suit ?? null);
+    const matchesTarget =
+      t === ledSuit || (ledSuit === trump && (t === "MAKER" || t === trump)) || t === playedType;
     if (!matchesTarget) continue;
 
-    // هل نزل ورقة تتبع المطلوب أو جوكر مسموح؟
-    const playedCard = accusedPlay.card;
-    const followedSuit =
-      playedCard.suit === ledSuit ||
-      (ledSuit === trump && playedCard.joker !== undefined) ||
-      playedCard.joker !== undefined; // الجوكر مسموح إنزاله بأي وقت
+    // هل نزل ورقة تتبع المطلوب أو جوكر مسموح؟ (الجوكر مسموح إنزاله بأي وقت)
+    const followedSuit = playedCard.suit === ledSuit || playedCard.joker !== undefined;
 
     // إذا اتبع الأكلة، فإنه لم يكسر التبعية في هذه اللعبة
     if (followedSuit) continue;
 
-    // اللاعب نزل ورقة مخالفة (off-suit) في أكلة طلبت ledSuit / t
-    // هل كانت لديه في يده وقتها أي ورقة من النوع المُبلّغ عنه؟
+    // اللاعب نزل ورقة مخالفة (off-suit) في أكلة طلبت ledSuit
+    // الغش ثابت فقط إذا كانت لديه وقتها ورقة من نوع الأكلة المطلوب
+    // (الجوكر لا يُحسب لأن إنزاله مسموح دائماً حتى مع وجود أوراق النوع المطلوب).
     const heldHand = handAtTrick(idx);
-    const heldCheatedType = heldHand.some((c) => isType(c, t) || c.suit === ledSuit);
+    const heldCheatedType = heldHand.some((c) => c.suit === ledSuit);
 
     if (heldCheatedType) {
       return true; // غش مؤكد!
@@ -103,13 +109,15 @@ export interface CheatResolutionResult {
  * تطبيق حكم البلاغ عن الغش:
  * - إذا طلع كلام المُبلِّغ صحيح: يخسر الفريق الذي غش وتتدبل النقاط لفريق المُبلِّغ.
  * - إذا كان جواب المُبلِّغ خاطئ: تُحتسب النقاط المضاعفة للفريق الذي تم الإبلاغ عنه.
+ * - البلاغ عن لاعب في فريق المُبلِّغ نفسه (أو عن نفسه) مرفوض ويُرجع null،
+ *   لأنه يتيح "إهداء" النقاط المضاعفة لفريق المُبلِّغ عبر بلاغ كاذب.
  */
 export function applyCheatVerdict(
   state: GameState,
   reporterSeat: number,
   accusedSeat: number,
   cardType: ReportedCardType,
-): CheatResolutionResult {
+): CheatResolutionResult | null {
   const confirmed = verifyCheatReport(state, accusedSeat, cardType);
   const highBid = state.highBid ?? 5;
   const pointsAdded = highBid * 2; // تدبيل النقاط: 5->10, 6->12, 7->14, 8->16, 9->18
@@ -123,6 +131,9 @@ export function applyCheatVerdict(
     state.players && state.players[accusedSeat]
       ? state.players[accusedSeat].team
       : ((accusedSeat % 2) as 0 | 1);
+
+  // رفض البلاغ بين أعضاء الفريق نفسه (أو على النفس): لا معنى لحكمه ويفتح باب إهداء النقاط.
+  if (reporterTeam === accusedTeam) return null;
 
   const winningTeam: 0 | 1 = confirmed ? reporterTeam : accusedTeam;
   const losingTeam: 0 | 1 = (1 - winningTeam) as 0 | 1;

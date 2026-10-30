@@ -104,6 +104,8 @@ export function useGame(options: UseGameOptions = {}) {
   const [trickWinnerAnnouncement, setTrickWinnerAnnouncement] = useState<string | null>(null);
   const [speechBubbles, setSpeechBubbles] = useState<Record<number, string>>({});
   const isResolvingTrickRef = useRef<boolean>(false);
+  /** الأكلة المعلقة أثناء نافذة العرض (1500ms): تُنفَّذ فوراً عند البلاغ حتى لا يفسد الحكم الحالة. */
+  const pendingTrickRef = useRef<{ timer: number; run: () => void } | null>(null);
 
   const { trigger: triggerHaptic } = useHaptics(true);
 
@@ -203,7 +205,8 @@ export function useGame(options: UseGameOptions = {}) {
         playTrickWinSound();
         triggerHaptic("medium");
 
-        setTimeout(() => {
+        const runPendingTrick = () => {
+          pendingTrickRef.current = null;
           try {
             const nextState = engine.playCard(seat, card, playOptions);
             setState({ ...nextState });
@@ -222,7 +225,9 @@ export function useGame(options: UseGameOptions = {}) {
             setTrickWinnerAnnouncement(null);
             setDisplayedTrick([]);
           }
-        }, 1500);
+        };
+        const timer = window.setTimeout(runPendingTrick, 1500);
+        pendingTrickRef.current = { timer, run: runPendingTrick };
       } else {
         // Non-final card play: instant update
         const nextState = engine.playCard(seat, card, playOptions);
@@ -456,6 +461,19 @@ export function useGame(options: UseGameOptions = {}) {
     cheatReportsThisRoundRef.current < MAX_CHEAT_REPORTS_PER_ROUND;
 
   const reportCheat = useCallback((accusedSeat: number, cardType: ReportedCardType): boolean => {
+    // إذا ضُغط البلاغ أثناء نافذة عرض الأكلة (1500ms) نُكمل الأكلة المعلقة فوراً
+    // قبل الحكم، وإلا فالمؤقت القديم سيلعب الورقة لاحقاً على محركٍ قديم ويستبدل حكم البلاغ.
+    if (isResolvingTrickRef.current && pendingTrickRef.current) {
+      const pending = pendingTrickRef.current;
+      pendingTrickRef.current = null;
+      window.clearTimeout(pending.timer);
+      try {
+        pending.run();
+      } catch (err) {
+        console.error("Pending trick flush error:", err);
+      }
+    }
+
     const engine = engineRef.current;
     if (!engine) return false;
     if ((humanSeatsRef.current || []).length < 2) return false; // ضد البوتات لا معنى للبلاغ
@@ -464,11 +482,14 @@ export function useGame(options: UseGameOptions = {}) {
     const now = Date.now();
     if (now - lastCheatReportAtRef.current < CHEAT_REPORT_COOLDOWN_MS) return false;
 
-    lastCheatReportAtRef.current = now;
-    cheatReportsThisRoundRef.current += 1;
-
     const reporterSeat = activeHumanSeatRef.current ?? 0;
     const result = applyCheatVerdict(engine.state, reporterSeat, accusedSeat, cardType);
+
+    // بلاغ مرفوض (عن زميل في الفريق نفسه أو عن النفس): لا يستهلك محاولة ولا يبدأ التبريد.
+    if (!result) return false;
+
+    lastCheatReportAtRef.current = now;
+    cheatReportsThisRoundRef.current += 1;
 
     engineRef.current = new KoutGameEngine(
       { variant, targetScore: state.targetScore, seed: 0, players: state.players },
@@ -493,7 +514,8 @@ export function useGame(options: UseGameOptions = {}) {
       playLoseSound();
     }
 
-    return result.confirmed;
+    // true = حُسم البلاغ (مؤكد أو خاطئ)، false = لم يُقبل أصلاً.
+    return true;
   }, []);
 
   return {

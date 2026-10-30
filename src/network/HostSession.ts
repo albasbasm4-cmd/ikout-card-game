@@ -378,11 +378,23 @@ export class HostSession {
       );
       return;
     }
-    this.lastCheatReportAt = now;
-    this.cheatReportsThisRound += 1;
 
     const { accusedSeat, cardType } = packet.payload;
     const result = applyCheatVerdict(this.engine.state, senderSeat, accusedSeat, cardType);
+
+    // بلاغ مرفوض (عن زميل في الفريق نفسه أو عن النفس): لا يستهلك الحد ولا يبدأ التبريد.
+    if (!result) {
+      this.sendError(
+        playerToken,
+        "REPORT_REJECTED",
+        "لا يمكن الإبلاغ عن لاعب في فريقك",
+        packet.seq,
+      );
+      return;
+    }
+
+    this.lastCheatReportAt = now;
+    this.cheatReportsThisRound += 1;
 
     // تحديث المحرك بالحالة الجديدة بالنقاط المضاعفة
     this.engine = new KoutGameEngine(

@@ -22,11 +22,19 @@ import { isMessage187 } from "../messages";
 import { playChatVoice187 } from "../voices";
 import { Room187Channel, Client187Packet, Host187Packet } from "../network/network187";
 
+export interface Room187SeatInfo {
+  isHost: boolean;
+  mySeat: number;
+}
+
 export interface Game187ScreenProps {
   players: Player187[];
   initialState?: GameState187;
   mode?: "single" | "room";
   roomCode?: string;
+  /** هوية هذا الجهاز في الغرفة: المضيف مقعد 0، وكل منضم مقعده من رمز جهازه.
+   *  بدونها يُشتق القِدم: المضيف = أول مقعد HUMAN_LOCAL، والمنضم = 1. */
+  roomSeatInfo?: Room187SeatInfo;
   onExit: () => void;
 }
 
@@ -43,10 +51,15 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
   initialState,
   mode = "single",
   roomCode,
+  roomSeatInfo,
   onExit,
 }) => {
-  const isHost = mode !== "room" || players[0]?.kind === "HUMAN_LOCAL";
-  const mySeat = mode === "room" && !isHost ? 1 : 0;
+  // الافتراض القديم كان يخلط بين المضيف والمنضم: أولاً players[0] بشري محلي
+  // (وهو المضيف على جهاز المنضم أيضاً) فيعتبر المنضم نفسه مضيفاً ويشغّل محركه الخاص.
+  const isHost = roomSeatInfo
+    ? roomSeatInfo.isHost
+    : mode !== "room" || players[0]?.kind === "HUMAN_LOCAL";
+  const mySeat = roomSeatInfo ? roomSeatInfo.mySeat : mode === "room" && !isHost ? 1 : 0;
 
   const engineRef = useRef<GameEngine187 | null>(null);
   const channelRef = useRef<Room187Channel | null>(null);

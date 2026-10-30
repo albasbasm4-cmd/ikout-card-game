@@ -23,6 +23,8 @@ export interface CheatReportModalProps {
   players: PlayerSlot[];
   reporterSeat?: number;
   seatsCount: number;
+  /** سبب رفض البلاغ الأخير (زميل في الفريق، نفاد المحاولات، أو التبريد الزمني). */
+  error?: string | null;
   onClose: () => void;
   onSubmit: (accusedSeat: number, cardType: ReportedCardType) => void;
 }
@@ -35,6 +37,7 @@ export const CheatReportModal: React.FC<CheatReportModalProps> = ({
   players,
   reporterSeat,
   seatsCount,
+  error,
   onClose,
   onSubmit,
 }) => {
@@ -72,9 +75,16 @@ export const CheatReportModal: React.FC<CheatReportModalProps> = ({
         </div>
 
         <p className="text-[11px] text-amber-200/80 font-medium mb-3 leading-relaxed">
-          حدد اللاعب الحقيقي ونوع البطاقة التي غش فيها (مثلاً كسر التبعية ونزل ورقة أخرى). إذا ثبت
-          الغش يُدبّل الفوز لفريقك، وإذا كان البلاغ خاطئاً تُحتسب النقاط المضاعفة لفريقه.
+          حدد اللاعب الحقيقي ونوع الورقة التي نزلها وهو يكسر التبعية. إذا ثبت الغش يُدبّل الفوز
+          لفريقك، وإذا كان البلاغ خاطئاً تُحتسب النقاط المضاعفة لفريقه. لا يمكن الإبلاغ عن لاعب في
+          فريقك.
         </p>
+
+        {error && (
+          <p className="text-[11px] text-rose-300 font-bold mb-3 leading-relaxed bg-rose-950/60 border border-rose-500/40 rounded-xl px-3 py-2">
+            {error}
+          </p>
+        )}
 
         {/* الخطوة ١: اختيار اللاعب الحقيقي فقط */}
         <span className="text-[10px] text-white/60 font-black block mb-1">
@@ -113,7 +123,7 @@ export const CheatReportModal: React.FC<CheatReportModalProps> = ({
 
         {/* الخطوة ٢: نوع البطاقة */}
         <span className="text-[10px] text-white/60 font-black block mb-1">
-          نوع البطاقة التي غش فيها
+          نوع الورقة التي نزلها المُبلَّغ عنه
         </span>
         <div className="grid grid-cols-3 gap-1.5 mb-3">
           {CARD_TYPES.map((t) => {

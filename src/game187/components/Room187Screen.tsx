@@ -12,12 +12,23 @@ import { useXp } from "../../utils/xp";
 import { useStageFit } from "../../hooks/use-stage-fit";
 import { playTapSound } from "../../utils/audio";
 import { ProfileEditor } from "../../components/ProfileEditor";
-import { Room187Channel, Client187Packet, Host187Packet } from "../network/network187";
+import {
+  Room187Channel,
+  Client187Packet,
+  Host187Packet,
+  findMySeat187,
+} from "../network/network187";
 import "../styles/room187.css";
 
 export interface Room187ScreenProps {
   onBack: () => void;
-  onStartMatch: (players: Player187[], mode: "single" | "room", roomCode?: string) => void;
+  onStartMatch: (
+    players: Player187[],
+    mode: "single" | "room",
+    roomCode?: string,
+    /** مقعد الجهاز في الغرفة: المضيف مقعد 0، وكل منضم يحدد مقعده برمز جهازه. */
+    seatInfo?: { isHost: boolean; mySeat: number },
+  ) => void;
   onResumeMatch: () => void;
   hasSavedGame?: boolean;
 }
@@ -47,6 +58,14 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
 
   const channelRef = useRef<Room187Channel | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
+  /** رمز جهاز هذا المنضم؛ يحدد مقعده عند بدء المباراة بدل افتراض مقعد ثابت. */
+  const myTokenRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+  const seatsRef = useRef(seats);
+  seatsRef.current = seats;
+  const onStartMatchRef = useRef(onStartMatch);
+  onStartMatchRef.current = onStartMatch;
+  /** يُرفع مع كل فتح غرفة/انضمام لإعادة إنشاء القناة حتى مع تكرار نفس الرمز. */
+  const [joinNonce, setJoinNonce] = useState(0);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -63,18 +82,87 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     return res;
   };
 
-  // إغلاق القناة عند مغادرة الشاشة
+  // قناة الغرفة: تُنشأ مرة واحدة لكل فتح غرفة/انضمام (نظيفة مع StrictMode)،
+  // والمضيف يستقبل الانضمامات ويخزن رمز جهاز كل منضم في مقعده.
   useEffect(() => {
+    if (roomMode !== "host" && roomMode !== "join") return;
+    if (!roomCode) return;
+
+    channelRef.current?.close();
+    const ch = new Room187Channel(roomCode);
+    channelRef.current = ch;
+
+    if (roomMode === "host") {
+      ch.onMessage((msg: Client187Packet) => {
+        if (msg.type !== "JOIN") return;
+        // منضم معاد (إعادة إرسال بعد إعادة تركيب القناة): أعد إرسال المقاعد فقط.
+        const existingIdx = seatsRef.current.findIndex(
+          (seat) => seat && seat.clientToken && seat.clientToken === msg.clientToken,
+        );
+        if (existingIdx !== -1) {
+          ch.send({ type: "ROOM_SEATS_UPDATE", seats: seatsRef.current });
+          return;
+        }
+        const emptyIdx = seatsRef.current.findIndex((seat, idx) => idx > 0 && seat === null);
+        if (emptyIdx === -1) {
+          ch.send({ type: "ERROR", message: "الغرفة ممتلئة" });
+          return;
+        }
+        setSeats((prev) => {
+          if (prev[emptyIdx] !== null) return prev;
+          const updated = [...prev];
+          updated[emptyIdx] = {
+            seatIndex: emptyIdx,
+            kind: "REMOTE",
+            name: msg.playerName,
+            characterId: msg.characterId,
+            clientToken: msg.clientToken,
+          };
+          return updated;
+        });
+      });
+    } else {
+      ch.onMessage((msg: Host187Packet) => {
+        if (msg.type === "ROOM_SEATS_UPDATE") {
+          setSeats(msg.seats);
+        } else if (msg.type === "GAME_START") {
+          // كل منضم يحدد مقعده من رمز جهازه بدل مقعد ثابت لجميع المنضمين.
+          const mySeat = findMySeat187(msg.state.players, myTokenRef.current);
+          onStartMatchRef.current(msg.state.players, "room", roomCode, {
+            isHost: false,
+            mySeat,
+          });
+        } else if (msg.type === "ERROR") {
+          showToast(msg.message);
+        }
+      });
+      // طلب الانضمام (تكراره غير ضار: المضيف يزيل التكرار برمز الجهاز)
+      ch.send({
+        type: "JOIN",
+        playerName: profile.name || "لاعب",
+        characterId: profile.characterId,
+        clientToken: myTokenRef.current,
+      });
+    }
+
     return () => {
-      channelRef.current?.close();
+      ch.close();
+      if (channelRef.current === ch) channelRef.current = null;
     };
-  }, []);
+  }, [roomMode, roomCode, joinNonce]);
+
+  // بث المقاعد من المضيف عند كل تغيير (إضافة/إزالة بوت أو انضمام)
+  useEffect(() => {
+    if (roomMode !== "host" || !roomCode) return;
+    channelRef.current?.send({ type: "ROOM_SEATS_UPDATE", seats });
+  }, [roomMode, roomCode, seats]);
 
   const openHostRoom = () => {
     playTapSound();
     const code = generateCode();
     setRoomCode(code);
     setRoomMode("host");
+    setJoinNonce((n) => n + 1);
 
     const initialSeats: (Player187 | null)[] = [
       {
@@ -91,32 +179,6 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     ];
     setSeats(initialSeats);
 
-    channelRef.current?.close();
-    const ch = new Room187Channel(code);
-    channelRef.current = ch;
-
-    // استماع المضيف لانضمام لاعبين حقيقيين عبر الشبكة
-    ch.onMessage((msg: Client187Packet) => {
-      if (msg.type === "JOIN") {
-        setSeats((prev) => {
-          const emptyIdx = prev.findIndex((s, idx) => idx > 0 && s === null);
-          if (emptyIdx === -1) {
-            ch.send({ type: "ERROR", message: "الغرفة ممتلئة" });
-            return prev;
-          }
-          const updated = [...prev];
-          updated[emptyIdx] = {
-            seatIndex: emptyIdx,
-            kind: "REMOTE",
-            name: msg.playerName,
-            characterId: msg.characterId,
-          };
-          ch.send({ type: "ROOM_SEATS_UPDATE", seats: updated });
-          return updated;
-        });
-      }
-    });
-
     setScreen("room");
   };
 
@@ -124,6 +186,12 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     playTapSound();
     setInputCode("");
     setScreen("join");
+  };
+
+  // إلغاء وضع الانضمام عند الخروج من شاشة الانضمام/الغرفة حتى لا تبقى القناة تعمل
+  const exitRoomMode = () => {
+    setRoomMode("host");
+    setRoomCode("");
   };
 
   const handleJoinByCode = (code: string) => {
@@ -134,31 +202,8 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     }
     setRoomCode(trimmed);
     setRoomMode("join");
-
-    channelRef.current?.close();
-    const ch = new Room187Channel(trimmed);
-    channelRef.current = ch;
-
-    // استماع المنضم لتحديثات مقاعد المضيف أو بدء المباراة
-    ch.onMessage((msg: Host187Packet) => {
-      if (msg.type === "ROOM_SEATS_UPDATE") {
-        setSeats(msg.seats);
-      } else if (msg.type === "GAME_START") {
-        const activePlayers = msg.state.players;
-        onStartMatch(activePlayers, "room", trimmed);
-      } else if (msg.type === "ERROR") {
-        showToast(msg.message);
-      }
-    });
-
-    // إرسال طلب الانضمام
-    ch.send({
-      type: "JOIN",
-      playerName: profile.name || "لاعب",
-      characterId: profile.characterId,
-      clientToken: String(Date.now()),
-    });
-
+    // رفع العداد يجدّد القناة ويعيد إرسال طلب الانضمام حتى مع نفس الرمز
+    setJoinNonce((n) => n + 1);
     setScreen("room");
   };
 
@@ -175,7 +220,6 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
       name: availableName,
     };
     setSeats(newSeats);
-    channelRef.current?.send({ type: "ROOM_SEATS_UPDATE", seats: newSeats });
   };
 
   const removeSeat = (idx: number) => {
@@ -183,7 +227,6 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     const newSeats = [...seats];
     newSeats[idx] = null;
     setSeats(newSeats);
-    channelRef.current?.send({ type: "ROOM_SEATS_UPDATE", seats: newSeats });
   };
 
   const handleStartRoomGame = () => {
@@ -198,6 +241,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     }));
 
     // إرسال بدء المباراة لجميع المنضمين في الغرفة
+    // (كل منضم يحدد مقعده بنفسه من رمز جهازه، فلا مقعد ثابت للجميع)
     channelRef.current?.send({
       type: "GAME_START",
       state: {
@@ -225,10 +269,9 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         winner: null,
         version: 1,
       },
-      yourSeat: 1,
     });
 
-    onStartMatch(finalPlayers, "room", roomCode);
+    onStartMatch(finalPlayers, "room", roomCode, { isHost: true, mySeat: 0 });
   };
 
   const handleStartTrainingNew = () => {
@@ -261,6 +304,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     playTapSound();
     if (screen === "room" || screen === "join") {
       channelRef.current?.close();
+      exitRoomMode();
       setScreen("main");
     } else {
       onBack();

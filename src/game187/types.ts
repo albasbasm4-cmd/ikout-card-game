@@ -26,6 +26,8 @@ export interface Player187 {
   name: string;
   characterId?: string;
   isHost?: boolean;
+  /** رمز الجهاز الخاص بالمنضم؛ يحدد مقعده عند بدء المباراة (يميز كل منضم عن الآخر). */
+  clientToken?: string;
 }
 
 export interface GameState187 {

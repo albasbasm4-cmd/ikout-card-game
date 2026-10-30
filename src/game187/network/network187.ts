@@ -19,9 +19,19 @@ export type Client187Packet =
 export type Host187Packet =
   | { type: "CHAT_BUBBLE"; seat: number; message: string }
   | { type: "ROOM_SEATS_UPDATE"; seats: (Player187 | null)[] }
-  | { type: "GAME_START"; state: GameState187; yourSeat: number }
+  | { type: "GAME_START"; state: GameState187; yourSeat?: number }
   | { type: "STATE_UPDATE"; state: GameState187 }
   | { type: "ERROR"; message: string };
+
+/**
+ * يجد مقعد المنضم من قائمة اللاعبين بمطابقة رمز جهازه،
+ * بدل افتراض مقعد ثابت (1) لكل المنضمين.
+ */
+export function findMySeat187(players: Player187[] | undefined, clientToken: string): number {
+  if (!players) return 1;
+  const idx = players.findIndex((p) => p && p.clientToken && p.clientToken === clientToken);
+  return idx === -1 ? 1 : idx;
+}
 
 export class Room187Channel {
   private channel: BroadcastChannel | null = null;

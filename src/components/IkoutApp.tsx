@@ -36,6 +36,7 @@ export default function App() {
   // 187 Game State
   const [players187, setPlayers187] = useState<Player187[] | null>(null);
   const [resumedState187, setResumedState187] = useState<GameState187 | null>(null);
+  const [seatInfo187, setSeatInfo187] = useState<{ isHost: boolean; mySeat: number } | null>(null);
   const [mode187, setMode187] = useState<"single" | "room">("single");
   const [roomCode187, setRoomCode187] = useState<string | undefined>(undefined);
 
@@ -70,6 +71,12 @@ export default function App() {
   // شاشتا أونو والجوكر تسجّلان نفسهما داخلياً (useAppBack) لأن لهما شاشات فرعية.
   useEffect(() => {
     if (view === "uno" || view === "joker") return;
+    // الرئيسية: يُعاد السلوك الافتراضي (الخروج من التطبيق) بتصفير أي معالج قديم
+    // متبقٍ من الشاشة السابقة، وإلا ظل زر الرجوع يعيد نفس الضغطة ويكدّس السجل.
+    if (view === "home") {
+      setAppBackHandler(null);
+      return;
+    }
     if (view === "setup" || view === "game") {
       setAppBackHandler(() => setView("home"));
       return;
@@ -176,10 +183,11 @@ export default function App() {
                 }
               })()}
               onBack={() => setView("home")}
-              onStartMatch={(players, mode, roomCode) => {
+              onStartMatch={(players, mode, roomCode, seatInfo) => {
                 setPlayers187(players);
                 setMode187(mode);
                 setRoomCode187(roomCode);
+                setSeatInfo187(seatInfo ?? null);
                 setResumedState187(null);
               }}
               onResumeMatch={() => {
@@ -205,9 +213,11 @@ export default function App() {
               initialState={resumedState187 ?? undefined}
               mode={mode187}
               roomCode={roomCode187}
+              roomSeatInfo={seatInfo187 ?? undefined}
               onExit={() => {
                 setPlayers187(null);
                 setResumedState187(null);
+                setSeatInfo187(null);
                 setView("home");
               }}
             />
