@@ -461,7 +461,10 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                     variant="destructive"
                     className="mt-1"
                     style={{ height: 40, paddingLeft: 14, paddingRight: 14, fontSize: 16 }}
-                    onClick={() => apply(catchUno(s, ME))}
+                    // معطّل أثناء طيران البطاقة: الضغط في تلك النافذة يُحسب على حالة قديمة
+                    // ثم تُمسحه نهاية الأنيميشن فوقه (فقدان الكشف)، فيُمنع الضغط حتى تستقر الحالة.
+                    disabled={flyingCard !== null}
+                    onClick={() => guard(() => apply(catchUno(s, ME)))}
                   >
                     <Hand className="h-4 w-4" /> كشف
                   </Button>
@@ -561,7 +564,10 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                 size="sm"
                 variant={me.hand.length <= 2 ? "default" : "secondary"}
                 style={{ height: 46, paddingLeft: 18, paddingRight: 18, fontSize: 19 }}
-                onClick={() => apply(sayUno(s, ME))}
+                // معطّل أثناء طيران البطاقة: نداء أونو في تلك النافذة يُحسب على حالة قديمة
+                // ويضيع عندما تستبدل نهاية الأنيميشن الحالة، فيُمنع حتى تستقر الحالة.
+                disabled={flyingCard !== null}
+                onClick={() => guard(() => apply(sayUno(s, ME)))}
               >
                 <Megaphone /> أونو
               </Button>
