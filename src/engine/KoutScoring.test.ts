@@ -41,6 +41,14 @@ function createMockCompletedRound(overrides: Partial<GameState> = {}): GameState
 }
 
 describe('KoutScoring', () => {
+  it('scores each completed round once and rotates dealer only on next round', () => {
+    const state = createMockCompletedRound({ scores: [0, 0] });
+    const scored = scoreRound(state);
+    expect(scored.scores).toEqual([0, 6]);
+    expect(scoreRound(scored).scores).toEqual([0, 6]);
+    const engine = new KoutGameEngine({ variant: 'BO6', initialDealer: 0 }, scored);
+    expect(engine.startRound(123).dealer).toBe(1);
+  });
   describe('Successful Bid Scoring', () => {
     it('awards success points to bidding team when bid is made', () => {
       // Seat 1 (Team 1) bid 6 and won 6 tricks
@@ -60,7 +68,7 @@ describe('KoutScoring', () => {
       const nextState = scoreRound(state);
       expect(nextState.scores).toEqual([0, 6]);
       expect(nextState.phase).toBe('ROUND_END');
-      expect(nextState.dealer).toBe(1); // 0 rotated to 1
+      expect(nextState.dealer).toBe(0); // startRound owns rotation
     });
 
     it('awards kabout bonus when bidding team wins all 9 tricks', () => {
@@ -99,7 +107,7 @@ describe('KoutScoring', () => {
       const nextState = scoreRound(state);
       expect(nextState.scores).toEqual([24, 10]);
       expect(nextState.phase).toBe('ROUND_END');
-      expect(nextState.dealer).toBe(1);
+      expect(nextState.dealer).toBe(0);
     });
   });
 

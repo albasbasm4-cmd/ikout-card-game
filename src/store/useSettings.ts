@@ -12,6 +12,7 @@ export type OrientationPreference = 'landscape' | 'portrait';
 
 export interface AppSettings {
   soundEnabled: boolean;
+  cardPlacementSoundEnabled: boolean;
   vibrationEnabled: boolean;
   botSpeed: BotSpeed;
   cardStyle: CardStyle;
@@ -21,6 +22,7 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
+  cardPlacementSoundEnabled: true,
   vibrationEnabled: true,
   botSpeed: 'NORMAL',
   cardStyle: 'CLASSIC',

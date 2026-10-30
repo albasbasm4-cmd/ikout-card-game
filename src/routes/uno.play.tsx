@@ -3,7 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, RotateCw, RotateCcw, Megaphone, Hand, Smartphone, Maximize, Minimize, Volume2, VolumeX, Home } from "lucide-react";
 import { useSettings } from "@/store/useSettings";
 import { useStageFit } from "@/hooks/use-stage-fit";
-import { playTapSound } from "@/utils/audio";
+import { playTapSound, playCardSound } from "@/utils/audio";
+import { LayoutGroup, motion, useReducedMotion } from 'motion/react';
+import { UnoHand } from '@/components/uno/UnoHand';
+import { CARD_FLIGHT_SECONDS } from '@/utils/cardFlight';
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -37,12 +40,14 @@ const COLOR_AR: Record<Color, string> = { red: "أحمر", blue: "أزرق", gre
 function Play() {
   const nav = useNavigate();
   const profile = useProfile();
+  const reduced = useReducedMotion();
   const [s, setS] = useState<GameState | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [wildFor, setWildFor] = useState<string | null>(null);
   const busy = useRef(false);
   const { settings, toggleSound, toggleOrientationPreference } = useSettings();
   const stageRef = useRef<HTMLDivElement>(null);
+  const [dialogHost, setDialogHost] = useState<HTMLDivElement | null>(null);
   const [stageW, setStageW] = useState(800);
   const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {
@@ -56,8 +61,9 @@ function Play() {
     const fs = () => setIsFullscreen(!!document.fullscreenElement);
     calc();
     window.addEventListener("resize", calc);
+      window.visualViewport?.addEventListener('resize', calc);
     document.addEventListener("fullscreenchange", fs);
-    return () => { window.removeEventListener("resize", calc); document.removeEventListener("fullscreenchange", fs); };
+    return () => { window.removeEventListener("resize", calc); window.visualViewport?.removeEventListener('resize', calc); document.removeEventListener("fullscreenchange", fs); };
   }, [settings.orientationPreference]);
   useStageFit(stageRef, stageW, STAGE_H, settings.orientationPreference);
   const toggleFullscreen = async () => {
@@ -87,6 +93,10 @@ function Play() {
     if (!p.isBot) return;
     const t = setTimeout(() => {
       let st = s;
+      if (st.unoVulnerable !== null && st.unoVulnerable !== st.current && Math.random() < botAwareness(p.difficulty) * .8) {
+        const caught = catchUno(st, st.current);
+        if (caught.ok) { st = caught.state; toast.warning('تم كشف نسيان أونو — سحب بطاقتين'); }
+      }
       if (p.hand.length === 2 && Math.random() < botAwareness(p.difficulty)) {
         const r = sayUno(st, st.current); if (r.ok) st = r.state;
       }
@@ -97,24 +107,6 @@ function Play() {
     }, 900);
     return () => clearTimeout(t);
   }, [s, apply]);
-
-  // Bots catch the human forgetting UNO
-  useEffect(() => {
-    if (!s || s.unoVulnerable !== ME) return;
-    const catcher = s.players.findIndex((p, i) => i !== ME && p.isBot && Math.random() < botAwareness(p.difficulty) * 0.8);
-    if (catcher < 0) return;
-    const t = setTimeout(() => {
-      setS((cur) => {
-        if (!cur || cur.unoVulnerable !== ME) return cur;
-        const r = catchUno(cur, catcher);
-        if (!r.ok) return cur;
-        toast.warning(`${cur.players[catcher].name} كشفك نسيت تقول أونو — تسحب بطاقتين`);
-        saveGame(r.state);
-        return r.state;
-      });
-    }, 1600);
-    return () => clearTimeout(t);
-  }, [s?.unoVulnerable, s?.version]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!loaded) return <div className="min-h-screen" />;
   if (!s) return (
@@ -134,9 +126,9 @@ function Play() {
     if (!card) return;
     if (!canPlay(s, card)) { apply(playCard(s, ME, id, undefined, s.version)); return; }
     if (card.kind === "wild" || card.kind === "wild4") { setWildFor(id); return; }
-    apply(playCard(s, ME, id, undefined, s.version));
+    if (apply(playCard(s, ME, id, undefined, s.version))) playCardSound();
   });
-  const onColor = (c: Color) => guard(() => { if (wildFor) apply(playCard(s, ME, wildFor, c, s.version)); setWildFor(null); });
+  const onColor = (c: Color) => guard(() => { if (wildFor && apply(playCard(s, ME, wildFor, c, s.version))) playCardSound(); setWildFor(null); });
 
   const opponents = s.players.map((p, i) => ({ p, i })).filter((x) => x.i !== ME);
   const n = opponents.length;
@@ -144,10 +136,9 @@ function Play() {
   const faceFor = (i: number) => characterFace(i === ME ? profile.characterId : CHARACTER_IDS[(i * 5 + 2) % CHARACTER_IDS.length]);
   const t = top(s);
   const cardW = Math.max(40, Math.min(62, (stageW * 0.56) / Math.max(1, me.hand.length) + 30));
-  const step = me.hand.length > 1 ? Math.min(cardW * 0.72, (stageW * 0.56 - cardW) / (me.hand.length - 1)) : 0;
 
   return (
-    <div dir="rtl" className="fixed inset-0 select-none overflow-hidden bg-background">
+    <LayoutGroup><div dir="rtl" className="fixed inset-0 select-none overflow-hidden bg-background">
       <div
         ref={stageRef}
         // useStageFit owns the centering transform; Tailwind translate utilities would double it.
@@ -199,7 +190,7 @@ function Play() {
             <span className="absolute -bottom-4 inset-x-0 text-center text-[10px] uno-sub">{s.drawPile.length}</span>
           </Button>
           <div className="relative">
-            <UnoCard card={t} className="w-14" />
+            <motion.div key={t.id} layoutId={`uno-${t.id}`} transition={{ duration: reduced ? 0 : CARD_FLIGHT_SECONDS }}><UnoCard card={t} className="w-14" /></motion.div>
             <span className={cn("absolute -top-2 -right-2 h-5 w-5 rounded-full border-2 border-foreground", COLOR_BG[s.activeColor])} title={COLOR_AR[s.activeColor]} />
           </div>
           <div className="flex flex-col items-center gap-1 text-accent">
@@ -224,20 +215,12 @@ function Play() {
             {myTurn && s.drawnCardId && <Button size="sm" variant="outline" onClick={() => guard(() => apply(passTurn(s, ME, s.version)))}>تمرير</Button>}
           </div>
         </div>
-        <div className="uno-hand absolute bottom-2 left-1/2 z-30 flex -translate-x-1/2 items-end" dir="ltr">
-          {me.hand.map((c, k) => {
-            const playable = myTurn && canPlay(s, c);
-            return (
-              <UnoCard key={c.id} card={c} onClick={() => onCard(c.id)} highlight={playable}
-                style={{ width: cardW, marginLeft: k > 0 ? step - cardW : 0 }}
-                className={cn("transition-transform", playable && "-translate-y-2")} disabled={!myTurn} />
-            );
-          })}
-        </div>
+        <UnoHand cards={me.hand} width={stageW * .56} cardWidth={cardW} enabled={myTurn} isLegal={c => canPlay(s, c)} onPlay={onCard} />
+        <div ref={setDialogHost} className="uno-dialog-host" />
       </div>
 
       <Dialog open={!!wildFor} onOpenChange={(o) => !o && setWildFor(null)}>
-        <DialogContent className="max-w-xs">
+        <DialogContent container={dialogHost} className="max-w-xs uno-stage-dialog" aria-describedby={undefined}>
           <DialogHeader><DialogTitle>اختر اللون</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             {COLORS.map((c) => (
@@ -248,7 +231,7 @@ function Play() {
       </Dialog>
 
       <Dialog open={s.status !== "playing"}>
-        <DialogContent className="max-w-sm" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent container={dialogHost} className="max-w-sm uno-stage-dialog" aria-describedby={undefined} onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader><DialogTitle>{s.status === "matchOver" ? "انتهت المباراة" : "انتهت الجولة"}</DialogTitle></DialogHeader>
           <p className="text-center text-lg">{s.roundWinner !== null && s.players[s.roundWinner].name} {s.roundWinner === ME ? "فزت 🎉" : "فاز"}</p>
           <ul className="space-y-1">
@@ -261,6 +244,6 @@ function Play() {
             : <Button onClick={() => { clearGame(); nav({ to: "/uno" }); }}>مباراة جديدة</Button>}
         </DialogContent>
       </Dialog>
-    </div>
+    </div></LayoutGroup>
   );
 }

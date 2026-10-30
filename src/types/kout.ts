@@ -56,6 +56,7 @@ export interface GameState {
   variant: 'BO6' | 'BO4';
   hands: Card[][];
   dealer: number;
+  scoredRoundNo?: number;
   currentSeat: number;
   bids: SeatBid[];
   highBid: Bid | null;

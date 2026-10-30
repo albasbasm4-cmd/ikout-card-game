@@ -4,6 +4,7 @@ let context: AudioContext | null = null;
 /** Independent, speech-free 187 sounds; no Kout recordings. */
 export function play187Sound(event: 'card' | 'message'): void {
   if (!loadSettings().soundEnabled || typeof AudioContext === 'undefined') return;
+  if (event === 'card' && !loadSettings().cardPlacementSoundEnabled) return;
   try {
     context ??= new AudioContext();
     void context.resume().catch(() => {});

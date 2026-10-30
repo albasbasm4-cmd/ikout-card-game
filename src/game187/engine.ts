@@ -146,6 +146,7 @@ export class GameEngine187 {
       phase: 'BID',
       winner: null,
       version: this._state.version + 1,
+      lastCheatVerdict: null,
     };
   }
 
@@ -345,7 +346,7 @@ export class GameEngine187 {
     newHand.splice(cardIdx, 1);
     const newHands = this._state.hands.map((h, s) => (s === seat ? newHand : h));
 
-    const newTrick = [...this._state.currentTrick, { seat, card }];
+    const newTrick = [...this._state.currentTrick, { seat, card: hand[cardIdx] }];
 
     // إذا لم تكتمل الأكلة (أقل من 5 لاعبين)
     if (newTrick.length < 5) {
@@ -455,17 +456,22 @@ export class GameEngine187 {
   /** إبلاغ عن غش */
   reportCheat(reporterSeat: number, accusedSeat: number, accusedSuit: Suit187) {
     if (this._state.phase !== 'PLAY') return;
+    if (!this._state.players[reporterSeat] || !this._state.players[accusedSeat] || reporterSeat === accusedSeat) return;
 
     // فحص هل اللاعب المتهم كسر التبعية في أكلة سابقة
     let confirmed = false;
-    for (const trick of this._state.trickHistory) {
-      const leadCard = trick[0].card;
+    for (const [index, trick] of this._state.trickHistory.entries()) {
+      const leadCard = trick[0]?.card;
+      if (!leadCard) continue;
       const accusedPlay = trick.find((p) => p.seat === accusedSeat);
       if (!accusedPlay) continue;
 
       if (leadCard.suit === accusedSuit && accusedPlay.card.suit !== accusedSuit) {
-        confirmed = true;
-        break;
+        const laterCards = [...this._state.trickHistory.slice(index), this._state.currentTrick].flatMap(t => t.filter(p => p.seat === accusedSeat).map(p => p.card));
+        const heldAtPlay = [...this._state.hands[accusedSeat], ...laterCards];
+        const prefix = trick.slice(0, trick.indexOf(accusedPlay));
+        const legal = getLegalCards187(heldAtPlay, prefix, this._state.trump, accusedSeat, this._state.bidderSeat ?? 0, index);
+        if (!legal.some(c => c.id === accusedPlay.card.id)) { confirmed = true; break; }
       }
     }
 

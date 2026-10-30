@@ -144,7 +144,7 @@ const ModeCard: React.FC<{
 );
 
 /** The five drifting cloud clusters from the design. */
-const Clouds: React.FC = () => {
+export const Clouds: React.FC = () => {
   const clouds = [
     { top: 95, w: 280, dur: 100, delay: -62 },
     { top: 80, w: 240, dur: 130, delay: -88 },
@@ -184,7 +184,7 @@ const BUILDINGS: [number, number, number][] = [
   [560,45,522],[600,50,578],[650,50,546],[700,45,582],[800,50,572],[850,50,536],[900,60,592],[960,60,546],[1020,50,510],[1070,40,552],
   [1110,38,468],[1148,52,522],[1200,60,562],[1260,60,536],[1320,50,502],[1370,50,546],[1420,50,486],[1470,66,530],
 ];
-const CitySkyline: React.FC = () => (
+export const CitySkyline: React.FC = () => (
   <svg viewBox="0 0 1536 691" style={{ position: 'absolute', inset: 0 }} aria-hidden="true">
     <g fill="#3b4247">
       {BUILDINGS.map(([x, w, t], i) => (

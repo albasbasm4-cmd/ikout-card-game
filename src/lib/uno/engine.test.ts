@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDeck, cardPoints, drawCard, newGame, playCard, catchUno, passTurn, type Card, type GameState } from "./engine";
+import { buildDeck, cardPoints, drawCard, newGame, playCard, catchUno, sayUno, canPlay, passTurn, type Card, type GameState } from "./engine";
 
 const c = (id: string, color: Card["color"], kind: Card["kind"], value?: number): Card => (value === undefined ? { id, color, kind } : { id, color, kind, value });
 
@@ -16,6 +16,31 @@ function setup(hands: Card[][], topCard: Card = c("t", "red", "number", 5)): Gam
 const ok = (r: ReturnType<typeof playCard>) => { if (!r.ok) throw new Error(r.error); return r.state; };
 
 describe("deck", () => {
+  it('rejects invalid wild colors', () => {
+    const s = setup([[c('w', 'wild', 'wild'), c('n', 'red', 'number', 1)], [c('b', 'blue', 'number', 2)]]);
+    expect(playCard(s, 0, 'w', 'invalid' as never).ok).toBe(false);
+  });
+  it('respects restricted +4 while stacking', () => {
+    const s = setup([[c('w', 'wild', 'wild4'), c('r', 'red', 'number', 1)], [c('b', 'blue', 'number', 2)]]);
+    s.pendingDraw = 2; s.rules.wild4Anytime = false;
+    expect(canPlay(s, s.players[0].hand[0])).toBe(false);
+  });
+  it('applies late UNO penalty before the next bot move', () => {
+    let s = setup([[c('a', 'red', 'number', 1), c('x', 'blue', 'number', 3)], [c('b', 'red', 'number', 2), c('y', 'green', 'number', 3)]]);
+    s = ok(playCard(s, 0, 'a'));
+    s = ok(catchUno(s, 1));
+    expect(s.players[0].hand.length).toBe(3);
+    s = ok(playCard(s, 1, 'b', undefined, s.version));
+    expect(s.players[0].hand.length).toBe(3);
+  });
+  it('calling UNO before a catch prevents the two-card penalty', () => {
+    let s = setup([[c('a', 'red', 'number', 1), c('x', 'blue', 'number', 3)], [c('b', 'red', 'number', 2)]]);
+    s = ok(playCard(s, 0, 'a')); const version = s.version;
+    s = ok(sayUno(s, 0));
+    expect(s.version).toBe(version + 1);
+    expect(catchUno(s, 1).ok).toBe(false);
+    expect(s.players[0].hand.length).toBe(1);
+  });
   it("has 108 cards with 4 wild and 4 wild+4", () => {
     const d = buildDeck();
     expect(d.length).toBe(108);

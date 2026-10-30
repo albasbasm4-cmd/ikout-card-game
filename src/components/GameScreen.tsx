@@ -97,7 +97,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     players: initialPlayers,
   });
 
-  const { settings, toggleSound, setBotSpeed, toggleOrientationPreference } = useSettings();
+  const { settings, updateSettings, toggleSound, setBotSpeed, toggleOrientationPreference } = useSettings();
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageW, setStageW] = useState(800);
   useEffect(() => {
@@ -685,6 +685,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
               </div>
 
               {/* Restart Game Option */}
+              <label className="flex items-center justify-between py-2.5" htmlFor="kout-card-sound"><span>صوت إنزال البطاقات</span><input id="kout-card-sound" type="checkbox" checked={settings.cardPlacementSoundEnabled} onChange={e => updateSettings({ cardPlacementSoundEnabled: e.target.checked })} /></label>
               <div className="mt-4 pt-3 border-t border-neutral-800 flex flex-col gap-2">
                 <Button
                   type="button"

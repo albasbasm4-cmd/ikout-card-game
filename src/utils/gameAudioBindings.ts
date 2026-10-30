@@ -5,6 +5,7 @@ import {
   playTone,
   type SfxName,
 } from "./gameAudio";
+import { loadSettings } from '../store/useSettings';
 
 // Official extracted SFX assets from iKout
 const SFX_URLS: Record<SfxName, string[]> = {
@@ -48,6 +49,7 @@ export function gameAudioPreloaded() {
 }
 
 export function playSfx(name: SfxName, volume = 0.9, throttleMs = 0) {
+  if (name === 'card' && !loadSettings().cardPlacementSoundEnabled) return;
   gameAudioPreloaded();
   const urls = SFX_URLS[name];
   if (!urls || urls.length === 0) return;

@@ -152,7 +152,9 @@ export function canPlay(s: GameState, card: Card): boolean {
   if (s.drawnCardId && card.id !== s.drawnCardId) return false;
   if (s.pendingDraw > 0) {
     if (!s.rules.stacking) return false;
-    return card.kind === "draw2" || card.kind === "wild4";
+    if (card.kind === 'draw2') return true;
+    if (card.kind === 'wild4') return s.rules.wild4Anytime || !s.players[s.current].hand.some(c => c.color === s.activeColor);
+    return false;
   }
   if (card.kind === "wild") return true;
   if (card.kind === "wild4") return s.rules.wild4Anytime || !s.players[s.current].hand.some((c) => c.color === s.activeColor);
@@ -210,7 +212,7 @@ export function playCard(prev: GameState, pi: number, cardId: string, chosen?: C
   const card = p.hand.find((c) => c.id === cardId);
   if (!card) return { ok: false, error: "البطاقة ليست في يدك" };
   if (!canPlay(prev, card)) return { ok: false, error: prev.pendingDraw > 0 ? `عليك عقوبة +${prev.pendingDraw}: العب +2 أو +4 أو اسحب` : "البطاقة لا تطابق اللون أو الرقم أو الرمز" };
-  if ((card.kind === "wild" || card.kind === "wild4") && !chosen) return { ok: false, error: "اختر لوناً" };
+  if ((card.kind === "wild" || card.kind === "wild4") && (!chosen || !COLORS.includes(chosen))) return { ok: false, error: "اختر لوناً" };
 
   const s: GameState = structuredClone(prev);
   s.version += 1;
@@ -275,20 +277,24 @@ export function passTurn(prev: GameState, pi: number, expectVersion?: number): R
 }
 
 export function sayUno(prev: GameState, pi: number): Result {
+  if (prev.status !== 'playing' || !prev.players[pi]) return { ok: false, error: 'الجولة منتهية أو اللاعب غير موجود' };
   const s: GameState = structuredClone(prev);
   const p = s.players[pi];
   const eligible = (pi === s.current && p.hand.length === 2) || s.unoVulnerable === pi;
   if (!eligible) return { ok: false, error: "تقول أونو عندما تبقى لك بطاقة واحدة" };
   p.saidUno = true;
+  s.version += 1;
   if (s.unoVulnerable === pi) s.unoVulnerable = null;
   s.log.push(`${p.name}: أونو`);
   return { ok: true, state: s };
 }
 
 export function catchUno(prev: GameState, catcher: number): Result {
+  if (prev.status !== 'playing' || !prev.players[catcher]) return { ok: false, error: 'الجولة منتهية أو اللاعب غير موجود' };
   if (prev.unoVulnerable === null || prev.unoVulnerable === catcher) return { ok: false, error: "لا يوجد لاعب لم يقل أونو" };
   const s: GameState = structuredClone(prev);
   const victim = prev.unoVulnerable;
+  s.version += 1;
   drawCards(s, victim, 2);
   s.unoVulnerable = null;
   s.log.push(`${s.players[catcher].name} كشف ${s.players[victim].name}: يسحب 2`);

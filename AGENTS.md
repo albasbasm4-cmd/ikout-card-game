@@ -11,7 +11,10 @@
 
 - The iKout game is a client-only SPA mounted from src/routes/index.tsx via ClientOnly + lazy import, because it relies on Web Workers, AudioContext and localStorage at module/render time.
 - UNO uses isolated /uno routes, a pure src/lib/uno engine and scoped .uno-app tokens to preserve Kout/187 rules and presentation; its imported local save format and custom rules remain unchanged.
-- The standalone Joker source remains in public/joker/index.html, mounted through /joker in an iframe to isolate its global scripts and CSS; its native-network bridge limitation is preserved.
+- Joker mounts lazy client-only React screens with a pure src/joker engine and scoped CSS copied from the original presentation; the legacy HTML is reference-only and cross-device native rooms remain unavailable in the web UI.
+- UNO setup mounts lazy client-only React with scoped legacy lobby CSS; no game route uses an iframe, avoiding document reloads between games.
+- Card-placement sound preference gates all placement effect entry points independently of global voice/sound settings.
+- Kout scoring marks scoredRoundNo and leaves dealer rotation to startRound to prevent duplicate scores and skipped dealers.
 - nodejs-project/ is a native (nodejs-mobile) LAN relay kept as source only; it is not part of the web build.
 - Reference presentation uses dedicated CSS classes and semantic tokens; game rules, AI, and network behavior stay independent of visual matching.
 - Trailer portraits and licensed French card faces are served through Lovable Assets pointers; retain the card asset license with source.

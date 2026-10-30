@@ -109,7 +109,7 @@ export const Table187: React.FC<Table187Props> = ({
   const profile = useProfile();
   const reducedMotion = useReducedMotion();
   const stageRef = useRef<HTMLDivElement>(null);
-  const { settings, toggleSound, setBotSpeed, toggleOrientationPreference } = useSettings();
+  const { settings, updateSettings, toggleSound, setBotSpeed, toggleOrientationPreference } = useSettings();
   const orientation = settings.orientationPreference;
 
   const [stageW, setStageW] = useState(800);
@@ -557,6 +557,9 @@ export const Table187: React.FC<Table187Props> = ({
               </Button>
             </div>
             {onRestart && (
+              <label className="flex items-center justify-between py-2.5" htmlFor="187-card-sound"><span>صوت إنزال البطاقات</span><input id="187-card-sound" type="checkbox" checked={settings.cardPlacementSoundEnabled} onChange={e => updateSettings({ cardPlacementSoundEnabled: e.target.checked })} /></label>
+            )}
+            {onRestart && (
               <div className="mt-3 pt-3 border-t border-neutral-800">
                 <Button type="button" onClick={() => { playTapSound(); onRestart(); setShowSettings(false); }}
                   className="w-full py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-xs font-black text-amber-200 border border-amber-400/40 cursor-pointer">
@@ -640,6 +643,7 @@ export const Table187: React.FC<Table187Props> = ({
               <span className="text-xl font-black text-amber-400/60">:</span>
               <div><span className="text-[11px] text-rose-300 block font-bold">الخصوم</span><span className="text-2xl font-black text-white">{state.opponentsPoints}</span></div>
             </div>
+            {onRestart && <Button className="w-full mb-2" onClick={onRestart}><RotateCcw />إعادة اللعب</Button>}
             <Button onClick={() => { playTapSound(); onExit(); }}
               className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-black text-sm shadow-xl cursor-pointer flex items-center justify-center gap-2">
               <RotateCcw className="w-4 h-4" />

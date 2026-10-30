@@ -60,6 +60,7 @@ function blip(freq: number, duration: number, gainValue: number, when = 0) {
 }
 export function playReferenceAudio(kind: 'pass' | 'card' | 'slam') {
   if (typeof window === 'undefined' || !loadSettings().soundEnabled) return;
+  if (kind !== 'pass' && !loadSettings().cardPlacementSoundEnabled) return;
   if (!context()) return;
   if (kind === 'card') noise(0.05, 2600, 0.5);
   else if (kind === 'pass') noise(0.35, 900, 0.35, 250);

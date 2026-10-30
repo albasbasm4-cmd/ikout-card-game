@@ -6,6 +6,7 @@
 import React from 'react';
 import { AppSettings, useSettings } from '../store/useSettings';
 import { playTapSound } from '../utils/audio';
+import { Switch } from './ui/switch';
 
 export interface SettingsPanelProps {
   onClose: () => void;
@@ -36,6 +37,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onClose }) => {
               <button type="button" className={settings.soundEnabled ? 'on' : ''} onClick={() => set('soundEnabled', true)}>مفعّل</button>
               <button type="button" className={!settings.soundEnabled ? 'on' : ''} onClick={() => set('soundEnabled', false)}>صامت</button>
             </div>
+          </div>
+          <div className="ik-row">
+            <label htmlFor="card-placement-sound" className="flex-1">صوت إنزال البطاقات</label>
+            <Switch id="card-placement-sound" checked={settings.cardPlacementSoundEnabled} onCheckedChange={value => set('cardPlacementSoundEnabled', value)} />
           </div>
           {/* Vibration */}
           <div className="ik-row" style={{ cursor: 'default' }}>

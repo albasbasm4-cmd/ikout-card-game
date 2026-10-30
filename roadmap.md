@@ -1,10 +1,19 @@
 # iKout reference matching
+## Remix requests
+- [x] Remove both UNO setup and Joker iframes; lazy client-only React screens retain scoped original presentation.
+- [x] Verify landscape hand visibility and controls; lift 187 fan inside screen bounds without redesigning tables.
+- [x] Verify Kout/187 round results and next-round UI; fix double dealer rotation, duplicate Kout scoring, 187 forged attributes and false cheat verdicts. Final target/Bawan scoring covered by tests.
+- [x] Verify UNO draw cards and late penalty by tests; verify tap and legal upward drag in browser; stage-hosted color/result dialogs follow landscape rotation.
+- [x] Verify Joker bot round, results and replay in browser; win counter uses provisional one point per win, not a newly claimed original scoring formula.
+- [x] Match profile avatar/table/card catalog tabs, tiles, selection outlines and voice controls to uploaded reference; verified selection persists.
+- [x] Add independent card-placement sound toggle in home, Kout and 187 settings; gate all placement sound paths, including UNO and Joker.
+- [x] Import 54 UNO card faces from specified GitHub archive via asset pointers; retain source attribution (archive has no explicit redistribution license).
 - [x] Import attached UNO rules, bots and screens; bundled back uploaded, unavailable legacy faces replaced with local vector card faces; Kout and 187 preserved.
 - [x] Connect existing standalone Joker through the game menu; preserve native-only cross-device limitation.
 - [x] Verify imported rules, game play, save/resume, local bot room and menu navigation; cross-device multiplayer absent in source.
-- [ ] Improve reversible card dragging and special-card motion without changing rules.
-- [ ] Add static character voice bank, spoken taunts and win/loss reactions with mute and cleanup.
-- [ ] Refine phone portrait/landscape layouts and verify real gameplay, audio loading and tests.
+- [x] Reversible hand dragging retained in Kout/187 and added to UNO; special motion remains presentation-only.
+- [x] Existing static character voice bank and win/loss reactions retained with mute/cleanup.
+- [x] Phone landscape and portrait-rotated layouts checked; complete test suite: 156 tests passed.
 - [x] Compare the newer gameplay video; update stone oval table, reference portraits, grid bidding, simplified card faces, and animated throws/collection while preserving rules.
 - [x] Wire sampled pass speech and card effect with mute/cleanup; verify bidding, trump, card removal, image loading, and all 69 tests.
 - [x] Implement reference-based table, score/control bars, extracted portraits, bid wheel, French card faces and fan; exact fidelity remains unverified at 256×144.
@@ -17,7 +26,7 @@
 - [x] UNO: background, table, avatars and character icons styled like Kout/187.
 - [x] Joker: top-right back button in setup screens returns to home menu without crashing.
 - [x] 187: first-dealt player bids first and leads; dealer rotates to the right each round.
-- [ ] 187: "give 4 cards" step shows real card faces; empty avatars fixed.
+- [x] 187 give-four fan uses actual Card faces and seat portraits; existing implementation retained.
 - [x] 187: smoother bid slider dragging.
 - [x] Enlarge table in Kout, 187, UNO, Joker to match reference screenshot.
-- [ ] Audit and fix other bugs; list them.
+- [x] Audit found and fixed UNO late catch timing, invalid color input, restricted +4 bypass, Kout duplicate scoring/dealer rotation, 187 card integrity/false-cheat checks; all 156 tests pass.

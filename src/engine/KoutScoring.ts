@@ -105,12 +105,12 @@ export function computeRoundResult(state: GameState): RoundScoreResult {
  * - Updates scores[2]
  * - Detects target reached (51/71/101) or Bawan (round 1 bid 9 success) -> GAME_END
  * - Sets phase to 'ROUND_END' or 'GAME_END'
- * - Rotates dealer counter-clockwise
+ * - Keeps dealer rotation owned by startRound
  * - Increments state version
  */
 export function scoreRound(state: GameState): GameState {
+  if (state.phase !== 'ROUND_END' || state.scoredRoundNo === state.roundNo) return state;
   const result = computeRoundResult(state);
-  const numSeats = RULES[state.variant].seats;
 
   const newScores: [number, number] = [
     state.scores[0] + (result.awardedTeam === 0 ? result.pointsAdded : 0),
@@ -119,13 +119,10 @@ export function scoreRound(state: GameState): GameState {
 
   const nextPhase = result.gameWinner !== null ? 'GAME_END' : 'ROUND_END';
 
-  // Rotate dealer counter-clockwise for next round
-  const nextDealer = (state.dealer + 1) % numSeats;
-
   return {
     ...state,
     scores: newScores,
-    dealer: nextDealer,
+    scoredRoundNo: state.roundNo,
     phase: nextPhase,
     version: state.version + 1,
   };

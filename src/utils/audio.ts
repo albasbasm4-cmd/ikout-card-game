@@ -41,7 +41,7 @@ function isSoundAllowed(override?: boolean): boolean {
 let lastCardSoundAt = 0;
 
 export function playCardSound(enabled?: boolean): void {
-  if (!isSoundAllowed(enabled)) return;
+  if (!isSoundAllowed(enabled) || !loadSettings().cardPlacementSoundEnabled) return;
   // Throttle: never stack the same snap twice within 40ms
   const t = Date.now();
   if (t - lastCardSoundAt < 40) return;
