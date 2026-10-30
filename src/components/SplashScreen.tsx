@@ -731,7 +731,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onReveal, onDone, cl
 
 function loadProfileId(): string {
   try {
-    const raw = JSON.parse(localStorage.getItem("ikout_profile_v1") || "{}");
+    const raw = JSON.parse(
+      localStorage.getItem("ikout_profile_v2") || localStorage.getItem("ikout_profile_v1") || "{}",
+    );
     return typeof raw.characterId === "string" ? raw.characterId : "a1";
   } catch {
     return "a1";

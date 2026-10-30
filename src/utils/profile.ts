@@ -9,7 +9,7 @@ export function characterFace(characterId: string): string {
 }
 
 export type TableTheme = "classic" | "gold" | "wood" | "grass" | "outdoor";
-export type CardTheme = "authentic" | "gold" | "moon" | "kuwait" | "maze" | "squares";
+export type CardTheme = "deck" | "authentic" | "gold" | "moon" | "kuwait" | "maze" | "squares";
 
 export const TABLE_THEMES: { id: TableTheme; label: string; image: string }[] = [
   { id: "classic", label: "الطاولة الأصلية", image: "/assets/ikout/tables/classic-table.png" },
@@ -21,6 +21,7 @@ export const TABLE_THEMES: { id: TableTheme; label: string; image: string }[] = 
 
 const back = (name: string) => `/assets/ikout/cards/${encodeURIComponent(name)}`;
 export const CARD_THEMES: { id: CardTheme; label: string; back: string }[] = [
+  { id: "deck", label: "الورق الكلاسيكي", back: "/assets/ikout/cards/deck/back.webp" },
   { id: "authentic", label: "أصلي", back: back("authentic-back.png") },
   { id: "gold", label: "ذهبي", back: back("Card Back - New - Squares Gold.png") },
   { id: "moon", label: "قمر ليلي", back: back("Card Back - New - New Moon Blue.png") },
@@ -36,6 +37,25 @@ export function cardBack(theme: CardTheme): string {
   return (CARD_THEMES.find((t) => t.id === theme) ?? CARD_THEMES[0]).back;
 }
 
+const DECK_DIR = "/assets/ikout/cards/deck";
+const DECK_RANK_LABELS: Record<number, string> = { 11: "J", 12: "Q", 13: "K", 14: "A" };
+
+/** وجه البطاقة في نمط الورق الكلاسيكي؛ يُرجع null إن لم تتوفر له صورة. */
+export function deckCardFace(card: {
+  suit?: unknown;
+  rank?: unknown;
+  joker?: unknown;
+}): string | null {
+  if (card.joker === "RED") return `${DECK_DIR}/JR.webp`;
+  if (card.joker === "BLACK") return `${DECK_DIR}/JB.webp`;
+  if (typeof card.suit !== "string" || typeof card.rank !== "number") return null;
+  if (!(["S", "H", "D", "C"] as string[]).includes(card.suit)) return null;
+  const rank =
+    DECK_RANK_LABELS[card.rank] ?? (card.rank >= 2 && card.rank <= 10 ? String(card.rank) : null);
+  if (!rank) return null;
+  return `${DECK_DIR}/${card.suit}${rank}.webp`;
+}
+
 export interface PlayerProfile {
   name: string;
   characterId: string;
@@ -47,10 +67,11 @@ export const DEFAULT_PROFILE: PlayerProfile = {
   name: "أنت",
   characterId: "a1",
   table: "wood",
-  cards: "authentic",
+  cards: "deck",
   country: "kw",
 };
-const KEY = "ikout_profile_v1";
+const KEY = "ikout_profile_v2";
+const LEGACY_KEY = "ikout_profile_v1";
 const listeners = new Set<(p: PlayerProfile) => void>();
 
 const LEGACY_TABLE: Record<string, TableTheme> = {
@@ -63,6 +84,7 @@ const LEGACY_TABLE: Record<string, TableTheme> = {
   outdoor: "outdoor",
 };
 const LEGACY_CARDS: Record<string, CardTheme> = {
+  deck: "deck",
   classic: "authentic",
   royal: "gold",
   night: "moon",
@@ -77,9 +99,18 @@ const LEGACY_CARDS: Record<string, CardTheme> = {
 export function loadProfile(): PlayerProfile {
   if (typeof window === "undefined") return DEFAULT_PROFILE;
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) || "{}") as Partial<PlayerProfile> & {
-      portrait?: number;
-    };
+    let raw = JSON.parse(localStorage.getItem(KEY) || "null") as
+      (Partial<PlayerProfile> & { portrait?: number }) | null;
+    if (!raw || typeof raw !== "object") {
+      // ترقية لمرة واحدة من الملف القديم: الافتراضي الأصلي يصبح الورق الكلاسيكي الجديد
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || "null") as
+        (Partial<PlayerProfile> & { portrait?: number }) | null;
+      if (legacy && typeof legacy === "object") {
+        const migrated = LEGACY_CARDS[legacy.cards ?? ""] ?? DEFAULT_PROFILE.cards;
+        raw = { ...legacy, cards: migrated === "authentic" ? "deck" : migrated };
+      }
+    }
+    raw = raw ?? {};
     // Migrate the pre-restoration profile (portrait index + old theme ids).
     const characterId =
       typeof raw.characterId === "string" && CHARACTER_IDS.includes(raw.characterId)

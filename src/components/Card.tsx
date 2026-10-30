@@ -1,7 +1,7 @@
 import React from "react";
 import { Card as CardType, Suit } from "../types/kout";
 import { Button } from "./ui/button";
-import { cardBack, useProfile } from "../utils/profile";
+import { cardBack, deckCardFace, useProfile } from "../utils/profile";
 
 const suitNames: Record<Suit, string> = { S: "spades", H: "hearts", C: "clubs", D: "diamonds" };
 export const SUIT_COLORS: Record<Suit, { text: string; fill: string; name: string }> = {
@@ -52,6 +52,15 @@ export const Card: React.FC<CardProps> = ({
   style,
 }) => {
   const { cards: cardsTheme } = useProfile();
+  const deckFace = cardsTheme === "deck" ? deckCardFace(card) : null;
+  const deckImg = (src: string) => (
+    <img
+      src={src}
+      alt=""
+      draggable={false}
+      className="h-full w-full object-cover rounded-[inherit]"
+    />
+  );
   const rank = card.rank;
   const rankName =
     rank === 14
@@ -79,12 +88,9 @@ export const Card: React.FC<CardProps> = ({
             ? "J"
             : String(rank ?? "");
   const content = !faceUp ? (
-    <img
-      src={cardBack(cardsTheme)}
-      alt=""
-      draggable={false}
-      className="h-full w-full object-cover rounded-[inherit]"
-    />
+    deckImg(cardBack(cardsTheme))
+  ) : deckFace ? (
+    deckImg(deckFace)
   ) : card.joker ? (
     <div className={`reference-joker ${card.joker === "RED" ? "text-card-red" : "text-card-ink"}`}>
       <span>JOKER</span>
