@@ -1846,7 +1846,7 @@
 .joker-app .joker-tool {
   position: absolute;
   right: 24px;
-  top: 12px;
+  top: 76px;
   z-index: 30;
   display: flex;
   gap: 10px;
