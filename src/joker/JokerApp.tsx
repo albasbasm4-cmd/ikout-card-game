@@ -235,7 +235,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                               ? card === "JK"
                                 ? "🃏 الجوكر"
                                 : card
-                              : "اضغط باستمرار لإظهار ورقتك"}
+                              : "اضغط باستمرار"}
                           </Button>
                           <div id="gst" className="gst kdk">
                             {COPY[mode]}
@@ -272,7 +272,6 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                           </div>
                           <div id="gsa">
                             <div className="gtab">
-                              <img src="/assets/ikout/tables/wood-table.png" alt="" />
                               {game.players.map((p, i) => {
                                 const a = Math.PI / 2 + (2 * Math.PI * i) / game.players.length;
                                 const isHolding = holdingId === p.id;
@@ -297,9 +296,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                                     {/* ورقة اللاعب مقلوبة فوق الطاولة ولا تظهر إلا بالضغط المستمر */}
                                     <div
                                       className={`joker-table-card ${isHolding ? "revealed" : "face-down"} ${isHolding && isJk ? "jk" : ""} ${isHolding && isRed ? "r" : ""} ${isDropped ? "dropped" : ""} ${isPeeking ? "bot-peeking" : ""}`}
-                                      title={
-                                        p.id === human ? "اضغط باستمرار لكشف ورقتك" : "ورقة مقلوبة"
-                                      }
+                                      title={p.id === human ? "اضغط باستمرار" : "ورقة مقلوبة"}
                                       onPointerDown={(e) => {
                                         e.preventDefault();
                                         setHoldingId(p.id);
