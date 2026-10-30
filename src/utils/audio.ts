@@ -3,17 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { loadSettings } from '../store/useSettings';
-import { playReferenceAudio } from './referenceAudio';
+import { loadSettings } from "../store/useSettings";
+import { playReferenceAudio } from "./referenceAudio";
 
 let audioCtx: AudioContext | null = null;
 
 function getAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
 
   if (!audioCtx) {
-    const AudioContextClass =
-      window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (AudioContextClass) {
       try {
         audioCtx = new AudioContextClass();
@@ -23,7 +22,7 @@ function getAudioContext(): AudioContext | null {
     }
   }
 
-  if (audioCtx && audioCtx.state === 'suspended') {
+  if (audioCtx && audioCtx.state === "suspended") {
     audioCtx.resume().catch(() => {});
   }
 
@@ -46,7 +45,7 @@ export function playCardSound(enabled?: boolean): void {
   const t = Date.now();
   if (t - lastCardSoundAt < 40) return;
   lastCardSoundAt = t;
-  playReferenceAudio('card');
+  playReferenceAudio("card");
 }
 
 /**
@@ -67,7 +66,7 @@ export function playWinSound(enabled?: boolean): void {
       const gain = ctx.createGain();
       const noteTime = now + idx * 0.12;
 
-      osc.type = 'sine';
+      osc.type = "sine";
       osc.frequency.setValueAtTime(freq, noteTime);
 
       gain.gain.setValueAtTime(0, noteTime);
@@ -103,7 +102,7 @@ export function playLoseSound(enabled?: boolean): void {
       const gain = ctx.createGain();
       const noteTime = now + idx * 0.18;
 
-      osc.type = 'triangle';
+      osc.type = "triangle";
       osc.frequency.setValueAtTime(freq, noteTime);
 
       gain.gain.setValueAtTime(0.2, noteTime);
@@ -133,7 +132,7 @@ export function playTapSound(enabled?: boolean): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'sine';
+    osc.type = "sine";
     osc.frequency.setValueAtTime(800, now);
     osc.frequency.exponentialRampToValueAtTime(400, now + 0.04);
 
@@ -164,9 +163,9 @@ export function playTrickWinSound(enabled?: boolean): void {
     const osc2 = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc1.type = 'sine';
+    osc1.type = "sine";
     osc1.frequency.setValueAtTime(587.33, now); // D5
-    osc2.type = 'sine';
+    osc2.type = "sine";
     osc2.frequency.setValueAtTime(880, now + 0.08); // A5
 
     gain.gain.setValueAtTime(0.18, now);
@@ -200,7 +199,7 @@ export function playTrumpSound(enabled?: boolean): void {
       const gain = ctx.createGain();
       const t = now + idx * 0.08;
 
-      osc.type = 'sine';
+      osc.type = "sine";
       osc.frequency.setValueAtTime(freq, t);
 
       gain.gain.setValueAtTime(0.2, t);
@@ -229,7 +228,7 @@ export function playBubbleSound(enabled?: boolean): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'sine';
+    osc.type = "sine";
     osc.frequency.setValueAtTime(600, now);
     osc.frequency.exponentialRampToValueAtTime(1100, now + 0.09);
 
@@ -245,4 +244,3 @@ export function playBubbleSound(enabled?: boolean): void {
     // Ignore audio playback errors
   }
 }
-

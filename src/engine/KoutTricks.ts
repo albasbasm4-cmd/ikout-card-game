@@ -3,16 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GameState, Card, Suit, TrickPlay, Phase } from '../types/kout';
-import { RULES } from '../rules/config';
-import { getLegalCards, trickWinner } from '../rules/cards';
+import { GameState, Card, Suit, TrickPlay, Phase } from "../types/kout";
+import { RULES } from "../rules/config";
+import { getLegalCards, trickWinner } from "../rules/cards";
 
 /**
  * Returns all cards that have been played in past tricks and the current trick
  */
 export function getPlayedCards(
   trickHistory: TrickPlay[][],
-  currentTrick: TrickPlay[] = []
+  currentTrick: TrickPlay[] = [],
 ): Card[] {
   const cards: Card[] = [];
   for (const trick of trickHistory) {
@@ -32,18 +32,14 @@ export function getPlayedCards(
  * - Phase transitions to 'PLAY'
  * - الحاكم الذي حكم ينزل آخر واحد في أول أكلة، والذي على يمينه يبدأ اللعب
  */
-export function declareTrump(
-  state: GameState,
-  seat: number,
-  suit: Suit
-): GameState {
-  if (state.phase !== 'TRUMP') {
+export function declareTrump(state: GameState, seat: number, suit: Suit): GameState {
+  if (state.phase !== "TRUMP") {
     throw new Error(`Cannot declare trump during phase ${state.phase}`);
   }
 
   if (seat !== state.bidderSeat) {
     throw new Error(
-      `Only the winning bidder (seat ${state.bidderSeat}) can declare trump (received seat ${seat})`
+      `Only the winning bidder (seat ${state.bidderSeat}) can declare trump (received seat ${seat})`,
     );
   }
 
@@ -55,7 +51,7 @@ export function declareTrump(
   return {
     ...state,
     trump: suit,
-    phase: 'PLAY',
+    phase: "PLAY",
     currentSeat: firstLeadSeat,
     version: state.version + 1,
   };
@@ -82,19 +78,17 @@ export function playCard(
   state: GameState,
   seat: number,
   cardOrId: Card | string,
-  options: PlayCardOptions = {}
+  options: PlayCardOptions = {},
 ): GameState {
-  if (state.phase !== 'PLAY') {
+  if (state.phase !== "PLAY") {
     throw new Error(`Cannot play card during phase ${state.phase}`);
   }
 
   if (seat !== state.currentSeat) {
-    throw new Error(
-      `Not seat ${seat}'s turn to play (expected seat ${state.currentSeat})`
-    );
+    throw new Error(`Not seat ${seat}'s turn to play (expected seat ${state.currentSeat})`);
   }
 
-  const cardId = typeof cardOrId === 'string' ? cardOrId : cardOrId.id;
+  const cardId = typeof cardOrId === "string" ? cardOrId : cardOrId.id;
   const playerHand = state.hands[seat] || [];
   const cardIndex = playerHand.findIndex((c) => c.id === cardId);
 
@@ -114,13 +108,13 @@ export function playCard(
   const isLegal = legalCards.some((c) => c.id === cardId);
   if (!isLegal && options.allowAnyCard !== true) {
     throw new Error(
-      `Illegal card play for card ${cardId}. Must follow suit or obey joker lead rules.`
+      `Illegal card play for card ${cardId}. Must follow suit or obey joker lead rules.`,
     );
   }
 
   // Remove card from player hand
   const nextHands = state.hands.map((hand, idx) =>
-    idx === seat ? hand.filter((_, i) => i !== cardIndex) : hand
+    idx === seat ? hand.filter((_, i) => i !== cardIndex) : hand,
   );
 
   const nextPlay: TrickPlay = { seat, card: playedCard };
@@ -150,20 +144,17 @@ export function playCard(
       ? state.players[winnerSeat].team
       : ((winnerSeat % 2) as 0 | 1);
 
-  const nextTricksWon: [number, number] = [
-    state.tricksWon[0],
-    state.tricksWon[1],
-  ];
+  const nextTricksWon: [number, number] = [state.tricksWon[0], state.tricksWon[1]];
   nextTricksWon[winnerTeam] = (nextTricksWon[winnerTeam] || 0) + 1;
 
   const nextTrickHistory = [...state.trickHistory, nextTrick];
   const isRoundOver = nextTrickHistory.length === cardsPerPlayer;
 
-  let nextPhase: Phase = 'PLAY';
-  let nextSeat = winnerSeat; // الفائز بالأكلة يبدأ الأكلة التالية
+  let nextPhase: Phase = "PLAY";
+  const nextSeat = winnerSeat; // الفائز بالأكلة يبدأ الأكلة التالية
 
   if (isRoundOver) {
-    nextPhase = 'ROUND_END';
+    nextPhase = "ROUND_END";
   }
 
   return {

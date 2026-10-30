@@ -33,11 +33,21 @@ export const SoundboardModal: React.FC<SoundboardModalProps> = ({
     audioUrl: voiceSource(activeCharId, clip),
   }));
   const situations: Array<[string, VoiceClip | undefined]> = [
-    ["نداء المزايدة", set.bid6], ["سبعة", set.bid7], ["ثمانية", set.bid8],
-    ["طاف", set.pass], ["ملزوم", set.malzoom],
-    ["أمر كلبس", set.suitC], ["أمر ديمان", set.suitD], ["أمر سبيت", set.suitS], ["أمر حس", set.suitH],
-    ["الميكر", set.maker], ["الجيكر", set.joker], ["أكة", set.ace],
-    ["ترحيب", set.welcome], ["فوز", set.win], ["خسارة", set.lose],
+    ["نداء المزايدة", set.bid6],
+    ["سبعة", set.bid7],
+    ["ثمانية", set.bid8],
+    ["طاف", set.pass],
+    ["ملزوم", set.malzoom],
+    ["أمر كلبس", set.suitC],
+    ["أمر ديمان", set.suitD],
+    ["أمر سبيت", set.suitS],
+    ["أمر حس", set.suitH],
+    ["الميكر", set.maker],
+    ["الجيكر", set.joker],
+    ["أكة", set.ace],
+    ["ترحيب", set.welcome],
+    ["فوز", set.win],
+    ["خسارة", set.lose],
   ];
   const reactionPhrases = situations
     .filter(([, clip]) => !!clip)

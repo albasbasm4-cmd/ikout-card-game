@@ -1,5 +1,5 @@
-import { loadSettings } from '../store/useSettings';
-import { stopCharacterVoice } from './characterAudio';
+import { loadSettings } from "../store/useSettings";
+import { stopCharacterVoice } from "./characterAudio";
 
 /**
  * Small synthesized table effects (card snap, slam fanfare, pass whoosh).
@@ -12,19 +12,21 @@ export function stopReferenceAudio() {
   stopCharacterVoice();
   voice?.pause();
   voice = null;
-  effects.forEach(audio => audio.pause());
+  effects.forEach((audio) => audio.pause());
   effects.clear();
 }
 
 let ctx: AudioContext | null = null;
 function context(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
   if (!ctx) {
-    const C = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const C =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!C) return null;
     ctx = new C();
   }
-  if (ctx.state === 'suspended') void ctx.resume();
+  if (ctx.state === "suspended") void ctx.resume();
   return ctx;
 }
 function noise(duration: number, filterFreq: number, gainValue: number, sweepTo?: number) {
@@ -37,7 +39,7 @@ function noise(duration: number, filterFreq: number, gainValue: number, sweepTo?
   const src = c.createBufferSource();
   src.buffer = buffer;
   const filter = c.createBiquadFilter();
-  filter.type = 'bandpass';
+  filter.type = "bandpass";
   filter.frequency.value = filterFreq;
   if (sweepTo) filter.frequency.exponentialRampToValueAtTime(sweepTo, c.currentTime + duration);
   const gain = c.createGain();
@@ -50,7 +52,7 @@ function blip(freq: number, duration: number, gainValue: number, when = 0) {
   if (!c) return;
   const osc = c.createOscillator();
   const gain = c.createGain();
-  osc.type = 'triangle';
+  osc.type = "triangle";
   osc.frequency.value = freq;
   gain.gain.setValueAtTime(gainValue, c.currentTime + when);
   gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + when + duration);
@@ -58,11 +60,15 @@ function blip(freq: number, duration: number, gainValue: number, when = 0) {
   osc.start(c.currentTime + when);
   osc.stop(c.currentTime + when + duration + 0.05);
 }
-export function playReferenceAudio(kind: 'pass' | 'card' | 'slam') {
-  if (typeof window === 'undefined' || !loadSettings().soundEnabled) return;
-  if (kind !== 'pass' && !loadSettings().cardPlacementSoundEnabled) return;
+export function playReferenceAudio(kind: "pass" | "card" | "slam") {
+  if (typeof window === "undefined" || !loadSettings().soundEnabled) return;
+  if (kind !== "pass" && !loadSettings().cardPlacementSoundEnabled) return;
   if (!context()) return;
-  if (kind === 'card') noise(0.05, 2600, 0.5);
-  else if (kind === 'pass') noise(0.35, 900, 0.35, 250);
-  else { blip(392, 0.14, 0.22); blip(523, 0.14, 0.22, 0.12); blip(659, 0.3, 0.25, 0.24); }
+  if (kind === "card") noise(0.05, 2600, 0.5);
+  else if (kind === "pass") noise(0.35, 900, 0.35, 250);
+  else {
+    blip(392, 0.14, 0.22);
+    blip(523, 0.14, 0.22, 0.12);
+    blip(659, 0.3, 0.25, 0.24);
+  }
 }

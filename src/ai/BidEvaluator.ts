@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Card, Suit, Bid, Difficulty } from '../types/kout';
+import { Card, Suit, Bid, Difficulty } from "../types/kout";
 
-export const ALL_SUITS: Suit[] = ['S', 'H', 'D', 'C'];
+export const ALL_SUITS: Suit[] = ["S", "H", "D", "C"];
 
 export interface BidEvaluation {
   bid: Bid;
@@ -33,8 +33,8 @@ export function scoreHandForSuit(hand: Card[], trumpCandidate: Suit): number {
   let score = 0;
 
   // 1. Jokers
-  const hasRedJoker = hand.some((c) => c.joker === 'RED');
-  const hasBlackJoker = hand.some((c) => c.joker === 'BLACK');
+  const hasRedJoker = hand.some((c) => c.joker === "RED");
+  const hasBlackJoker = hand.some((c) => c.joker === "BLACK");
   if (hasRedJoker) score += 1.1;
   if (hasBlackJoker) score += 0.95;
 
@@ -109,11 +109,11 @@ export function evaluateBid(
   hand: Card[],
   currentHighBid: Bid | null,
   isDealerForced: boolean,
-  difficulty: Difficulty = 'MEDIUM',
-  context: BidContext = {}
+  difficulty: Difficulty = "MEDIUM",
+  context: BidContext = {},
 ): BidEvaluation {
   // Score every suit and pick the best one
-  let bestSuit: Suit = 'S';
+  let bestSuit: Suit = "S";
   let bestScore = -1;
 
   for (const suit of ALL_SUITS) {
@@ -127,11 +127,11 @@ export function evaluateBid(
   let expectedTricks = bestScore;
 
   // Difficulty adjustments
-  if (difficulty === 'EASY') {
+  if (difficulty === "EASY") {
     // Add random noise between -1.2 and +1.2
     const noise = (Math.random() - 0.5) * 2.4;
     expectedTricks += noise;
-  } else if (difficulty === 'EXPERT') {
+  } else if (difficulty === "EXPERT") {
     // Expert adjustment:
     // Partner position: in a 6-player team, partner is directly opposite (3 seats away)
     // Partner contributes expected ~0.8 tricks

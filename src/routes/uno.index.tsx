@@ -8,11 +8,19 @@ export const Route = createFileRoute("/uno/")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { title: "iKout — أونو — إعداد المباراة" },
-      { name: "description", content: "حدد عدد اللاعبين ومستوى البوت وابدأ مباراة أونو أو أنشئ غرفة." },
+      {
+        name: "description",
+        content: "حدد عدد اللاعبين ومستوى البوت وابدأ مباراة أونو أو أنشئ غرفة.",
+      },
       { property: "og:title", content: "أونو — إعداد المباراة" },
       { property: "og:description", content: "العب أونو ضد بوتات سهلة أو متوسطة أو صعبة." },
     ],
   }),
-  component: () => <ClientOnly><Suspense fallback={null}><UnoLobby /></Suspense></ClientOnly>,
+  component: () => (
+    <ClientOnly>
+      <Suspense fallback={null}>
+        <UnoLobby />
+      </Suspense>
+    </ClientOnly>
+  ),
 });
-

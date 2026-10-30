@@ -3,49 +3,44 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { GameEngine187 } from '../engine';
-import { Card187, GameState187, Player187, Suit187, TrickPlay187 } from '../types';
-import { calculateTrickPoints, resolveTrickWinner187 } from '../rules';
-import { loadSettings } from '../../store/useSettings';
-import { Table187 } from './Table187';
-import {
-  evaluateBotBid,
-  chooseBotTrump,
-  chooseBotDiscards,
-  chooseBotCardToPlay,
-} from '../ai';
-import { playTapSound } from '../../utils/audio';
-import { play187Sound } from '../audio';
-import { isMessage187 } from '../messages';
-import { playChatVoice187 } from '../voices';
-import { Room187Channel, Client187Packet, Host187Packet } from '../network/network187';
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { GameEngine187 } from "../engine";
+import { Card187, GameState187, Player187, Suit187, TrickPlay187 } from "../types";
+import { calculateTrickPoints, resolveTrickWinner187 } from "../rules";
+import { loadSettings } from "../../store/useSettings";
+import { Table187 } from "./Table187";
+import { evaluateBotBid, chooseBotTrump, chooseBotDiscards, chooseBotCardToPlay } from "../ai";
+import { playTapSound } from "../../utils/audio";
+import { play187Sound } from "../audio";
+import { isMessage187 } from "../messages";
+import { playChatVoice187 } from "../voices";
+import { Room187Channel, Client187Packet, Host187Packet } from "../network/network187";
 
 export interface Game187ScreenProps {
   players: Player187[];
   initialState?: GameState187;
-  mode?: 'single' | 'room';
+  mode?: "single" | "room";
   roomCode?: string;
   onExit: () => void;
 }
 
-const STORAGE_KEY_187 = 'ikout_187_state';
+const STORAGE_KEY_187 = "ikout_187_state";
 /** How long a completed trick stays on the table; longer than the 0.8s card flight so the last card lands first. */
 export const TRICK_HOLD_MS_187 = 1500;
 const speedFactor = () => {
   const s = loadSettings().botSpeed;
-  return s === 'SLOW' ? 1.6 : s === 'FAST' ? 0.6 : 1;
+  return s === "SLOW" ? 1.6 : s === "FAST" ? 0.6 : 1;
 };
 
 export const Game187Screen: React.FC<Game187ScreenProps> = ({
   players,
   initialState,
-  mode = 'single',
+  mode = "single",
   roomCode,
   onExit,
 }) => {
-  const isHost = mode !== 'room' || players[0]?.kind === 'HUMAN_LOCAL';
-  const mySeat = mode === 'room' && !isHost ? 1 : 0;
+  const isHost = mode !== "room" || players[0]?.kind === "HUMAN_LOCAL";
+  const mySeat = mode === "room" && !isHost ? 1 : 0;
 
   const engineRef = useRef<GameEngine187 | null>(null);
   const channelRef = useRef<Room187Channel | null>(null);
@@ -84,7 +79,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       earlySettled: false,
       earlySettledWinner: null,
       continueAfterEarlySettle: false,
-      phase: 'DEAL',
+      phase: "DEAL",
       players,
       winner: null,
       version: 1,
@@ -96,12 +91,12 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
     const newState = { ...engineRef.current.state };
     setGameState(newState);
 
-    if (mode === 'room' && channelRef.current) {
-      channelRef.current.send({ type: 'STATE_UPDATE', state: newState });
+    if (mode === "room" && channelRef.current) {
+      channelRef.current.send({ type: "STATE_UPDATE", state: newState });
     }
 
     try {
-      if (newState.phase !== 'ROUND_END') {
+      if (newState.phase !== "ROUND_END") {
         localStorage.setItem(STORAGE_KEY_187, JSON.stringify(newState));
       } else {
         localStorage.removeItem(STORAGE_KEY_187);
@@ -116,25 +111,51 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
   playersRef.current = gameState.players;
   const bubbleTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
   const showMessage = useCallback((seat: number, message: string) => {
-    if (!Number.isInteger(seat) || seat < 0 || seat > 4 || !isMessage187(message, playersRef.current[seat]?.characterId)) return;
+    if (
+      !Number.isInteger(seat) ||
+      seat < 0 ||
+      seat > 4 ||
+      !isMessage187(message, playersRef.current[seat]?.characterId)
+    )
+      return;
     playChatVoice187(playersRef.current[seat]?.characterId, message, seat);
     const previous = bubbleTimers.current.get(seat);
     if (previous) clearTimeout(previous);
-    setSpeechBubbles(current => ({ ...current, [seat]: message }));
-    bubbleTimers.current.set(seat, setTimeout(() => {
-      setSpeechBubbles(current => { const next = { ...current }; delete next[seat]; return next; });
-      bubbleTimers.current.delete(seat);
-    }, 3400));
+    setSpeechBubbles((current) => ({ ...current, [seat]: message }));
+    bubbleTimers.current.set(
+      seat,
+      setTimeout(() => {
+        setSpeechBubbles((current) => {
+          const next = { ...current };
+          delete next[seat];
+          return next;
+        });
+        bubbleTimers.current.delete(seat);
+      }, 3400),
+    );
   }, []);
-  useEffect(() => () => { bubbleTimers.current.forEach(clearTimeout); }, []);
+  useEffect(
+    () => () => {
+      bubbleTimers.current.forEach(clearTimeout);
+    },
+    [],
+  );
   const sendMessage = (message: string) => {
     if (!isMessage187(message, playersRef.current[mySeat]?.characterId)) return;
     showMessage(mySeat, message);
-    channelRef.current?.send(isHost ? { type: 'CHAT_BUBBLE', seat: mySeat, message } : { type: 'CHAT', seat: mySeat, message });
+    channelRef.current?.send(
+      isHost
+        ? { type: "CHAT_BUBBLE", seat: mySeat, message }
+        : { type: "CHAT", seat: mySeat, message },
+    );
   };
 
   // Keep the completed trick visible briefly (presentation only; the engine has already scored it).
-  const [heldTrick, setHeldTrick] = useState<{ plays: TrickPlay187[]; winner: TrickPlay187; text: string } | null>(null);
+  const [heldTrick, setHeldTrick] = useState<{
+    plays: TrickPlay187[];
+    winner: TrickPlay187;
+    text: string;
+  } | null>(null);
   const seenTricks = useRef(gameState.trickHistory.length);
   useEffect(() => {
     const n = gameState.trickHistory.length;
@@ -155,39 +176,39 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
 
   // شبكة الغرفة المتزامنة
   useEffect(() => {
-    if (mode === 'room' && roomCode) {
+    if (mode === "room" && roomCode) {
       const ch = new Room187Channel(roomCode);
       channelRef.current = ch;
 
       ch.onMessage((msg: Client187Packet | Host187Packet) => {
-        if (isHost && msg.type === 'CHAT' && isMessage187(msg.message)) {
+        if (isHost && msg.type === "CHAT" && isMessage187(msg.message)) {
           showMessage(msg.seat, msg.message);
-          ch.send({ type: 'CHAT_BUBBLE', seat: msg.seat, message: msg.message });
-        } else if (!isHost && msg.type === 'CHAT_BUBBLE') {
+          ch.send({ type: "CHAT_BUBBLE", seat: msg.seat, message: msg.message });
+        } else if (!isHost && msg.type === "CHAT_BUBBLE") {
           showMessage(msg.seat, msg.message);
         } else if (isHost && engineRef.current) {
           const eng = engineRef.current;
-          if (msg.type === 'BID') {
+          if (msg.type === "BID") {
             eng.placeBid(msg.seat, msg.bid);
             syncState();
-          } else if (msg.type === 'DISCARD') {
+          } else if (msg.type === "DISCARD") {
             eng.giveAwayCards(msg.seat, msg.cardIds);
             syncState();
-          } else if (msg.type === 'TRUMP') {
+          } else if (msg.type === "TRUMP") {
             eng.declareTrump(msg.seat, msg.trump);
             syncState();
-          } else if (msg.type === 'PLAY_CARD') {
-            play187Sound('card');
+          } else if (msg.type === "PLAY_CARD") {
+            play187Sound("card");
             eng.playCard(msg.seat, msg.card);
             syncState();
-          } else if (msg.type === 'EARLY_SETTLE') {
+          } else if (msg.type === "EARLY_SETTLE") {
             eng.decideEarlyContinue(msg.continuePlay);
             syncState();
-          } else if (msg.type === 'CHEAT_REPORT') {
+          } else if (msg.type === "CHEAT_REPORT") {
             eng.reportCheat(msg.reporterSeat, msg.accusedSeat, msg.suit);
             syncState();
           }
-        } else if (!isHost && msg.type === 'STATE_UPDATE') {
+        } else if (!isHost && msg.type === "STATE_UPDATE") {
           setGameState(msg.state);
         }
       });
@@ -208,11 +229,11 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
 
     const currentSeat = gameState.currentSeat;
     const currentPlayer = gameState.players[currentSeat];
-    const isBotTurn = currentPlayer?.kind === 'AI_BOT';
+    const isBotTurn = currentPlayer?.kind === "AI_BOT";
 
     let timer: number | null = null;
 
-    if (gameState.phase === 'BID' && isBotTurn) {
+    if (gameState.phase === "BID" && isBotTurn) {
       timer = window.setTimeout(() => {
         const hand = gameState.hands[currentSeat];
         const bid = evaluateBotBid(hand, gameState.highBid);
@@ -224,21 +245,21 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
           syncState();
         }
       }, 650 * k);
-    } else if (gameState.phase === 'DISCARD') {
+    } else if (gameState.phase === "DISCARD") {
       const hakemSeat = gameState.bidderSeat ?? 0;
       const hakemPlayer = gameState.players[hakemSeat];
-      if (hakemPlayer?.kind === 'AI_BOT') {
+      if (hakemPlayer?.kind === "AI_BOT") {
         timer = window.setTimeout(() => {
           const hand = gameState.hands[hakemSeat];
-          const discards = chooseBotDiscards(hand, 'S');
+          const discards = chooseBotDiscards(hand, "S");
           eng.giveAwayCards(hakemSeat, discards);
           syncState();
         }, 700 * k);
       }
-    } else if (gameState.phase === 'TRUMP') {
+    } else if (gameState.phase === "TRUMP") {
       const hakemSeat = gameState.bidderSeat ?? 0;
       const hakemPlayer = gameState.players[hakemSeat];
-      if (hakemPlayer?.kind === 'AI_BOT') {
+      if (hakemPlayer?.kind === "AI_BOT") {
         timer = window.setTimeout(() => {
           const hand = gameState.hands[hakemSeat];
           const trump = chooseBotTrump(hand);
@@ -246,15 +267,15 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
           syncState();
         }, 700 * k);
       }
-    } else if (gameState.phase === 'PLAY' && isBotTurn) {
+    } else if (gameState.phase === "PLAY" && isBotTurn) {
       timer = window.setTimeout(() => {
         try {
           const card = chooseBotCardToPlay(gameState, currentSeat);
-          play187Sound('card');
+          play187Sound("card");
           eng.playCard(currentSeat, card);
           syncState();
         } catch (err) {
-          console.error('Bot play error:', err);
+          console.error("Bot play error:", err);
         }
       }, 750 * k);
     }
@@ -266,12 +287,12 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
 
   // الإجراءات
   const handleHumanPlayCard = (card: Card187) => {
-    play187Sound('card');
+    play187Sound("card");
     if (isHost && engineRef.current) {
       engineRef.current.playCard(mySeat, card);
       syncState();
     } else if (channelRef.current) {
-      channelRef.current.send({ type: 'PLAY_CARD', seat: mySeat, card });
+      channelRef.current.send({ type: "PLAY_CARD", seat: mySeat, card });
     }
   };
 
@@ -280,7 +301,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       engineRef.current.placeBid(mySeat, bid);
       syncState();
     } else if (channelRef.current) {
-      channelRef.current.send({ type: 'BID', seat: mySeat, bid });
+      channelRef.current.send({ type: "BID", seat: mySeat, bid });
     }
   };
 
@@ -289,7 +310,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       engineRef.current.giveAwayCards(mySeat, cardIds);
       syncState();
     } else if (channelRef.current) {
-      channelRef.current.send({ type: 'DISCARD', seat: mySeat, cardIds });
+      channelRef.current.send({ type: "DISCARD", seat: mySeat, cardIds });
     }
   };
 
@@ -298,7 +319,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       engineRef.current.declareTrump(mySeat, suit);
       syncState();
     } else if (channelRef.current) {
-      channelRef.current.send({ type: 'TRUMP', seat: mySeat, trump: suit });
+      channelRef.current.send({ type: "TRUMP", seat: mySeat, trump: suit });
     }
   };
 
@@ -307,7 +328,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       engineRef.current.decideEarlyContinue(continuePlay);
       syncState();
     } else if (channelRef.current) {
-      channelRef.current.send({ type: 'EARLY_SETTLE', seat: mySeat, continuePlay });
+      channelRef.current.send({ type: "EARLY_SETTLE", seat: mySeat, continuePlay });
     }
   };
 
@@ -316,7 +337,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       engineRef.current.reportCheat(mySeat, accusedSeat, suit);
       syncState();
     } else if (channelRef.current) {
-      channelRef.current.send({ type: 'CHEAT_REPORT', reporterSeat: mySeat, accusedSeat, suit });
+      channelRef.current.send({ type: "CHEAT_REPORT", reporterSeat: mySeat, accusedSeat, suit });
     }
   };
 
@@ -329,7 +350,9 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
 
   const handleRestart = () => {
     if (!isHost) return;
-    const eng = new GameEngine187({ players: gameState.players.length ? gameState.players : players });
+    const eng = new GameEngine187({
+      players: gameState.players.length ? gameState.players : players,
+    });
     eng.startRound();
     engineRef.current = eng;
     setHeldTrick(null);
@@ -358,7 +381,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
         winningPlay={heldTrick?.winner ?? null}
         trickAnnouncement={heldTrick?.text ?? null}
         canAct={!heldTrick}
-        onRestart={isHost && mode !== 'room' ? handleRestart : undefined}
+        onRestart={isHost && mode !== "room" ? handleRestart : undefined}
         onPlayCard={handleHumanPlayCard}
         onBid={handleHumanBid}
         onGiveAwayCards={handleHumanGiveAwayCards}

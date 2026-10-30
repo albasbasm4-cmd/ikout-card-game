@@ -17,7 +17,7 @@ export function getAppBackHandler(): AppBackHandler | null {
   return handler;
 }
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
 /**
  * يسجّل معالج الرجوع للشاشة الحالية ويُلغيه عند الUnmount.

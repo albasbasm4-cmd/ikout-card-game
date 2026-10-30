@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GameState, Bid } from '../types/kout';
-import { RULES, SCORING } from '../rules/config';
+import { GameState, Bid } from "../types/kout";
+import { RULES, SCORING } from "../rules/config";
 
 export interface RoundScoreResult {
   bidderTeam: 0 | 1;
@@ -109,7 +109,7 @@ export function computeRoundResult(state: GameState): RoundScoreResult {
  * - Increments state version
  */
 export function scoreRound(state: GameState): GameState {
-  if (state.phase !== 'ROUND_END' || state.scoredRoundNo === state.roundNo) return state;
+  if (state.phase !== "ROUND_END" || state.scoredRoundNo === state.roundNo) return state;
   const result = computeRoundResult(state);
 
   const newScores: [number, number] = [
@@ -117,7 +117,7 @@ export function scoreRound(state: GameState): GameState {
     state.scores[1] + (result.awardedTeam === 1 ? result.pointsAdded : 0),
   ];
 
-  const nextPhase = result.gameWinner !== null ? 'GAME_END' : 'ROUND_END';
+  const nextPhase = result.gameWinner !== null ? "GAME_END" : "ROUND_END";
 
   return {
     ...state,

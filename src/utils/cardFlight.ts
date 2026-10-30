@@ -42,18 +42,18 @@ export function linearToScreen(el: Element | null): DOMMatrix {
   let m = new DOMMatrix();
   for (let n: Element | null = el; n instanceof HTMLElement; n = n.parentElement) {
     const cs = getComputedStyle(n);
-    if (cs.transform && cs.transform !== 'none') {
+    if (cs.transform && cs.transform !== "none") {
       const d = new DOMMatrix(cs.transform);
       d.e = 0;
       d.f = 0;
       m = d.multiply(m);
     }
     // Tailwind v4 / CSS individual transform properties
-    if (cs.scale && cs.scale !== 'none') {
-      const [sx, sy] = cs.scale.split(' ').map(Number);
+    if (cs.scale && cs.scale !== "none") {
+      const [sx, sy] = cs.scale.split(" ").map(Number);
       m = new DOMMatrix().scale(sx || 1, sy ?? sx ?? 1).multiply(m);
     }
-    if (cs.rotate && cs.rotate !== 'none') {
+    if (cs.rotate && cs.rotate !== "none") {
       const deg = parseFloat(cs.rotate);
       if (!Number.isNaN(deg)) m = new DOMMatrix().rotate(deg).multiply(m);
     }
@@ -62,7 +62,11 @@ export function linearToScreen(el: Element | null): DOMMatrix {
 }
 
 /** Convert a screen-space delta to the local coordinate frame of `el`. */
-export function screenDeltaToLocal(el: Element | null, dx: number, dy: number): { x: number; y: number } {
+export function screenDeltaToLocal(
+  el: Element | null,
+  dx: number,
+  dy: number,
+): { x: number; y: number } {
   const inv = linearToScreen(el).inverse();
   const p = inv.transformPoint(new DOMPoint(dx, dy));
   return { x: p.x, y: p.y };

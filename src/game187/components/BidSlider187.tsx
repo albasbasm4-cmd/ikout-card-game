@@ -1,8 +1,8 @@
-import React from 'react';
-import { screenDeltaToLocal } from '../../utils/cardFlight';
-import { Check, Hand as PassHand } from 'lucide-react';
-import { playTapSound } from '../../utils/audio';
-import { BID_STEP_187, MAX_BID, snapBid187 } from '../rules';
+import React from "react";
+import { screenDeltaToLocal } from "../../utils/cardFlight";
+import { Check, Hand as PassHand } from "lucide-react";
+import { playTapSound } from "../../utils/audio";
+import { BID_STEP_187, MAX_BID, snapBid187 } from "../rules";
 
 export interface BidSlider187Props {
   /** Lowest bid allowed right now (75, or the current high bid + 5). */
@@ -18,12 +18,20 @@ export interface BidSlider187Props {
  * allowed bid) with a line under it. Dragging the line to the left raises the
  * bid by 5 each step, up to 185.
  */
-export const BidSlider187: React.FC<BidSlider187Props> = ({ min, value, onChange, onConfirm, onPass }) => {
+export const BidSlider187: React.FC<BidSlider187Props> = ({
+  min,
+  value,
+  onChange,
+  onConfirm,
+  onPass,
+}) => {
   const canBid = min <= MAX_BID;
   const shown = canBid ? snapBid187(value, min) : MAX_BID;
   return (
     <div className="kt-picker kt187-bid" role="group" aria-label="اختيار القيد" dir="ltr">
-      <span className="kt-ribbon"><span>اختر القيد</span></span>
+      <span className="kt-ribbon">
+        <span>اختر القيد</span>
+      </span>
       <div className="kt187-bid-row">
         <button
           type="button"
@@ -38,7 +46,9 @@ export const BidSlider187: React.FC<BidSlider187Props> = ({ min, value, onChange
           <small>طاف</small>
         </button>
         <div className="kt187-value" aria-live="polite" aria-label={`القيد ${shown}`}>
-          <span key={shown} className="kt187-pop">{canBid ? shown : '—'}</span>
+          <span key={shown} className="kt187-pop">
+            {canBid ? shown : "—"}
+          </span>
         </div>
         <button
           type="button"
@@ -74,7 +84,17 @@ export const BidSlider187: React.FC<BidSlider187Props> = ({ min, value, onChange
  * local frame, so dragging stays smooth even when the stage is scaled or
  * rotated (portrait phones). Left = higher bid.
  */
-function BidTrack187({ min, value, disabled, onChange }: { min: number; value: number; disabled: boolean; onChange: (v: number) => void }) {
+function BidTrack187({
+  min,
+  value,
+  disabled,
+  onChange,
+}: {
+  min: number;
+  value: number;
+  disabled: boolean;
+  onChange: (v: number) => void;
+}) {
   const ref = React.useRef<HTMLDivElement>(null);
   const span = Math.max(1, MAX_BID - min);
   const fraction = (MAX_BID - value) / span; // 0 = left (185), 1 = right (min)
@@ -82,7 +102,11 @@ function BidTrack187({ min, value, disabled, onChange }: { min: number; value: n
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const local = screenDeltaToLocal(el, clientX - (r.left + r.width / 2), clientY - (r.top + r.height / 2));
+    const local = screenDeltaToLocal(
+      el,
+      clientX - (r.left + r.width / 2),
+      clientY - (r.top + r.height / 2),
+    );
     const f = Math.min(1, Math.max(0, 0.5 + local.x / el.offsetWidth));
     const raw = MAX_BID - f * span;
     onChange(Math.round(raw / BID_STEP_187) * BID_STEP_187);
@@ -110,8 +134,14 @@ function BidTrack187({ min, value, disabled, onChange }: { min: number; value: n
       }}
       onKeyDown={(e) => {
         if (disabled) return;
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); onChange(Math.min(MAX_BID, value + BID_STEP_187)); }
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); onChange(Math.max(min, value - BID_STEP_187)); }
+        if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+          e.preventDefault();
+          onChange(Math.min(MAX_BID, value + BID_STEP_187));
+        }
+        if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+          e.preventDefault();
+          onChange(Math.max(min, value - BID_STEP_187));
+        }
       }}
     >
       <div className="kt187-track">

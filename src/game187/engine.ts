@@ -3,13 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
-  Card187,
-  GameState187,
-  Player187,
-  Suit187,
-  TrickPlay187,
-} from './types';
+import { Card187, GameState187, Player187, Suit187, TrickPlay187 } from "./types";
 import {
   createDeck187,
   getCardPoints,
@@ -21,7 +15,7 @@ import {
   TOTAL_GAME_POINTS,
   MIN_BID,
   MAX_BID,
-} from './rules';
+} from "./rules";
 
 export interface GameEngine187Options {
   seed?: number;
@@ -64,7 +58,7 @@ export class GameEngine187 {
       earlySettled: false,
       earlySettledWinner: null,
       continueAfterEarlySettle: false,
-      phase: 'DEAL',
+      phase: "DEAL",
       players,
       winner: null,
       cheatReportsCount: 0,
@@ -79,11 +73,11 @@ export class GameEngine187 {
 
   private _createDefaultPlayers(): Player187[] {
     return [
-      { seatIndex: 0, kind: 'HUMAN_LOCAL', name: 'أنت' },
-      { seatIndex: 1, kind: 'AI_BOT', name: 'سالم' },
-      { seatIndex: 2, kind: 'AI_BOT', name: 'فهد' },
-      { seatIndex: 3, kind: 'AI_BOT', name: 'مبارك' },
-      { seatIndex: 4, kind: 'AI_BOT', name: 'طلال' },
+      { seatIndex: 0, kind: "HUMAN_LOCAL", name: "أنت" },
+      { seatIndex: 1, kind: "AI_BOT", name: "سالم" },
+      { seatIndex: 2, kind: "AI_BOT", name: "فهد" },
+      { seatIndex: 3, kind: "AI_BOT", name: "مبارك" },
+      { seatIndex: 4, kind: "AI_BOT", name: "طلال" },
     ];
   }
 
@@ -143,7 +137,7 @@ export class GameEngine187 {
       earlySettled: false,
       earlySettledWinner: null,
       continueAfterEarlySettle: false,
-      phase: 'BID',
+      phase: "BID",
       winner: null,
       version: this._state.version + 1,
       lastCheatVerdict: null,
@@ -162,7 +156,7 @@ export class GameEngine187 {
 
   /** تقديم مزايدة أو الانسحاب */
   placeBid(seat: number, bid: number) {
-    if (this._state.phase !== 'BID') {
+    if (this._state.phase !== "BID") {
       throw new Error(`Cannot bid in phase ${this._state.phase}`);
     }
     if (this._state.currentSeat !== seat) {
@@ -231,11 +225,11 @@ export class GameEngine187 {
     winnerSeat: number,
     finalBid: number,
     bids: { seat: number; bid: number }[],
-    passedSeats: boolean[]
+    passedSeats: boolean[],
   ) {
     // الحاكم يأخذ أوراق الطاولة الخمس ليصبح بيده 12 ورقة
     const hands = this._state.hands.map((h, s) =>
-      s === winnerSeat ? [...h, ...this._state.tableCards] : [...h]
+      s === winnerSeat ? [...h, ...this._state.tableCards] : [...h],
     );
 
     this._state = {
@@ -247,7 +241,7 @@ export class GameEngine187 {
       currentSeat: winnerSeat,
       hands,
       tableCards: [],
-      phase: 'DISCARD',
+      phase: "DISCARD",
       version: this._state.version + 1,
     };
   }
@@ -256,14 +250,14 @@ export class GameEngine187 {
    * الحاكم يعطي 4 أوراق لخصومه (ورقة لكل خصم) ويحتفظ بـ 8 أوراق
    */
   giveAwayCards(hakemSeat: number, cardIdsToGive: string[]) {
-    if (this._state.phase !== 'DISCARD') {
+    if (this._state.phase !== "DISCARD") {
       throw new Error(`Cannot give away cards in phase ${this._state.phase}`);
     }
     if (this._state.bidderSeat !== hakemSeat) {
       throw new Error(`Only winning bidder seat ${this._state.bidderSeat} can discard`);
     }
     if (cardIdsToGive.length !== 4) {
-      throw new Error('Must give away exactly 4 cards (one for each of the 4 opponents)');
+      throw new Error("Must give away exactly 4 cards (one for each of the 4 opponents)");
     }
 
     const hakemHand = [...this._state.hands[hakemSeat]];
@@ -288,7 +282,7 @@ export class GameEngine187 {
     this._state = {
       ...this._state,
       hands: newHands,
-      phase: 'TRUMP',
+      phase: "TRUMP",
       currentSeat: hakemSeat,
       version: this._state.version + 1,
     };
@@ -296,7 +290,7 @@ export class GameEngine187 {
 
   /** الحاكم يحدد نوع الحكم */
   declareTrump(hakemSeat: number, suit: Suit187) {
-    if (this._state.phase !== 'TRUMP') {
+    if (this._state.phase !== "TRUMP") {
       throw new Error(`Cannot declare trump in phase ${this._state.phase}`);
     }
     if (this._state.bidderSeat !== hakemSeat) {
@@ -306,7 +300,7 @@ export class GameEngine187 {
     this._state = {
       ...this._state,
       trump: suit,
-      phase: 'PLAY',
+      phase: "PLAY",
       // أول لاعب وُزّع له (يمين الموزع) يرمي أول ورقة
       currentSeat: (this._state.dealer + 1) % 5,
       version: this._state.version + 1,
@@ -315,7 +309,7 @@ export class GameEngine187 {
 
   /** إنزال ورقة في الأكلة */
   playCard(seat: number, card: Card187, options?: { allowAnyCard?: boolean }) {
-    if (this._state.phase !== 'PLAY') {
+    if (this._state.phase !== "PLAY") {
       throw new Error(`Cannot play card in phase ${this._state.phase}`);
     }
     if (this._state.currentSeat !== seat) {
@@ -335,7 +329,7 @@ export class GameEngine187 {
         this._state.trump,
         seat,
         this._state.bidderSeat!,
-        this._state.trickHistory.length
+        this._state.trickHistory.length,
       );
       if (!legal.some((c) => c.id === card.id)) {
         throw new Error(`Illegal card play: card ${card.id} violates following suit rules`);
@@ -367,20 +361,20 @@ export class GameEngine187 {
     const winnerSeat = winnerPlay.seat;
     const isHakem = winnerSeat === this._state.bidderSeat;
 
-    let newHakemPoints = this._state.hakemPoints + (isHakem ? trickPoints : 0);
-    let newOpponentsPoints = this._state.opponentsPoints + (!isHakem ? trickPoints : 0);
+    const newHakemPoints = this._state.hakemPoints + (isHakem ? trickPoints : 0);
+    const newOpponentsPoints = this._state.opponentsPoints + (!isHakem ? trickPoints : 0);
 
     const newTricksWon = [...this._state.tricksWon];
     newTricksWon[winnerSeat] += 1;
 
     const newCapturedCards = this._state.capturedCards.map((c, s) =>
-      s === winnerSeat ? [...c, ...newTrick.map((p) => p.card)] : [...c]
+      s === winnerSeat ? [...c, ...newTrick.map((p) => p.card)] : [...c],
     );
 
     const newTrickHistory = [...this._state.trickHistory, newTrick];
     const isRoundOver = newTrickHistory.length === 8;
 
-    let nextPhase: GameState187['phase'] = 'PLAY';
+    let nextPhase: GameState187["phase"] = "PLAY";
     let earlySettled = this._state.earlySettled;
     let earlyWinner = this._state.earlySettledWinner;
     let finalWinner = this._state.winner;
@@ -392,24 +386,20 @@ export class GameEngine187 {
         newHakemPoints,
         newOpponentsPoints,
         this._state.highBid!,
-        remainingPoints
+        remainingPoints,
       );
       if (earlyCheck) {
         earlySettled = true;
         earlyWinner = earlyCheck;
         if (!isRoundOver) {
-          nextPhase = 'EARLY_SETTLE';
+          nextPhase = "EARLY_SETTLE";
         }
       }
     }
 
     if (isRoundOver) {
-      nextPhase = 'ROUND_END';
-      finalWinner = checkFinalWinner187(
-        newHakemPoints,
-        newOpponentsPoints,
-        this._state.highBid!
-      );
+      nextPhase = "ROUND_END";
+      finalWinner = checkFinalWinner187(newHakemPoints, newOpponentsPoints, this._state.highBid!);
     }
 
     this._state = {
@@ -432,7 +422,7 @@ export class GameEngine187 {
 
   /** قرار الاستمرار بعد الحسم المبكر */
   decideEarlyContinue(continuePlay: boolean) {
-    if (this._state.phase !== 'EARLY_SETTLE') {
+    if (this._state.phase !== "EARLY_SETTLE") {
       return;
     }
 
@@ -440,13 +430,13 @@ export class GameEngine187 {
       this._state = {
         ...this._state,
         continueAfterEarlySettle: true,
-        phase: 'PLAY',
+        phase: "PLAY",
         version: this._state.version + 1,
       };
     } else {
       this._state = {
         ...this._state,
-        phase: 'ROUND_END',
+        phase: "ROUND_END",
         winner: this._state.earlySettledWinner,
         version: this._state.version + 1,
       };
@@ -455,8 +445,13 @@ export class GameEngine187 {
 
   /** إبلاغ عن غش */
   reportCheat(reporterSeat: number, accusedSeat: number, accusedSuit: Suit187) {
-    if (this._state.phase !== 'PLAY') return;
-    if (!this._state.players[reporterSeat] || !this._state.players[accusedSeat] || reporterSeat === accusedSeat) return;
+    if (this._state.phase !== "PLAY") return;
+    if (
+      !this._state.players[reporterSeat] ||
+      !this._state.players[accusedSeat] ||
+      reporterSeat === accusedSeat
+    )
+      return;
 
     // فحص هل اللاعب المتهم كسر التبعية في أكلة سابقة
     let confirmed = false;
@@ -467,33 +462,46 @@ export class GameEngine187 {
       if (!accusedPlay) continue;
 
       if (leadCard.suit === accusedSuit && accusedPlay.card.suit !== accusedSuit) {
-        const laterCards = [...this._state.trickHistory.slice(index), this._state.currentTrick].flatMap(t => t.filter(p => p.seat === accusedSeat).map(p => p.card));
+        const laterCards = [
+          ...this._state.trickHistory.slice(index),
+          this._state.currentTrick,
+        ].flatMap((t) => t.filter((p) => p.seat === accusedSeat).map((p) => p.card));
         const heldAtPlay = [...this._state.hands[accusedSeat], ...laterCards];
         const prefix = trick.slice(0, trick.indexOf(accusedPlay));
-        const legal = getLegalCards187(heldAtPlay, prefix, this._state.trump, accusedSeat, this._state.bidderSeat ?? 0, index);
-        if (!legal.some(c => c.id === accusedPlay.card.id)) { confirmed = true; break; }
+        const legal = getLegalCards187(
+          heldAtPlay,
+          prefix,
+          this._state.trump,
+          accusedSeat,
+          this._state.bidderSeat ?? 0,
+          index,
+        );
+        if (!legal.some((c) => c.id === accusedPlay.card.id)) {
+          confirmed = true;
+          break;
+        }
       }
     }
 
     const isAccusedHakem = accusedSeat === this._state.bidderSeat;
     const isReporterHakem = reporterSeat === this._state.bidderSeat;
 
-    let winner: 'HAKEM' | 'OPPONENTS';
+    let winner: "HAKEM" | "OPPONENTS";
     let announcement: string;
 
     if (confirmed) {
       // الغش مؤكد -> فريق الغاش يخسر، فريق المبلغ يفوز
-      winner = isAccusedHakem ? 'OPPONENTS' : 'HAKEM';
+      winner = isAccusedHakem ? "OPPONENTS" : "HAKEM";
       announcement = `⚖️ ثبت الغش على اللاعب ${this._state.players[accusedSeat]?.name}! فاز فريق المبلغ.`;
     } else {
       // البلاغ خاطئ -> فريق المبلغ يخسر
-      winner = isReporterHakem ? 'OPPONENTS' : 'HAKEM';
+      winner = isReporterHakem ? "OPPONENTS" : "HAKEM";
       announcement = `⚖️ بلاغ خاطئ! لم يثبت الغش على اللاعب ${this._state.players[accusedSeat]?.name}.`;
     }
 
     this._state = {
       ...this._state,
-      phase: 'ROUND_END',
+      phase: "ROUND_END",
       winner,
       lastCheatVerdict: {
         confirmed,

@@ -21,7 +21,11 @@ export const Route = createFileRoute("/uno/join")({
       { property: "og:description", content: "انضم إلى غرفة أونو برمز أو QR." },
     ],
   }),
-  component: () => <ClientOnly><Join /></ClientOnly>,
+  component: () => (
+    <ClientOnly>
+      <Join />
+    </ClientOnly>
+  ),
 });
 
 export interface JoinProps {
@@ -43,27 +47,48 @@ export function Join({ onBack }: JoinProps = {}) {
   const [profileOpen, setProfileOpen] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const activeStream = useRef<MediaStream | null>(null);
-  useEffect(() => () => { activeStream.current?.getTracks().forEach((t) => t.stop()); activeStream.current = null; }, []);
+  useEffect(
+    () => () => {
+      activeStream.current?.getTracks().forEach((t) => t.stop());
+      activeStream.current = null;
+    },
+    [],
+  );
 
-  const goLobby = () => { playTapSound(); if (onBack) onBack(); else nav({ to: "/uno" }); };
+  const goLobby = () => {
+    playTapSound();
+    if (onBack) onBack();
+    else nav({ to: "/uno" });
+  };
 
   const join = (c = code) => {
     const v = c.trim().toUpperCase();
-    if (!/^[A-Z0-9]{6}$/.test(v)) { toast.error("رمز غير صحيح: الرمز 6 أحرف أو أرقام"); return; }
+    if (!/^[A-Z0-9]{6}$/.test(v)) {
+      toast.error("رمز غير صحيح: الرمز 6 أحرف أو أرقام");
+      return;
+    }
     toast.error("الغرفة غير متاحة: اللعب عبر الأجهزة لم يُفعّل بعد في هذه النسخة");
   };
 
   const scan = async () => {
     type BD = { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
     const Ctor = (window as unknown as { BarcodeDetector?: new (o: object) => BD }).BarcodeDetector;
-    if (!Ctor) { toast.error("متصفحك لا يدعم قراءة QR — اكتب الرمز يدوياً"); return; }
+    if (!Ctor) {
+      toast.error("متصفحك لا يدعم قراءة QR — اكتب الرمز يدوياً");
+      return;
+    }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
       activeStream.current?.getTracks().forEach((t) => t.stop());
       activeStream.current = stream;
       setScanning(true);
       await new Promise((r) => setTimeout(r, 50));
-      if (!video.current) { stream.getTracks().forEach((t) => t.stop()); return; }
+      if (!video.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       video.current.srcObject = stream;
       await video.current.play();
       const det = new Ctor({ formats: ["qr_code"] });
@@ -80,7 +105,12 @@ export function Join({ onBack }: JoinProps = {}) {
         } else requestAnimationFrame(tick);
       };
       tick();
-    } catch { activeStream.current?.getTracks().forEach((t) => t.stop()); activeStream.current = null; toast.error("تعذر فتح الكاميرا"); setScanning(false); }
+    } catch {
+      activeStream.current?.getTracks().forEach((t) => t.stop());
+      activeStream.current = null;
+      toast.error("تعذر فتح الكاميرا");
+      setScanning(false);
+    }
   };
 
   return (
@@ -90,9 +120,20 @@ export function Join({ onBack }: JoinProps = {}) {
         <CitySkyline />
         <div className="ksun" />
         <div className="ik-gd" />
-        <button id="kback" aria-label="رجوع إلى لوبي أونو" onClick={goLobby}><ArrowRight /></button>
-        <div id="kprof" role="button" tabIndex={0} aria-label="الملف الشخصي" onClick={() => setProfileOpen(true)} onKeyDown={(e) => e.key === "Enter" && setProfileOpen(true)}>
-          <div className="kav2"><img src={characterFace(profile.characterId)} alt="" /></div>
+        <button id="kback" aria-label="رجوع إلى لوبي أونو" onClick={goLobby}>
+          <ArrowRight />
+        </button>
+        <div
+          id="kprof"
+          role="button"
+          tabIndex={0}
+          aria-label="الملف الشخصي"
+          onClick={() => setProfileOpen(true)}
+          onKeyDown={(e) => e.key === "Enter" && setProfileOpen(true)}
+        >
+          <div className="kav2">
+            <img src={characterFace(profile.characterId)} alt="" />
+          </div>
           <div className="kun">{profile.name}</div>
         </div>
         <div id="kr" className="join">
@@ -100,11 +141,24 @@ export function Join({ onBack }: JoinProps = {}) {
           <div id="kjv">
             <div className="kjp">
               <div className="kjl">أدخل رمز الغرفة</div>
-              <input id="ci" dir="ltr" maxLength={6} placeholder="• • • • •" autoComplete="off" aria-label="رمز الغرفة"
-                value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && join()} />
-              <button className="kb kr2" onClick={() => join()}><span>انضمام</span></button>
+              <input
+                id="ci"
+                dir="ltr"
+                maxLength={6}
+                placeholder="• • • • •"
+                autoComplete="off"
+                aria-label="رمز الغرفة"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => e.key === "Enter" && join()}
+              />
+              <button className="kb kr2" onClick={() => join()}>
+                <span>انضمام</span>
+              </button>
               <div className="kor">— أو —</div>
-              <button className="kb kbl" onClick={scan}><span>📷 مسح رمز QR</span></button>
+              <button className="kb kbl" onClick={scan}>
+                <span>📷 مسح رمز QR</span>
+              </button>
               {scanning && <video ref={video} className="kscan" muted playsInline />}
             </div>
           </div>

@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Card187, Rank187, Suit187, TrickPlay187 } from './types';
+import { Card187, Rank187, Suit187, TrickPlay187 } from "./types";
 
-export const SUITS_187: Suit187[] = ['S', 'H', 'D', 'C'];
+export const SUITS_187: Suit187[] = ["S", "H", "D", "C"];
 export const RANKS_187: Rank187[] = [2, 14, 13, 12, 11, 10, 9, 8, 7, 6];
 
 export const TOTAL_GAME_POINTS = 187;
@@ -28,7 +28,7 @@ export function snapBid187(value: number, min: number): number {
 
 /** نقاط كل ورقة في لعبة 187 */
 export function getCardPoints(card: Card187): number {
-  if (card.suit === 'C' && card.rank === 2) {
+  if (card.suit === "C" && card.rank === 2) {
     return 25; // 2 كلفس (السباتي) يحمل 25 نقطة
   }
   switch (card.rank) {
@@ -97,7 +97,7 @@ export function getLegalCards187(
   trump: Suit187 | null,
   seat: number,
   hakemSeat: number,
-  trickIndex: number
+  trickIndex: number,
 ): Card187[] {
   if (hand.length === 0) return [];
 
@@ -129,12 +129,9 @@ export function getLegalCards187(
 }
 
 /** تحديد الفائز بالأكلة */
-export function resolveTrickWinner187(
-  trick: TrickPlay187[],
-  trump: Suit187 | null
-): TrickPlay187 {
+export function resolveTrickWinner187(trick: TrickPlay187[], trump: Suit187 | null): TrickPlay187 {
   if (trick.length === 0) {
-    throw new Error('Trick is empty');
+    throw new Error("Trick is empty");
   }
 
   // البحث عن أوراق الحكم المنزلة
@@ -177,18 +174,18 @@ export function checkEarlySettlement187(
   hakemPoints: number,
   opponentsPoints: number,
   qayd: number,
-  remainingPointsInGame: number
-): 'HAKEM' | 'OPPONENTS' | null {
+  remainingPointsInGame: number,
+): "HAKEM" | "OPPONENTS" | null {
   const opponentsThreshold = TOTAL_GAME_POINTS - qayd; // 187 - ق
 
   // فوز الخصوم
   if (opponentsPoints >= opponentsThreshold) {
-    return 'OPPONENTS';
+    return "OPPONENTS";
   }
 
   // فوز الحاكم المبكر
   if (opponentsPoints + remainingPointsInGame < opponentsThreshold) {
-    return 'HAKEM';
+    return "HAKEM";
   }
 
   return null;
@@ -198,11 +195,11 @@ export function checkEarlySettlement187(
 export function checkFinalWinner187(
   hakemPoints: number,
   opponentsPoints: number,
-  qayd: number
-): 'HAKEM' | 'OPPONENTS' {
+  qayd: number,
+): "HAKEM" | "OPPONENTS" {
   const opponentsThreshold = TOTAL_GAME_POINTS - qayd;
   if (opponentsPoints >= opponentsThreshold) {
-    return 'OPPONENTS';
+    return "OPPONENTS";
   }
-  return 'HAKEM';
+  return "HAKEM";
 }

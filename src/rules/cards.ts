@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Card, Suit, Bid, TrickPlay } from '../types/kout';
-import { RULES } from './config';
+import { Card, Suit, Bid, TrickPlay } from "../types/kout";
+import { RULES } from "./config";
 
 /**
  * Calculates card strength in the context of the current trick and trump suit.
- * 
+ *
  * القوانين المعتمدة:
  * - الجوكر الأحمر إذا نزل كأول ورقة في الأكلة (lead card): يتحول إلى 6 سبيت (6 of Spades).
  *   قوته تكون 106 (أو 706 إذا كان الحكم سبيت). أي سبيت أعلى أو أي حكم أو ماكر يتفوق عليه،
@@ -25,15 +25,15 @@ export function cardStrength(
   card: Card,
   trump: Suit | null,
   ledSuit?: Suit | null,
-  isLeadPlay?: boolean
+  isLeadPlay?: boolean,
 ): number {
   // الجوكر الأحمر عند نزوله أول ورقة في الأكلة يتحول إلى 6 سبيت
-  if (card.joker === 'RED' && isLeadPlay) {
-    return trump === 'S' ? 706 : 106;
+  if (card.joker === "RED" && isLeadPlay) {
+    return trump === "S" ? 706 : 106;
   }
 
   // الجوكر الأحمر النازل على الطاولة أثناء الأكلة
-  if (card.joker === 'RED') {
+  if (card.joker === "RED") {
     return 1000;
   }
 
@@ -43,17 +43,17 @@ export function cardStrength(
   }
 
   // الماكر (الجوكر الأسود): أقوى من باشا الحكم وأضعف من الآكة والجوكر الأحمر
-  if (card.joker === 'BLACK') {
+  if (card.joker === "BLACK") {
     return 800;
   }
 
   // ورق الحكم من الشايب إلى 2
-  if (trump && card.suit === trump && typeof card.rank === 'number') {
+  if (trump && card.suit === trump && typeof card.rank === "number") {
     return 700 + card.rank;
   }
 
   // ورق النوع المتبع في الأكلة
-  if (ledSuit && card.suit === ledSuit && typeof card.rank === 'number') {
+  if (ledSuit && card.suit === ledSuit && typeof card.rank === "number") {
     return 100 + card.rank;
   }
 
@@ -68,15 +68,15 @@ export function cardStrength(
  */
 export function trickWinner(plays: TrickPlay[], trump: Suit | null): TrickPlay {
   if (plays.length === 0) {
-    throw new Error('Cannot determine trick winner of empty trick');
+    throw new Error("Cannot determine trick winner of empty trick");
   }
 
   const leadPlay = plays[0];
   let ledSuit: Suit | null = null;
 
-  if (leadPlay.card.joker === 'RED') {
-    ledSuit = 'S'; // يتحول إلى 6 سبيت
-  } else if (leadPlay.card.joker === 'BLACK') {
+  if (leadPlay.card.joker === "RED") {
+    ledSuit = "S"; // يتحول إلى 6 سبيت
+  } else if (leadPlay.card.joker === "BLACK") {
     ledSuit = trump; // يتحول إلى حكم
   } else {
     ledSuit = leadPlay.card.suit ?? null;
@@ -105,18 +105,11 @@ export interface LegalCardContext {
 /**
  * Checks if Trump A, K, Q, J have all been played previously
  */
-export function areTrumpHonorsPlayed(
-  trump: Suit | null,
-  playedCards: Card[] = []
-): boolean {
+export function areTrumpHonorsPlayed(trump: Suit | null, playedCards: Card[] = []): boolean {
   if (!trump) return false;
   const honorRanks = new Set([14, 13, 12, 11]);
   for (const card of playedCards) {
-    if (
-      card.suit === trump &&
-      typeof card.rank === 'number' &&
-      honorRanks.has(card.rank)
-    ) {
+    if (card.suit === trump && typeof card.rank === "number" && honorRanks.has(card.rank)) {
       honorRanks.delete(card.rank);
     }
   }
@@ -142,7 +135,7 @@ export function getLegalCards(
   hand: Card[],
   trick: TrickPlay[],
   trump: Suit | null,
-  ctx: LegalCardContext = {}
+  ctx: LegalCardContext = {},
 ): Card[] {
   if (hand.length === 0) {
     return [];
@@ -152,9 +145,9 @@ export function getLegalCards(
   if (trick.length > 0) {
     const leadCard = trick[0].card;
     let ledSuit: Suit | null = null;
-    if (leadCard.joker === 'RED') {
-      ledSuit = 'S'; // الجوكر الأحمر أول ورقة يحدد سبيت
-    } else if (leadCard.joker === 'BLACK') {
+    if (leadCard.joker === "RED") {
+      ledSuit = "S"; // الجوكر الأحمر أول ورقة يحدد سبيت
+    } else if (leadCard.joker === "BLACK") {
       ledSuit = trump; // الماكر أول ورقة يحدد حكم
     } else {
       ledSuit = leadCard.suit ?? null;
@@ -165,9 +158,7 @@ export function getLegalCards(
     if (ledSuit) {
       if (ledSuit === trump) {
         // إذا كانت الأكلة حكم: أوراق الحكم والجوكر والماكر كلها تتبع الحكم
-        const matchingCards = hand.filter(
-          (c) => c.suit === trump || c.joker !== undefined
-        );
+        const matchingCards = hand.filter((c) => c.suit === trump || c.joker !== undefined);
         if (matchingCards.length > 0) {
           return matchingCards;
         }
@@ -191,8 +182,8 @@ export function getLegalCards(
   if (isFirstTrick && trump) {
     const isTrumpLike = (c: Card): boolean => {
       if (c.suit === trump) return true;
-      if (c.joker === 'BLACK') return true; // الماكر يتحول لحكم
-      if (c.joker === 'RED' && trump === 'S') return true; // الجوكر يتحول لـ 6 سبيت (حكم)
+      if (c.joker === "BLACK") return true; // الماكر يتحول لحكم
+      if (c.joker === "RED" && trump === "S") return true; // الجوكر يتحول لـ 6 سبيت (حكم)
       return false;
     };
 
@@ -215,7 +206,7 @@ export function getLegalCards(
  * 3. Inside each suit: sorted descending by rank (Ace down to 2)
  */
 export function sortHandCards(cards: Card[], trump?: Suit | null): Card[] {
-  const defaultSuits: Suit[] = ['S', 'H', 'C', 'D'];
+  const defaultSuits: Suit[] = ["S", "H", "C", "D"];
   const orderedSuits: Suit[] = trump
     ? [trump, ...defaultSuits.filter((s) => s !== trump)]
     : defaultSuits;
@@ -232,14 +223,14 @@ export function sortHandCards(cards: Card[], trump?: Suit | null): Card[] {
     if (a.joker && !b.joker) return -1;
     if (!a.joker && b.joker) return 1;
     if (a.joker && b.joker) {
-      if (a.joker === 'RED' && b.joker === 'BLACK') return -1;
-      if (a.joker === 'BLACK' && b.joker === 'RED') return 1;
+      if (a.joker === "RED" && b.joker === "BLACK") return -1;
+      if (a.joker === "BLACK" && b.joker === "RED") return 1;
       return 0;
     }
 
     // 2. Suit grouping
-    const weightA = a.suit ? suitOrderMap[a.suit] ?? 0 : 0;
-    const weightB = b.suit ? suitOrderMap[b.suit] ?? 0 : 0;
+    const weightA = a.suit ? (suitOrderMap[a.suit] ?? 0) : 0;
+    const weightB = b.suit ? (suitOrderMap[b.suit] ?? 0) : 0;
 
     if (weightA !== weightB) {
       return weightB - weightA;

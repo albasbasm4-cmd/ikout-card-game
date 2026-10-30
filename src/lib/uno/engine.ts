@@ -28,7 +28,12 @@ export interface Rules {
   handSize: number;
 }
 
-export const DEFAULT_RULES: Rules = { stacking: true, wild4Anytime: true, targetScore: 500, handSize: 7 };
+export const DEFAULT_RULES: Rules = {
+  stacking: true,
+  wild4Anytime: true,
+  targetScore: 500,
+  handSize: 7,
+};
 
 export interface GameState {
   id: string;
@@ -58,7 +63,8 @@ export function buildDeck(): Card[] {
   const id = () => `c${n++}`;
   for (const color of COLORS) {
     deck.push({ id: id(), color, kind: "number", value: 0 });
-    for (let v = 1; v <= 9; v++) for (let k = 0; k < 2; k++) deck.push({ id: id(), color, kind: "number", value: v });
+    for (let v = 1; v <= 9; v++)
+      for (let k = 0; k < 2; k++) deck.push({ id: id(), color, kind: "number", value: v });
     for (const kind of ["skip", "reverse", "draw2"] as Kind[])
       for (let k = 0; k < 2; k++) deck.push({ id: id(), color, kind });
   }
@@ -104,17 +110,42 @@ export interface PlayerSetup {
   difficulty: Difficulty;
 }
 
-export function newGame(setup: PlayerSetup[], mode: GameState["mode"], rules: Rules = DEFAULT_RULES, rnd = Math.random): GameState {
+export function newGame(
+  setup: PlayerSetup[],
+  mode: GameState["mode"],
+  rules: Rules = DEFAULT_RULES,
+  rnd = Math.random,
+): GameState {
   if (setup.length < 2) throw new Error("UNO needs at least 2 players");
   if (setup.length > 10) throw new Error("Max 10 players");
   const players: Player[] = setup.map((p, i) => ({
-    id: `p${i}`, name: p.name, isBot: p.isBot, difficulty: p.difficulty,
-    hand: [], saidUno: false, connected: true, score: 0,
+    id: `p${i}`,
+    name: p.name,
+    isBot: p.isBot,
+    difficulty: p.difficulty,
+    hand: [],
+    saidUno: false,
+    connected: true,
+    score: 0,
   }));
   const s: GameState = {
-    id: `g${Date.now().toString(36)}`, mode, rules, players, drawPile: [], discard: [],
-    activeColor: "red", direction: 1, current: 0, pendingDraw: 0, drawnCardId: null,
-    unoVulnerable: null, status: "playing", roundWinner: null, round: 0, version: 0, log: [],
+    id: `g${Date.now().toString(36)}`,
+    mode,
+    rules,
+    players,
+    drawPile: [],
+    discard: [],
+    activeColor: "red",
+    direction: 1,
+    current: 0,
+    pendingDraw: 0,
+    drawnCardId: null,
+    unoVulnerable: null,
+    status: "playing",
+    roundWinner: null,
+    round: 0,
+    version: 0,
+    log: [],
   };
   return dealRound(s, rnd);
 }
@@ -122,9 +153,12 @@ export function newGame(setup: PlayerSetup[], mode: GameState["mode"], rules: Ru
 export function dealRound(prev: GameState, rnd = Math.random): GameState {
   const s: GameState = structuredClone(prev);
   let deck = shuffle(buildDeck(), rnd);
-  for (const p of s.players) { p.hand = deck.splice(0, s.rules.handSize); p.saidUno = false; }
+  for (const p of s.players) {
+    p.hand = deck.splice(0, s.rules.handSize);
+    p.saidUno = false;
+  }
   // Starting card must be a number card (action/wild cards go back into the deck).
-  let idx = deck.findIndex((c) => c.kind === "number");
+  const idx = deck.findIndex((c) => c.kind === "number");
   const start = deck.splice(idx, 1)[0];
   deck = shuffle(deck, rnd);
   s.drawPile = deck;
@@ -152,12 +186,18 @@ export function canPlay(s: GameState, card: Card): boolean {
   if (s.drawnCardId && card.id !== s.drawnCardId) return false;
   if (s.pendingDraw > 0) {
     if (!s.rules.stacking) return false;
-    if (card.kind === 'draw2') return true;
-    if (card.kind === 'wild4') return s.rules.wild4Anytime || !s.players[s.current].hand.some(c => c.color === s.activeColor);
+    if (card.kind === "draw2") return true;
+    if (card.kind === "wild4")
+      return (
+        s.rules.wild4Anytime || !s.players[s.current].hand.some((c) => c.color === s.activeColor)
+      );
     return false;
   }
   if (card.kind === "wild") return true;
-  if (card.kind === "wild4") return s.rules.wild4Anytime || !s.players[s.current].hand.some((c) => c.color === s.activeColor);
+  if (card.kind === "wild4")
+    return (
+      s.rules.wild4Anytime || !s.players[s.current].hand.some((c) => c.color === s.activeColor)
+    );
   const t = top(s);
   if (card.color === s.activeColor) return true;
   if (card.kind === "number") return t.kind === "number" && t.value === card.value;
@@ -197,7 +237,10 @@ function finishRound(s: GameState, winner: number) {
     s.log.push(`${s.players[victim].name} سحب ${s.pendingDraw}`);
     s.pendingDraw = 0;
   }
-  const pts = s.players.reduce((sum, p, i) => (i === winner ? sum : sum + p.hand.reduce((a, c) => a + cardPoints(c), 0)), 0);
+  const pts = s.players.reduce(
+    (sum, p, i) => (i === winner ? sum : sum + p.hand.reduce((a, c) => a + cardPoints(c), 0)),
+    0,
+  );
   s.players[winner].score += pts;
   s.roundWinner = winner;
   s.unoVulnerable = null;
@@ -205,14 +248,28 @@ function finishRound(s: GameState, winner: number) {
   s.log.push(`${s.players[winner].name} فاز بالجولة (+${pts})`);
 }
 
-export function playCard(prev: GameState, pi: number, cardId: string, chosen?: Color, expectVersion?: number): Result {
+export function playCard(
+  prev: GameState,
+  pi: number,
+  cardId: string,
+  chosen?: Color,
+  expectVersion?: number,
+): Result {
   const g = endTurnGuards(prev, pi, expectVersion);
   if (g) return { ok: false, error: g };
   const p = prev.players[pi];
   const card = p.hand.find((c) => c.id === cardId);
   if (!card) return { ok: false, error: "البطاقة ليست في يدك" };
-  if (!canPlay(prev, card)) return { ok: false, error: prev.pendingDraw > 0 ? `عليك عقوبة +${prev.pendingDraw}: العب +2 أو +4 أو اسحب` : "البطاقة لا تطابق اللون أو الرقم أو الرمز" };
-  if ((card.kind === "wild" || card.kind === "wild4") && (!chosen || !COLORS.includes(chosen))) return { ok: false, error: "اختر لوناً" };
+  if (!canPlay(prev, card))
+    return {
+      ok: false,
+      error:
+        prev.pendingDraw > 0
+          ? `عليك عقوبة +${prev.pendingDraw}: العب +2 أو +4 أو اسحب`
+          : "البطاقة لا تطابق اللون أو الرقم أو الرمز",
+    };
+  if ((card.kind === "wild" || card.kind === "wild4") && (!chosen || !COLORS.includes(chosen)))
+    return { ok: false, error: "اختر لوناً" };
 
   const s: GameState = structuredClone(prev);
   s.version += 1;
@@ -224,8 +281,9 @@ export function playCard(prev: GameState, pi: number, cardId: string, chosen?: C
   s.activeColor = card.color === "wild" ? (chosen ?? s.activeColor) : card.color;
   s.log.push(`${me.name} لعب ${describe(card)}`);
 
-  if (me.hand.length === 1) { if (!me.saidUno) s.unoVulnerable = pi; }
-  else me.saidUno = false;
+  if (me.hand.length === 1) {
+    if (!me.saidUno) s.unoVulnerable = pi;
+  } else me.saidUno = false;
 
   let skip = 0;
   if (card.kind === "draw2") s.pendingDraw += 2;
@@ -236,7 +294,10 @@ export function playCard(prev: GameState, pi: number, cardId: string, chosen?: C
     else s.direction = (s.direction * -1) as 1 | -1;
   }
 
-  if (me.hand.length === 0) { finishRound(s, pi); return { ok: true, state: s }; }
+  if (me.hand.length === 0) {
+    finishRound(s, pi);
+    return { ok: true, state: s };
+  }
   s.current = nextIndex(s, pi, 1 + skip);
   return { ok: true, state: s };
 }
@@ -277,7 +338,8 @@ export function passTurn(prev: GameState, pi: number, expectVersion?: number): R
 }
 
 export function sayUno(prev: GameState, pi: number): Result {
-  if (prev.status !== 'playing' || !prev.players[pi]) return { ok: false, error: 'الجولة منتهية أو اللاعب غير موجود' };
+  if (prev.status !== "playing" || !prev.players[pi])
+    return { ok: false, error: "الجولة منتهية أو اللاعب غير موجود" };
   const s: GameState = structuredClone(prev);
   const p = s.players[pi];
   const eligible = (pi === s.current && p.hand.length === 2) || s.unoVulnerable === pi;
@@ -290,8 +352,10 @@ export function sayUno(prev: GameState, pi: number): Result {
 }
 
 export function catchUno(prev: GameState, catcher: number): Result {
-  if (prev.status !== 'playing' || !prev.players[catcher]) return { ok: false, error: 'الجولة منتهية أو اللاعب غير موجود' };
-  if (prev.unoVulnerable === null || prev.unoVulnerable === catcher) return { ok: false, error: "لا يوجد لاعب لم يقل أونو" };
+  if (prev.status !== "playing" || !prev.players[catcher])
+    return { ok: false, error: "الجولة منتهية أو اللاعب غير موجود" };
+  if (prev.unoVulnerable === null || prev.unoVulnerable === catcher)
+    return { ok: false, error: "لا يوجد لاعب لم يقل أونو" };
   const s: GameState = structuredClone(prev);
   const victim = prev.unoVulnerable;
   s.version += 1;
@@ -302,7 +366,20 @@ export function catchUno(prev: GameState, catcher: number): Result {
 }
 
 export function describe(c: Card): string {
-  const col: Record<string, string> = { red: "أحمر", blue: "أزرق", green: "أخضر", yellow: "أصفر", wild: "" };
-  const k: Record<Kind, string> = { number: String(c.value), skip: "تخطي", reverse: "عكس", draw2: "+2", wild: "جوكر لون", wild4: "+4" };
+  const col: Record<string, string> = {
+    red: "أحمر",
+    blue: "أزرق",
+    green: "أخضر",
+    yellow: "أصفر",
+    wild: "",
+  };
+  const k: Record<Kind, string> = {
+    number: String(c.value),
+    skip: "تخطي",
+    reverse: "عكس",
+    draw2: "+2",
+    wild: "جوكر لون",
+    wild4: "+4",
+  };
   return `${k[c.kind]} ${col[c.color]}`.trim();
 }

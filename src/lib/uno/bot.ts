@@ -1,9 +1,15 @@
-import { canPlay, cardPoints, COLORS, nextIndex, type Card, type Color, type GameState } from "./engine";
+import {
+  canPlay,
+  cardPoints,
+  COLORS,
+  nextIndex,
+  type Card,
+  type Color,
+  type GameState,
+} from "./engine";
 
 export type BotMove =
-  | { type: "play"; cardId: string; color?: Color }
-  | { type: "draw" }
-  | { type: "pass" };
+  { type: "play"; cardId: string; color?: Color } | { type: "draw" } | { type: "pass" };
 
 function bestColor(hand: Card[]): Color {
   const counts = COLORS.map((c) => ({ c, n: hand.filter((h) => h.color === c).length }));
@@ -41,7 +47,11 @@ export function chooseMove(s: GameState, pi: number): BotMove {
   }
   const isWild = pick.kind === "wild" || pick.kind === "wild4";
   const rest = me.hand.filter((c) => c.id !== pick.id);
-  const color = isWild ? (me.difficulty === "easy" ? COLORS[Math.floor(Math.random() * 4)] : bestColor(rest)) : undefined;
+  const color = isWild
+    ? me.difficulty === "easy"
+      ? COLORS[Math.floor(Math.random() * 4)]
+      : bestColor(rest)
+    : undefined;
   return color ? { type: "play", cardId: pick.id, color } : { type: "play", cardId: pick.id };
 }
 

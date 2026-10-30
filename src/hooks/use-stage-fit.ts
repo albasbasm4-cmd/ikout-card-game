@@ -1,12 +1,12 @@
-import { useEffect, type RefObject } from 'react';
+import { useEffect, type RefObject } from "react";
 
 /** Read the device safe-area insets (notch / home indicator) in px. */
 function readSafeInsets() {
-  const probe = document.createElement('div');
+  const probe = document.createElement("div");
   probe.style.cssText =
-    'position:fixed;visibility:hidden;pointer-events:none;' +
-    'padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);' +
-    'padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);';
+    "position:fixed;visibility:hidden;pointer-events:none;" +
+    "padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);" +
+    "padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);";
   document.body.appendChild(probe);
   const cs = getComputedStyle(probe);
   const r = {
@@ -29,7 +29,7 @@ export function useStageFit(
   stageRef: RefObject<HTMLDivElement | null>,
   stageW = 1536,
   stageH = 691,
-  orientation: 'landscape' | 'portrait' = 'landscape'
+  orientation: "landscape" | "portrait" = "landscape",
 ) {
   useEffect(() => {
     const fit = () => {
@@ -43,15 +43,13 @@ export function useStageFit(
       const h = Math.max(1, vh - ins.t - ins.b);
       const isDevicePortrait = h > w;
 
-      const shouldRotate = orientation === 'landscape' && isDevicePortrait;
-      const s = shouldRotate
-        ? Math.min(h / stageW, w / stageH)
-        : Math.min(w / stageW, h / stageH);
+      const shouldRotate = orientation === "landscape" && isDevicePortrait;
+      const s = shouldRotate ? Math.min(h / stageW, w / stageH) : Math.min(w / stageW, h / stageH);
 
       const dx = (ins.l - ins.r) / 2;
       const dy = (ins.t - ins.b) / 2;
       el.style.transform = `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))${
-        shouldRotate ? ' rotate(90deg)' : ''
+        shouldRotate ? " rotate(90deg)" : ""
       } scale(${s})`;
     };
 
@@ -60,19 +58,19 @@ export function useStageFit(
     const t2 = window.setTimeout(fit, 250);
     const t3 = window.setTimeout(fit, 600);
 
-    window.addEventListener('resize', fit);
-    window.addEventListener('orientationchange', fit);
-    window.visualViewport?.addEventListener('resize', fit);
-    window.visualViewport?.addEventListener('scroll', fit);
+    window.addEventListener("resize", fit);
+    window.addEventListener("orientationchange", fit);
+    window.visualViewport?.addEventListener("resize", fit);
+    window.visualViewport?.addEventListener("scroll", fit);
 
     return () => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
       window.clearTimeout(t3);
-      window.removeEventListener('resize', fit);
-      window.removeEventListener('orientationchange', fit);
-      window.visualViewport?.removeEventListener('resize', fit);
-      window.visualViewport?.removeEventListener('scroll', fit);
+      window.removeEventListener("resize", fit);
+      window.removeEventListener("orientationchange", fit);
+      window.visualViewport?.removeEventListener("resize", fit);
+      window.visualViewport?.removeEventListener("scroll", fit);
     };
   }, [stageRef, stageW, stageH, orientation]);
 }

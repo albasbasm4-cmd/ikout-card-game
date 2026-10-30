@@ -3,25 +3,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Card187, GameState187, Player187, Suit187 } from '../types';
+import { Card187, GameState187, Player187, Suit187 } from "../types";
 
 export type Client187Packet =
-  | { type: 'CHAT'; seat: number; message: string }
-  | { type: 'JOIN'; playerName: string; characterId?: string; clientToken: string }
-  | { type: 'LEAVE'; clientToken: string }
-  | { type: 'BID'; seat: number; bid: number }
-  | { type: 'DISCARD'; seat: number; cardIds: string[] }
-  | { type: 'TRUMP'; seat: number; trump: Suit187 }
-  | { type: 'PLAY_CARD'; seat: number; card: Card187 }
-  | { type: 'EARLY_SETTLE'; seat: number; continuePlay: boolean }
-  | { type: 'CHEAT_REPORT'; reporterSeat: number; accusedSeat: number; suit: Suit187 };
+  | { type: "CHAT"; seat: number; message: string }
+  | { type: "JOIN"; playerName: string; characterId?: string; clientToken: string }
+  | { type: "LEAVE"; clientToken: string }
+  | { type: "BID"; seat: number; bid: number }
+  | { type: "DISCARD"; seat: number; cardIds: string[] }
+  | { type: "TRUMP"; seat: number; trump: Suit187 }
+  | { type: "PLAY_CARD"; seat: number; card: Card187 }
+  | { type: "EARLY_SETTLE"; seat: number; continuePlay: boolean }
+  | { type: "CHEAT_REPORT"; reporterSeat: number; accusedSeat: number; suit: Suit187 };
 
 export type Host187Packet =
-  | { type: 'CHAT_BUBBLE'; seat: number; message: string }
-  | { type: 'ROOM_SEATS_UPDATE'; seats: (Player187 | null)[] }
-  | { type: 'GAME_START'; state: GameState187; yourSeat: number }
-  | { type: 'STATE_UPDATE'; state: GameState187 }
-  | { type: 'ERROR'; message: string };
+  | { type: "CHAT_BUBBLE"; seat: number; message: string }
+  | { type: "ROOM_SEATS_UPDATE"; seats: (Player187 | null)[] }
+  | { type: "GAME_START"; state: GameState187; yourSeat: number }
+  | { type: "STATE_UPDATE"; state: GameState187 }
+  | { type: "ERROR"; message: string };
 
 export class Room187Channel {
   private channel: BroadcastChannel | null = null;
@@ -29,7 +29,7 @@ export class Room187Channel {
 
   constructor(roomCode: string) {
     this.channelName = `ikout187_room_${roomCode.trim().toUpperCase()}`;
-    if (typeof BroadcastChannel !== 'undefined') {
+    if (typeof BroadcastChannel !== "undefined") {
       this.channel = new BroadcastChannel(this.channelName);
     }
   }
@@ -45,9 +45,9 @@ export class Room187Channel {
     const listener = (event: MessageEvent) => {
       handler(event.data);
     };
-    this.channel.addEventListener('message', listener);
+    this.channel.addEventListener("message", listener);
     return () => {
-      this.channel?.removeEventListener('message', listener);
+      this.channel?.removeEventListener("message", listener);
     };
   }
 

@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Card187, GameState187, Suit187 } from './types';
+import { Card187, GameState187, Suit187 } from "./types";
 import {
   getCardPoints,
   getLegalCards187,
   getRankStrength,
   resolveTrickWinner187,
   SUITS_187,
-} from './rules';
+} from "./rules";
 
 export const BOT_MAX_BID_187 = 140;
 
@@ -29,7 +29,7 @@ export function evaluateBotBid(hand: Card187[], currentHighBid: number | null): 
 
   for (const card of hand) {
     suitCounts[card.suit]++;
-    if (card.rank === 2) highCardPoints += card.suit === 'C' ? 25 : 15;
+    if (card.rank === 2) highCardPoints += card.suit === "C" ? 25 : 15;
     else if (card.rank === 14) highCardPoints += 12;
     else if (card.rank === 13) highCardPoints += 6;
     else if (card.rank === 10) highCardPoints += 8;
@@ -62,7 +62,7 @@ export function chooseBotTrump(hand: Card187[]): Suit187 {
     scores[card.suit] += strength + 5;
   }
 
-  let bestSuit: Suit187 = 'S';
+  let bestSuit: Suit187 = "S";
   let bestScore = -1;
 
   for (const suit of SUITS_187) {
@@ -83,7 +83,7 @@ export function chooseBotDiscards(hand: Card187[], trumpSuit: Suit187): string[]
     if (card.suit === trumpSuit) {
       priority += 1000 + getRankStrength(card.rank) * 10;
     } else {
-      if (card.suit === 'C' && card.rank === 2) priority += 900;
+      if (card.suit === "C" && card.rank === 2) priority += 900;
       else if (card.rank === 2) priority += 800;
       else if (card.rank === 14) priority += 700;
       else priority += getRankStrength(card.rank) * 5;
@@ -106,7 +106,7 @@ export function chooseBotCardToPlay(state: GameState187, seat: number): Card187 
     state.trump,
     seat,
     state.bidderSeat!,
-    state.trickHistory.length
+    state.trickHistory.length,
   );
 
   if (legal.length === 1) {

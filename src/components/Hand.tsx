@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useReducedMotion } from 'motion/react';
-import { Card as CardType, Suit } from '../types/kout';
-import { Card } from './Card';
-import { playTapSound } from '../utils/audio';
-import { commitsCardDrag } from '../utils/gamePresentation';
-import { registerCardLaunch, screenDeltaToLocal } from '../utils/cardFlight';
+import React, { useState, useMemo, useRef, useEffect } from "react";
+import { useReducedMotion } from "motion/react";
+import { Card as CardType, Suit } from "../types/kout";
+import { Card } from "./Card";
+import { playTapSound } from "../utils/audio";
+import { commitsCardDrag } from "../utils/gamePresentation";
+import { registerCardLaunch, screenDeltaToLocal } from "../utils/cardFlight";
 
 export interface HandProps {
   cards: CardType[];
@@ -20,7 +20,7 @@ export interface HandProps {
   onSelectCard?: (card: CardType) => void;
   isMyTurn?: boolean;
   className?: string;
-  cardSize?: 'sm' | 'md' | 'lg';
+  cardSize?: "sm" | "md" | "lg";
   autoSort?: boolean;
   /** Maximum horizontal distance between neighbouring cards (keeps the fan tight like the reference). */
   cardStep?: number;
@@ -45,8 +45,8 @@ export const Hand: React.FC<HandProps> = ({
   onPlayCard,
   onSelectCard,
   isMyTurn = true,
-  className = '',
-  cardSize = 'md',
+  className = "",
+  cardSize = "md",
   autoSort = true,
   cardStep,
 }) => {
@@ -68,7 +68,7 @@ export const Hand: React.FC<HandProps> = ({
     if (!element) return;
     const measure = () => {
       setFanWidth(element.clientWidth - 24);
-      const card = element.querySelector<HTMLElement>('.playing-card');
+      const card = element.querySelector<HTMLElement>(".playing-card");
       if (card) setMeasuredCardWidth(card.offsetWidth);
     };
     const observer = new ResizeObserver(measure);
@@ -95,7 +95,7 @@ export const Hand: React.FC<HandProps> = ({
     return [...cards].sort((a, b) => {
       if (a.joker && !b.joker) return 1;
       if (!a.joker && b.joker) return -1;
-      if (a.joker && b.joker) return a.joker === 'RED' ? -1 : 1;
+      if (a.joker && b.joker) return a.joker === "RED" ? -1 : 1;
       const sa = a.suit ? suitOrder[a.suit] : 9;
       const sb = b.suit ? suitOrder[b.suit] : 9;
       if (sa !== sb) return sa - sb;
@@ -114,7 +114,9 @@ export const Hand: React.FC<HandProps> = ({
   const count = displayCards.length;
   if (count === 0) {
     return (
-      <div className={`flex items-center justify-center p-3 text-xs text-muted-foreground ${className}`}>
+      <div
+        className={`flex items-center justify-center p-3 text-xs text-muted-foreground ${className}`}
+      >
         لا توجد أوراق في اليد
       </div>
     );
@@ -141,14 +143,14 @@ export const Hand: React.FC<HandProps> = ({
     const isLegal = legalSet ? legalSet.has(card.id) && isMyTurn : isMyTurn;
 
     if (!isMyTurn) {
-      setWarningTip('ليس دورك الآن!');
+      setWarningTip("ليس دورك الآن!");
       setTimeout(() => setWarningTip(null), 1200);
       return;
     }
 
     if (!isLegal) {
       setShakingCardId(card.id);
-      setWarningTip('يجب عليك اتباع لون اللعب!');
+      setWarningTip("يجب عليك اتباع لون اللعب!");
       playTapSound();
       setTimeout(() => setShakingCardId(null), 400);
       setTimeout(() => setWarningTip(null), 1400);
@@ -169,11 +171,24 @@ export const Hand: React.FC<HandProps> = ({
     setInternalSelectedId(null);
   };
 
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>, card: CardType, isLegal: boolean) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const onPointerDown = (
+    e: React.PointerEvent<HTMLDivElement>,
+    card: CardType,
+    isLegal: boolean,
+  ) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
     if (launchedId === card.id) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { id: card.id, pointerId: e.pointerId, sx: e.clientX, sy: e.clientY, active: false, card, isLegal, wrapper: e.currentTarget };
+    drag.current = {
+      id: card.id,
+      pointerId: e.pointerId,
+      sx: e.clientX,
+      sy: e.clientY,
+      active: false,
+      card,
+      isLegal,
+      wrapper: e.currentTarget,
+    };
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -252,7 +267,7 @@ export const Hand: React.FC<HandProps> = ({
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerCancel}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
+                if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
                   handleCardClick(card);
                 }
@@ -264,11 +279,11 @@ export const Hand: React.FC<HandProps> = ({
                   : `rotate(${rotateDeg}deg) translateY(${translateY}px)`,
                 zIndex: isDragging ? 70 : isSelected ? 40 : index + 10,
                 animationDelay: `${index * 45}ms`,
-                transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), margin 0.2s ease-out',
-                touchAction: 'none',
-                visibility: isLaunched ? 'hidden' : undefined,
+                transition: "transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), margin 0.2s ease-out",
+                touchAction: "none",
+                visibility: isLaunched ? "hidden" : undefined,
               }}
-              className={`hand-card-slot origin-bottom will-change-transform outline-none ${reducedMotion ? '' : 'animate-deal-card'} ${isShaking ? 'animate-card-shake' : ''}`}
+              className={`hand-card-slot origin-bottom will-change-transform outline-none ${reducedMotion ? "" : "animate-deal-card"} ${isShaking ? "animate-card-shake" : ""}`}
             >
               <div
                 ref={(el) => {
@@ -278,12 +293,18 @@ export const Hand: React.FC<HandProps> = ({
                 style={{
                   transform: pos
                     ? `translate(${pos.x}px, ${pos.y}px) rotate(${isSelected ? 0 : -rotateDeg}deg) scale(1.06)`
-                    : 'none',
-                  transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  cursor: isMyTurn && isLegal ? 'grab' : 'default',
+                    : "none",
+                  transition: isDragging ? "none" : "transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                  cursor: isMyTurn && isLegal ? "grab" : "default",
                 }}
               >
-                <Card card={card} faceUp={true} isLegal={!isMyTurn || isLegal} isSelected={isSelected} size={cardSize} />
+                <Card
+                  card={card}
+                  faceUp={true}
+                  isLegal={!isMyTurn || isLegal}
+                  isSelected={isSelected}
+                  size={cardSize}
+                />
               </div>
             </div>
           );

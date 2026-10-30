@@ -3,17 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { ITransport, IHostTransport, Unsubscribe } from './ITransport';
-import { ClientPacket, HostPacket } from './protocol';
+import { ITransport, IHostTransport, Unsubscribe } from "./ITransport";
+import { ClientPacket, HostPacket } from "./protocol";
 
 /**
  * In-memory hub that connects simulated client transports with a host session
  */
 export class LoopbackHub {
   private clientHandlers = new Map<string, Set<(packet: HostPacket) => void>>();
-  private hostMessageHandlers = new Set<
-    (playerToken: string, packet: ClientPacket) => void
-  >();
+  private hostMessageHandlers = new Set<(playerToken: string, packet: ClientPacket) => void>();
   private hostConnectHandlers = new Set<(playerToken: string) => void>();
   private hostDisconnectHandlers = new Set<(playerToken: string) => void>();
 
@@ -94,7 +92,7 @@ export class LoopbackHub {
       },
 
       onClientMessage: (
-        handler: (playerToken: string, packet: ClientPacket) => void
+        handler: (playerToken: string, packet: ClientPacket) => void,
       ): Unsubscribe => {
         this.hostMessageHandlers.add(handler);
         return () => {
@@ -109,9 +107,7 @@ export class LoopbackHub {
         };
       },
 
-      onClientDisconnected: (
-        handler: (playerToken: string) => void
-      ): Unsubscribe => {
+      onClientDisconnected: (handler: (playerToken: string) => void): Unsubscribe => {
         this.hostDisconnectHandlers.add(handler);
         return () => {
           this.hostDisconnectHandlers.delete(handler);

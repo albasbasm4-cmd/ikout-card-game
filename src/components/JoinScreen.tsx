@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 import {
   Camera,
   Keyboard,
@@ -15,9 +15,9 @@ import {
   Sparkles,
   Shield,
   Loader2,
-} from 'lucide-react';
-import { parseRoomPayload } from '../network/localIp';
-import { LocalClientSocket, ClientSocketStatus } from '../network/LocalClientSocket';
+} from "lucide-react";
+import { parseRoomPayload } from "../network/localIp";
+import { LocalClientSocket, ClientSocketStatus } from "../network/LocalClientSocket";
 
 /**
  * Pluggable Barcode / QR Scanner interface so native hardware scanners can be plugged in later
@@ -38,7 +38,7 @@ export class WebBarcodeScanner implements IBarcodeScanner {
 
   public async isAvailable(): Promise<boolean> {
     return (
-      typeof navigator !== 'undefined' &&
+      typeof navigator !== "undefined" &&
       !!navigator.mediaDevices &&
       !!navigator.mediaDevices.getUserMedia
     );
@@ -48,11 +48,11 @@ export class WebBarcodeScanner implements IBarcodeScanner {
     this.scanning = true;
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('الكاميرا غير مدعومة على هذا المتصفح');
+      throw new Error("الكاميرا غير مدعومة على هذا المتصفح");
     }
 
     this.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
+      video: { facingMode: "environment" },
     });
 
     if (videoElement) {
@@ -63,13 +63,13 @@ export class WebBarcodeScanner implements IBarcodeScanner {
     // Check for native BarcodeDetector API in modern Chromium / Android
     const BarcodeDetectorClass = (window as any).BarcodeDetector;
     if (BarcodeDetectorClass && videoElement) {
-      const detector = new BarcodeDetectorClass({ formats: ['qr_code'] });
+      const detector = new BarcodeDetectorClass({ formats: ["qr_code"] });
 
       return new Promise<string>((resolve, reject) => {
         const interval = setInterval(async () => {
           if (!this.scanning) {
             clearInterval(interval);
-            reject(new Error('تم إيقاف المسح'));
+            reject(new Error("تم إيقاف المسح"));
             return;
           }
           try {
@@ -90,10 +90,10 @@ export class WebBarcodeScanner implements IBarcodeScanner {
     // Prompt user for scanned payload
     return new Promise<string>((resolve) => {
       const manualInput = window.prompt(
-        'تعذر تشغيل قارئ الباركود التلقائي. يرجى إدخال رابط أو رمز الغرفة:'
+        "تعذر تشغيل قارئ الباركود التلقائي. يرجى إدخال رابط أو رمز الغرفة:",
       );
       this.stopScan();
-      resolve(manualInput || 'ws://192.168.1.105:8080');
+      resolve(manualInput || "ws://192.168.1.105:8080");
     });
   }
 
@@ -113,7 +113,7 @@ export interface JoinScreenProps {
   /** رمز غرفة مُدخل مسبقاً (من شاشة الغرفة). */
   initialCode?: string;
   /** افتح الشاشة مباشرة في وضع المسح أو الإدخال اليدوي. */
-  initialMode?: 'SCAN' | 'MANUAL';
+  initialMode?: "SCAN" | "MANUAL";
   className?: string;
 }
 
@@ -123,21 +123,19 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
   scannerOverride,
   initialCode,
   initialMode,
-  className = '',
+  className = "",
 }) => {
-  const [mode, setMode] = useState<'SCAN' | 'MANUAL'>(initialMode ?? 'SCAN');
-  const [playerName, setPlayerName] = useState<string>('لاعب');
-  const [hostIp, setHostIp] = useState<string>('192.168.1.105');
-  const [roomCode, setRoomCode] = useState<string>(initialCode ?? '');
-  const [status, setStatus] = useState<
-    'IDLE' | 'SCANNING' | 'CONNECTING' | 'ERROR' | 'SUCCESS'
-  >('IDLE');
+  const [mode, setMode] = useState<"SCAN" | "MANUAL">(initialMode ?? "SCAN");
+  const [playerName, setPlayerName] = useState<string>("لاعب");
+  const [hostIp, setHostIp] = useState<string>("192.168.1.105");
+  const [roomCode, setRoomCode] = useState<string>(initialCode ?? "");
+  const [status, setStatus] = useState<"IDLE" | "SCANNING" | "CONNECTING" | "ERROR" | "SUCCESS">(
+    "IDLE",
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const scannerRef = useRef<IBarcodeScanner>(
-    scannerOverride || new WebBarcodeScanner()
-  );
+  const scannerRef = useRef<IBarcodeScanner>(scannerOverride || new WebBarcodeScanner());
   const socketRef = useRef<LocalClientSocket | null>(null);
 
   // Clean up scanner on unmount
@@ -151,7 +149,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
   }, []);
 
   const handleStartScan = async () => {
-    setStatus('SCANNING');
+    setStatus("SCANNING");
     setErrorMessage(null);
 
     try {
@@ -159,7 +157,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
       handlePayloadScanned(rawPayload);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setStatus('ERROR');
+      setStatus("ERROR");
       setErrorMessage(`تعذر مسح رمز QR: ${msg}. يمكنك إدخال البيانات يدوياً.`);
     }
   };
@@ -172,7 +170,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
   };
 
   const connectToHost = (ip: string, port = 8080, code?: string) => {
-    setStatus('CONNECTING');
+    setStatus("CONNECTING");
     setErrorMessage(null);
 
     const targetUrl = `ws://${ip}:${port}`;
@@ -182,7 +180,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
       const socket = new LocalClientSocket({
         url: targetUrl,
         playerToken: token,
-        playerName: playerName.trim() || 'لاعب زائر',
+        playerName: playerName.trim() || "لاعب زائر",
         maxReconnectAttempts: 4,
         initialBackoffMs: 600,
       });
@@ -190,31 +188,31 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
       socketRef.current = socket;
 
       const connectionTimeout = setTimeout(() => {
-        if (socket.getStatus() !== 'CONNECTED') {
+        if (socket.getStatus() !== "CONNECTED") {
           socket.disconnect();
-          setStatus('ERROR');
+          setStatus("ERROR");
           setErrorMessage(
-            'فشل الاتصال بمضيف الغرفة (انتهت المهلة). تأكد من اتصال كلا الجهازين بنفس شبكة الـ Wi-Fi وأن المضيف قام ببدء السيرفر.'
+            "فشل الاتصال بمضيف الغرفة (انتهت المهلة). تأكد من اتصال كلا الجهازين بنفس شبكة الـ Wi-Fi وأن المضيف قام ببدء السيرفر.",
           );
         }
       }, 5000);
 
       socket.onStatusChange((sockStatus: ClientSocketStatus) => {
-        if (sockStatus === 'CONNECTED') {
+        if (sockStatus === "CONNECTED") {
           clearTimeout(connectionTimeout);
-          setStatus('SUCCESS');
+          setStatus("SUCCESS");
           if (onConnected) {
             onConnected(socket, { ip, port, roomCode: code });
           }
-        } else if (sockStatus === 'HOST_DROPPED') {
+        } else if (sockStatus === "HOST_DROPPED") {
           clearTimeout(connectionTimeout);
-          setStatus('ERROR');
-          setErrorMessage('تعذر العثور على المضيف أو غادر الغرفة.');
+          setStatus("ERROR");
+          setErrorMessage("تعذر العثور على المضيف أو غادر الغرفة.");
         }
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setStatus('ERROR');
+      setStatus("ERROR");
       setErrorMessage(`خطأ أثناء محاولة الاتصال: ${msg}`);
     }
   };
@@ -222,7 +220,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!hostIp.trim()) {
-      setErrorMessage('يرجى إدخال عنوان IP الخاص بالمضيف.');
+      setErrorMessage("يرجى إدخال عنوان IP الخاص بالمضيف.");
       return;
     }
     const { ip, port } = parseRoomPayload(hostIp);
@@ -235,7 +233,6 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
       className={`min-h-[100dvh] w-full bg-neutral-950 flex justify-center items-center p-0 sm:p-4 text-amber-50 select-none ${className}`}
     >
       <div className="relative w-full max-w-md h-[100dvh] pt-safe pb-safe px-safe sm:h-[844px] sm:max-h-[92vh] sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col wood-rail border border-amber-900/40">
-        
         {/* Top Header */}
         <header className="relative z-10 px-4 py-3 flex items-center justify-between border-b border-amber-500/20 bg-gradient-to-b from-black/80 to-black/40 backdrop-blur-md">
           <div className="flex items-center gap-2">
@@ -251,9 +248,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
               <ArrowRight className="w-4 h-4" />
             </button>
             <div>
-              <h1 className="text-base font-bold text-amber-300 leading-none">
-                الانضمام لغرفة
-              </h1>
+              <h1 className="text-base font-bold text-amber-300 leading-none">الانضمام لغرفة</h1>
               <p className="text-[11px] text-amber-200/60 font-medium">
                 الاتصال بشبكة اللعب المحلية
               </p>
@@ -272,14 +267,14 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
             <button
               type="button"
               onClick={() => {
-                setMode('SCAN');
-                setStatus('IDLE');
+                setMode("SCAN");
+                setStatus("IDLE");
                 setErrorMessage(null);
               }}
               className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                mode === 'SCAN'
-                  ? 'bg-amber-400 text-black shadow-md font-extrabold'
-                  : 'text-amber-200/70 hover:text-white'
+                mode === "SCAN"
+                  ? "bg-amber-400 text-black shadow-md font-extrabold"
+                  : "text-amber-200/70 hover:text-white"
               }`}
             >
               <Camera className="w-4 h-4" />
@@ -289,15 +284,15 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
             <button
               type="button"
               onClick={() => {
-                setMode('MANUAL');
+                setMode("MANUAL");
                 scannerRef.current.stopScan();
-                setStatus('IDLE');
+                setStatus("IDLE");
                 setErrorMessage(null);
               }}
               className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                mode === 'MANUAL'
-                  ? 'bg-amber-400 text-black shadow-md font-extrabold'
-                  : 'text-amber-200/70 hover:text-white'
+                mode === "MANUAL"
+                  ? "bg-amber-400 text-black shadow-md font-extrabold"
+                  : "text-amber-200/70 hover:text-white"
               }`}
             >
               <Keyboard className="w-4 h-4" />
@@ -308,7 +303,6 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
 
         {/* Content Body */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-          
           {/* Player Name Input */}
           <div className="bg-black/40 border border-amber-500/20 rounded-2xl p-3 shadow-md backdrop-blur-xs">
             <label className="block text-[11px] font-bold text-amber-200/80 mb-1">
@@ -324,16 +318,11 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           </div>
 
           {/* Mode 1: Camera QR Scanner */}
-          {mode === 'SCAN' && (
+          {mode === "SCAN" && (
             <div className="bg-black/40 border border-amber-500/20 rounded-2xl p-4 shadow-md backdrop-blur-xs flex flex-col items-center text-center">
               <div className="relative w-60 h-60 rounded-2xl overflow-hidden border-2 border-dashed border-amber-400/50 bg-black flex items-center justify-center mb-3">
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  playsInline
-                  muted
-                />
-                {status !== 'SCANNING' && (
+                <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+                {status !== "SCANNING" && (
                   <div className="absolute inset-0 bg-neutral-900/90 flex flex-col items-center justify-center p-4">
                     <Camera className="w-10 h-10 text-amber-400/60 mb-2" />
                     <span className="text-xs text-amber-200/70">
@@ -345,18 +334,18 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
 
               <button
                 type="button"
-                disabled={status === 'CONNECTING'}
+                disabled={status === "CONNECTING"}
                 onClick={handleStartScan}
                 className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-600 hover:to-emerald-700 text-white font-extrabold text-xs border border-emerald-400/40 shadow-lg active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <Camera className="w-4 h-4" />
-                <span>{status === 'SCANNING' ? 'جارِ المسح...' : 'تشغيل الكاميرا للمسح'}</span>
+                <span>{status === "SCANNING" ? "جارِ المسح..." : "تشغيل الكاميرا للمسح"}</span>
               </button>
             </div>
           )}
 
           {/* Mode 2: Manual IP & Room Code Form */}
-          {mode === 'MANUAL' && (
+          {mode === "MANUAL" && (
             <form
               onSubmit={handleManualSubmit}
               className="bg-black/40 border border-amber-500/20 rounded-2xl p-4 shadow-md backdrop-blur-xs space-y-3"
@@ -393,10 +382,10 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
 
               <button
                 type="submit"
-                disabled={status === 'CONNECTING'}
+                disabled={status === "CONNECTING"}
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black text-sm shadow-xl active:scale-98 cursor-pointer flex items-center justify-center gap-2 mt-2"
               >
-                {status === 'CONNECTING' ? (
+                {status === "CONNECTING" ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span>جارِ الاتصال...</span>
@@ -412,17 +401,13 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           )}
 
           {/* Status / Error Box */}
-          {status === 'ERROR' && errorMessage && (
+          {status === "ERROR" && errorMessage && (
             <div className="bg-rose-950/80 border border-rose-500/50 rounded-2xl p-4 shadow-lg text-rose-200 animate-in fade-in duration-200">
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                 <div className="flex-1 text-right">
-                  <h3 className="text-xs font-bold text-rose-300 mb-1">
-                    فشل الاتصال
-                  </h3>
-                  <p className="text-[11px] leading-relaxed text-rose-200/80">
-                    {errorMessage}
-                  </p>
+                  <h3 className="text-xs font-bold text-rose-300 mb-1">فشل الاتصال</h3>
+                  <p className="text-[11px] leading-relaxed text-rose-200/80">{errorMessage}</p>
                 </div>
               </div>
 
@@ -430,7 +415,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  if (mode === 'SCAN') handleStartScan();
+                  if (mode === "SCAN") handleStartScan();
                   else handleManualSubmit({ preventDefault: () => {} } as any);
                 }}
                 className="w-full mt-3 py-2 rounded-xl bg-rose-900/80 hover:bg-rose-800 text-xs font-bold text-white border border-rose-500/40 flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer shadow"
@@ -442,7 +427,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           )}
 
           {/* Connecting State */}
-          {status === 'CONNECTING' && (
+          {status === "CONNECTING" && (
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-center flex flex-col items-center">
               <Loader2 className="w-6 h-6 text-amber-400 animate-spin mb-2" />
               <span className="text-xs font-bold text-amber-300">
@@ -455,7 +440,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           )}
 
           {/* Success State */}
-          {status === 'SUCCESS' && (
+          {status === "SUCCESS" && (
             <div className="bg-emerald-950/80 border border-emerald-500/40 rounded-2xl p-4 text-center flex flex-col items-center text-emerald-200">
               <CheckCircle2 className="w-7 h-7 text-emerald-400 mb-1" />
               <span className="text-sm font-black text-white">تم الاتصال بالغرفة بنجاح!</span>
@@ -464,7 +449,6 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
               </span>
             </div>
           )}
-
         </div>
 
         {/* Footer */}
@@ -472,7 +456,6 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           <span>آي كوت • لعب جماعي محلي</span>
           <span>منفذ السيرفر: 8080</span>
         </footer>
-
       </div>
     </div>
   );

@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { GameState, Suit, TrickPlay, Card } from '../types/kout';
-import { RULES } from './config';
+import type { GameState, Suit, TrickPlay, Card } from "../types/kout";
+import { RULES } from "./config";
 
-export type ReportedCardType = Suit | 'JOKER' | 'MAKER';
+export type ReportedCardType = Suit | "JOKER" | "MAKER";
 
 export const isType = (c: Card, t: ReportedCardType): boolean =>
-  t === 'JOKER' ? c.joker === 'RED' : t === 'MAKER' ? c.joker === 'BLACK' : c.suit === t;
+  t === "JOKER" ? c.joker === "RED" : t === "MAKER" ? c.joker === "BLACK" : c.suit === t;
 
 /**
  * تحديد نوع الورقة التي طلبتها الأكلة (Led Suit)
@@ -20,8 +20,8 @@ export const isType = (c: Card, t: ReportedCardType): boolean =>
 export function getLedSuitOfTrick(plays: TrickPlay[], trump: Suit | null): Suit | null {
   const lead = plays[0];
   if (!lead) return null;
-  if (lead.card.joker === 'RED') return 'S';
-  if (lead.card.joker === 'BLACK') return trump;
+  if (lead.card.joker === "RED") return "S";
+  if (lead.card.joker === "BLACK") return trump;
   return lead.card.suit ?? null;
 }
 
@@ -32,7 +32,7 @@ export function getLedSuitOfTrick(plays: TrickPlay[], trump: Suit | null): Suit 
 export function verifyCheatReport(
   state: GameState,
   accusedSeat: number,
-  t: ReportedCardType
+  t: ReportedCardType,
 ): boolean {
   const trump = state.trump;
 
@@ -61,8 +61,7 @@ export function verifyCheatReport(
     if (!accusedPlay) continue;
 
     // هل النوع المبلغ عنه يطابق الورقة المطلوبة في الأكلة؟
-    const matchesTarget =
-      t === ledSuit || (ledSuit === trump && (t === 'MAKER' || t === trump));
+    const matchesTarget = t === ledSuit || (ledSuit === trump && (t === "MAKER" || t === trump));
     if (!matchesTarget) continue;
 
     // هل نزل ورقة تتبع المطلوب أو جوكر مسموح؟
@@ -70,7 +69,7 @@ export function verifyCheatReport(
     const followedSuit =
       playedCard.suit === ledSuit ||
       (ledSuit === trump && playedCard.joker !== undefined) ||
-      (playedCard.joker !== undefined); // الجوكر مسموح إنزاله بأي وقت
+      playedCard.joker !== undefined; // الجوكر مسموح إنزاله بأي وقت
 
     // إذا اتبع الأكلة، فإنه لم يكسر التبعية في هذه اللعبة
     if (followedSuit) continue;
@@ -109,7 +108,7 @@ export function applyCheatVerdict(
   state: GameState,
   reporterSeat: number,
   accusedSeat: number,
-  cardType: ReportedCardType
+  cardType: ReportedCardType,
 ): CheatResolutionResult {
   const confirmed = verifyCheatReport(state, accusedSeat, cardType);
   const highBid = state.highBid ?? 5;
@@ -143,19 +142,19 @@ export function applyCheatVerdict(
     ...state,
     scores: newScores,
     dealer: nextDealer,
-    phase: isGameOver ? 'GAME_END' : 'ROUND_END',
+    phase: isGameOver ? "GAME_END" : "ROUND_END",
     version: state.version + 1,
   };
 
   const accusedName = state.players?.[accusedSeat]?.name || `لاعب ${accusedSeat + 1}`;
   const reporterName = state.players?.[reporterSeat]?.name || `لاعب ${reporterSeat + 1}`;
   const suitNames: Record<ReportedCardType, string> = {
-    S: 'سبيت',
-    H: 'هاص',
-    D: 'ديمن',
-    C: 'كلفس',
-    JOKER: 'جوكر أحمر',
-    MAKER: 'ماكر أسود',
+    S: "سبيت",
+    H: "هاص",
+    D: "ديمن",
+    C: "كلفس",
+    JOKER: "جوكر أحمر",
+    MAKER: "ماكر أسود",
   };
 
   const announcement = confirmed

@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState, useRef } from 'react';
-import { strings } from '../i18n/ar';
+import React, { useEffect, useState, useRef } from "react";
+import { strings } from "../i18n/ar";
 
 export interface TurnTimerProps {
   durationSeconds?: number;
@@ -19,7 +19,7 @@ export const TurnTimer: React.FC<TurnTimerProps> = ({
   onTimeout,
   isActive = true,
   size = 56,
-  className = '',
+  className = "",
 }) => {
   const [timeLeft, setTimeLeft] = useState<number>(durationSeconds);
   const timeoutTriggeredRef = useRef<boolean>(false);
@@ -57,7 +57,6 @@ export const TurnTimer: React.FC<TurnTimerProps> = ({
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
-
   const strokeWidth = 4;
   const radius = (size - strokeWidth * 2) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -65,7 +64,7 @@ export const TurnTimer: React.FC<TurnTimerProps> = ({
   const strokeDashoffset = circumference - progressRatio * circumference;
 
   const isLowTime = timeLeft <= 5;
-  const ringColor = isLowTime ? '#ef4444' : timeLeft <= 10 ? '#f59e0b' : '#10b981';
+  const ringColor = isLowTime ? "#ef4444" : timeLeft <= 10 ? "#f59e0b" : "#10b981";
 
   return (
     <div
@@ -95,7 +94,7 @@ export const TurnTimer: React.FC<TurnTimerProps> = ({
           strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
           fill="transparent"
-          style={{ transition: 'stroke-dashoffset 0.95s linear, stroke 0.3s ease' }}
+          style={{ transition: "stroke-dashoffset 0.95s linear, stroke 0.3s ease" }}
         />
       </svg>
 
@@ -103,7 +102,7 @@ export const TurnTimer: React.FC<TurnTimerProps> = ({
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
         <span
           className={`font-black text-sm leading-none ${
-            isLowTime ? 'text-red-400 animate-pulse font-extrabold' : 'text-white'
+            isLowTime ? "text-red-400 animate-pulse font-extrabold" : "text-white"
           }`}
         >
           {timeLeft}

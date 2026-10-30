@@ -3,23 +3,29 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
-const KEY = 'ikout_xp_v1';
+const KEY = "ikout_xp_v1";
 const listeners = new Set<(xp: number) => void>();
 
 export function loadXp(): number {
-  if (typeof window === 'undefined') return 0;
+  if (typeof window === "undefined") return 0;
   try {
-    const n = Number(JSON.parse(localStorage.getItem(KEY) || '0'));
+    const n = Number(JSON.parse(localStorage.getItem(KEY) || "0"));
     return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
-  } catch { return 0; }
+  } catch {
+    return 0;
+  }
 }
 
 export function addXp(amount: number): number {
   const next = loadXp() + Math.max(0, Math.round(amount));
-  try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
-  listeners.forEach(l => l(next));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {
+    /* storage unavailable */
+  }
+  listeners.forEach((l) => l(next));
   return next;
 }
 
@@ -35,7 +41,10 @@ export function xpForLevel(level: number): number {
 export function levelInfo(xp: number): { level: number; inLevel: number; needed: number } {
   let level = 1;
   let remaining = Math.max(0, xp);
-  while (remaining >= xpForLevel(level)) { remaining -= xpForLevel(level); level++; }
+  while (remaining >= xpForLevel(level)) {
+    remaining -= xpForLevel(level);
+    level++;
+  }
   return { level, inLevel: remaining, needed: xpForLevel(level) };
 }
 
@@ -50,7 +59,9 @@ export function useXp(): { xp: number; level: number; inLevel: number; needed: n
   useEffect(() => {
     setXp(loadXp());
     listeners.add(setXp);
-    return () => { listeners.delete(setXp); };
+    return () => {
+      listeners.delete(setXp);
+    };
   }, []);
   const info = levelInfo(xp);
   return { xp, ...info };

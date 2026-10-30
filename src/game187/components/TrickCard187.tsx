@@ -1,8 +1,8 @@
-import React, { useLayoutEffect, useRef } from 'react';
-import { animate, motion, useMotionValue } from 'motion/react';
-import { Card } from '../../components/Card';
-import { CARD_FLIGHT_SECONDS, linearToScreen, peekCardLaunch } from '../../utils/cardFlight';
-import type { TrickPlay187 } from '../types';
+import React, { useLayoutEffect, useRef } from "react";
+import { animate, motion, useMotionValue } from "motion/react";
+import { Card } from "../../components/Card";
+import { CARD_FLIGHT_SECONDS, linearToScreen, peekCardLaunch } from "../../utils/cardFlight";
+import type { TrickPlay187 } from "../types";
 
 interface TrickCard187Props {
   play: TrickPlay187;
@@ -20,7 +20,16 @@ interface TrickCard187Props {
  * released/tapped it, or from the bot's avatar, to its slot — the same motion
  * as the iKout table. Presentation only: engine timing and rules are untouched.
  */
-export function TrickCard187({ play, left, top, zIndex, winning, exitX, exitY, reducedMotion }: TrickCard187Props) {
+export function TrickCard187({
+  play,
+  left,
+  top,
+  zIndex,
+  winning,
+  exitX,
+  exitY,
+  reducedMotion,
+}: TrickCard187Props) {
   const ref = useRef<HTMLDivElement>(null);
   const started = useRef(false);
   const x = useMotionValue(0);
@@ -46,15 +55,25 @@ export function TrickCard187({ play, left, top, zIndex, winning, exitX, exitY, r
         fade: false,
       };
     } else {
-      const origin = el.closest('.kt-root')?.querySelector(`[data-seat-origin="${play.seat}"] .kt-avatar`);
+      const origin = el
+        .closest(".kt-root")
+        ?.querySelector(`[data-seat-origin="${play.seat}"] .kt-avatar`);
       if (origin) {
         const r = origin.getBoundingClientRect();
-        src = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: own.width * 0.55, rot: 0, fade: true };
+        src = {
+          cx: r.left + r.width / 2,
+          cy: r.top + r.height / 2,
+          w: own.width * 0.55,
+          rot: 0,
+          fade: true,
+        };
       }
     }
     if (!src) return;
     const inv = linearToScreen(el.parentElement).inverse();
-    const d = inv.transformPoint(new DOMPoint(src.cx - (own.left + own.width / 2), src.cy - (own.top + own.height / 2)));
+    const d = inv.transformPoint(
+      new DOMPoint(src.cx - (own.left + own.width / 2), src.cy - (own.top + own.height / 2)),
+    );
     x.set(d.x);
     y.set(d.y);
     scale.set(Math.max(0.3, Math.min(2.2, src.w / own.width)));
@@ -71,9 +90,15 @@ export function TrickCard187({ play, left, top, zIndex, winning, exitX, exitY, r
   return (
     <motion.div
       ref={ref}
-      className={`kt-trick-card ${winning ? 'kt-trick-winning' : ''}`}
+      className={`kt-trick-card ${winning ? "kt-trick-winning" : ""}`}
       style={{ left: `${left}%`, top: `${top}%`, zIndex, x, y, scale, rotate, opacity }}
-      exit={{ x: exitX, y: exitY, scale: 0.35, opacity: 0, transition: { duration: 0.4, ease: 'easeIn' } }}
+      exit={{
+        x: exitX,
+        y: exitY,
+        scale: 0.35,
+        opacity: 0,
+        transition: { duration: 0.4, ease: "easeIn" },
+      }}
     >
       <Card card={{ id: play.card.id, suit: play.card.suit, rank: play.card.rank }} size="sm" />
     </motion.div>

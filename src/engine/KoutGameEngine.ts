@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { GameState, Card, Bid, Suit, Phase, SeatBid, PlayerSlot } from '../types/kout';
-import { RULES } from '../rules/config';
-import { deal } from '../rules/deck';
-import { declareTrump as koutDeclareTrump, playCard as koutPlayCard } from './KoutTricks';
-import { scoreRound } from './KoutScoring';
+import { GameState, Card, Bid, Suit, Phase, SeatBid, PlayerSlot } from "../types/kout";
+import { RULES } from "../rules/config";
+import { deal } from "../rules/deck";
+import { declareTrump as koutDeclareTrump, playCard as koutPlayCard } from "./KoutTricks";
+import { scoreRound } from "./KoutScoring";
 
 export interface EngineOptions {
-  variant?: 'BO6' | 'BO4';
+  variant?: "BO6" | "BO4";
   targetScore?: number;
   initialDealer?: number;
   seed?: number;
@@ -29,21 +29,18 @@ export class KoutGameEngine {
       return;
     }
 
-    const variant = options.variant ?? 'BO6';
+    const variant = options.variant ?? "BO6";
     const numSeats = RULES[variant].seats;
     const initialDealer = options.initialDealer ?? 0;
     const targetScore = options.targetScore ?? 51;
 
-    const defaultPlayers: PlayerSlot[] = Array.from(
-      { length: numSeats },
-      (_, i) => ({
-        seatIndex: i,
-        kind: i === 0 ? 'HUMAN_LOCAL' : 'AI_BOT',
-        name: i === 0 ? 'أنت' : `لاعب ${i + 1}`,
-        team: (i % 2) as 0 | 1,
-        connected: true,
-      })
-    );
+    const defaultPlayers: PlayerSlot[] = Array.from({ length: numSeats }, (_, i) => ({
+      seatIndex: i,
+      kind: i === 0 ? "HUMAN_LOCAL" : "AI_BOT",
+      name: i === 0 ? "أنت" : `لاعب ${i + 1}`,
+      team: (i % 2) as 0 | 1,
+      connected: true,
+    }));
 
     this._state = {
       variant,
@@ -58,7 +55,7 @@ export class KoutGameEngine {
       trickHistory: [],
       tricksWon: [0, 0],
       scores: [0, 0],
-      phase: 'LOBBY',
+      phase: "LOBBY",
       roundNo: 0,
       targetScore,
       version: 1,
@@ -87,9 +84,7 @@ export class KoutGameEngine {
 
     // Rotate dealer counter-clockwise if this is not the first round
     const nextDealer =
-      this._state.roundNo > 0
-        ? (this._state.dealer + 1) % numSeats
-        : this._state.dealer;
+      this._state.roundNo > 0 ? (this._state.dealer + 1) % numSeats : this._state.dealer;
 
     // First bidder is the player immediately counter-clockwise after dealer
     const firstBidder = (nextDealer + 1) % numSeats;
@@ -109,7 +104,7 @@ export class KoutGameEngine {
       currentTrick: [],
       trickHistory: [],
       tricksWon: [0, 0],
-      phase: 'BID',
+      phase: "BID",
       roundNo: this._state.roundNo + 1,
       version: this._state.version + 1,
     };
@@ -129,14 +124,12 @@ export class KoutGameEngine {
    * - Increments version and returns new state object
    */
   public placeBid(seat: number, bid: Bid): GameState {
-    if (this._state.phase !== 'BID') {
+    if (this._state.phase !== "BID") {
       throw new Error(`Cannot place bid during phase ${this._state.phase}`);
     }
 
     if (seat !== this._state.currentSeat) {
-      throw new Error(
-        `Not seat ${seat}'s turn to bid (expected seat ${this._state.currentSeat})`
-      );
+      throw new Error(`Not seat ${seat}'s turn to bid (expected seat ${this._state.currentSeat})`);
     }
 
     const numSeats = RULES[this._state.variant].seats;
@@ -156,7 +149,7 @@ export class KoutGameEngine {
         // Automatically enforce Malzom 5 if dealer tries to pass
         effectiveBid = 5;
       } else if (effectiveBid < 5) {
-        throw new Error('Dealer is Malzom and must bid at least 5');
+        throw new Error("Dealer is Malzom and must bid at least 5");
       }
     }
 
@@ -167,12 +160,14 @@ export class KoutGameEngine {
       }
       if (this._state.highBid !== null && effectiveBid <= this._state.highBid) {
         throw new Error(
-          `Bid ${effectiveBid} must be higher than current high bid ${this._state.highBid}`
+          `Bid ${effectiveBid} must be higher than current high bid ${this._state.highBid}`,
         );
       }
       const minVoluntary = allOthersPassed ? 5 : 6;
       if (effectiveBid < minVoluntary) {
-        throw new Error(`Invalid bid ${effectiveBid}. Minimum bid is ${minVoluntary} (5 is Malzom only)`);
+        throw new Error(
+          `Invalid bid ${effectiveBid}. Minimum bid is ${minVoluntary} (5 is Malzom only)`,
+        );
       }
     }
 
@@ -186,11 +181,11 @@ export class KoutGameEngine {
     // Auction concludes when all seats have placed their bid
     const isAuctionFinished = newBids.length === numSeats;
 
-    let nextPhase: Phase = 'BID';
+    let nextPhase: Phase = "BID";
     let nextSeat = (seat + 1) % numSeats;
 
     if (isAuctionFinished) {
-      nextPhase = 'TRUMP';
+      nextPhase = "TRUMP";
       // The high bidder must now choose the trump suit
       nextSeat = newBidderSeat ?? this._state.dealer;
     }
@@ -213,14 +208,12 @@ export class KoutGameEngine {
    * Selects the trump suit after the auction concludes
    */
   public selectTrump(seat: number, suit: Suit): GameState {
-    if (this._state.phase !== 'TRUMP') {
+    if (this._state.phase !== "TRUMP") {
       throw new Error(`Cannot select trump during phase ${this._state.phase}`);
     }
 
     if (seat !== this._state.bidderSeat) {
-      throw new Error(
-        `Only the winning bidder (seat ${this._state.bidderSeat}) can choose trump`
-      );
+      throw new Error(`Only the winning bidder (seat ${this._state.bidderSeat}) can choose trump`);
     }
 
     const numSeats = RULES[this._state.variant].seats;
@@ -229,7 +222,7 @@ export class KoutGameEngine {
     const nextState: GameState = {
       ...this._state,
       trump: suit,
-      phase: 'PLAY',
+      phase: "PLAY",
       currentSeat: firstLeadSeat,
       version: this._state.version + 1,
     };
@@ -251,10 +244,10 @@ export class KoutGameEngine {
   public playCard(
     seat: number,
     card: Card | string,
-    options?: { allowAnyCard?: boolean }
+    options?: { allowAnyCard?: boolean },
   ): GameState {
     this._state = koutPlayCard(this._state, seat, card, options);
-    if (this._state.phase === 'ROUND_END') {
+    if (this._state.phase === "ROUND_END") {
       this._state = scoreRound(this._state);
     }
     return this._state;
@@ -265,5 +258,3 @@ export class KoutGameEngine {
     return this._state;
   }
 }
-
-

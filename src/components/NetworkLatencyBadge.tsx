@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { Wifi, Signal, ChevronUp, ChevronDown } from 'lucide-react';
-import { useNetworkLatency } from '../network/NetworkLatencyContext';
+import React, { useState } from "react";
+import { Wifi, Signal, ChevronUp, ChevronDown } from "lucide-react";
+import { useNetworkLatency } from "../network/NetworkLatencyContext";
 
 export interface NetworkLatencyBadgeProps {
   /** أسماء ومقاعد اللاعبين المتاحين على الطاولة الحالية */
@@ -27,42 +27,42 @@ export function getPingColor(pingMs: number): {
   badgeBg: string;
   textColor: string;
   borderClass: string;
-  status: 'good' | 'fair' | 'poor';
+  status: "good" | "fair" | "poor";
 } {
   if (pingMs <= 200) {
     return {
-      colorClass: 'text-emerald-400',
-      dotBg: 'bg-emerald-400',
-      badgeBg: 'bg-emerald-950/80',
-      textColor: '#34d399',
-      borderClass: 'border-emerald-500/40',
-      status: 'good',
+      colorClass: "text-emerald-400",
+      dotBg: "bg-emerald-400",
+      badgeBg: "bg-emerald-950/80",
+      textColor: "#34d399",
+      borderClass: "border-emerald-500/40",
+      status: "good",
     };
   }
   if (pingMs <= 400) {
     return {
-      colorClass: 'text-amber-400',
-      dotBg: 'bg-amber-400',
-      badgeBg: 'bg-amber-950/80',
-      textColor: '#fbbf24',
-      borderClass: 'border-amber-500/40',
-      status: 'fair',
+      colorClass: "text-amber-400",
+      dotBg: "bg-amber-400",
+      badgeBg: "bg-amber-950/80",
+      textColor: "#fbbf24",
+      borderClass: "border-amber-500/40",
+      status: "fair",
     };
   }
   return {
-    colorClass: 'text-rose-500',
-    dotBg: 'bg-rose-500',
-    badgeBg: 'bg-rose-950/80',
-    textColor: '#f43f5e',
-    borderClass: 'border-rose-500/50',
-    status: 'poor',
+    colorClass: "text-rose-500",
+    dotBg: "bg-rose-500",
+    badgeBg: "bg-rose-950/80",
+    textColor: "#f43f5e",
+    borderClass: "border-rose-500/50",
+    status: "poor",
   };
 }
 
 export const NetworkLatencyBadge: React.FC<NetworkLatencyBadgeProps> = ({
   players,
   forceShow = false,
-  className = '',
+  className = "",
 }) => {
   const { isHotspotActive, playersPing, mySeatIndex } = useNetworkLatency();
   const [expanded, setExpanded] = useState(false);
@@ -80,7 +80,7 @@ export const NetworkLatencyBadge: React.FC<NetworkLatencyBadgeProps> = ({
     <div
       dir="rtl"
       className={`absolute bottom-3 left-3 z-40 flex flex-col items-start select-none font-sans text-xs ${className}`}
-      style={{ pointerEvents: 'auto' }}
+      style={{ pointerEvents: "auto" }}
     >
       {/* القائمة الموسعة لعرض سرعة الاتصال عند كل لاعب */}
       {expanded && players && players.length > 0 && (
@@ -103,8 +103,12 @@ export const NetworkLatencyBadge: React.FC<NetworkLatencyBadgeProps> = ({
                   className="flex items-center justify-between rounded-md bg-white/5 px-2 py-0.5 text-[11px]"
                 >
                   <span className="flex items-center gap-1.5 truncate text-white/90">
-                    <span className={`inline-block h-2 w-2 rounded-full ${pColor.dotBg} animate-pulse`} />
-                    <span className="truncate">{p.name} {isMe ? '(أنت)' : ''}</span>
+                    <span
+                      className={`inline-block h-2 w-2 rounded-full ${pColor.dotBg} animate-pulse`}
+                    />
+                    <span className="truncate">
+                      {p.name} {isMe ? "(أنت)" : ""}
+                    </span>
                   </span>
                   <span className={`font-mono font-bold ${pColor.colorClass}`} dir="ltr">
                     {pPing} ms

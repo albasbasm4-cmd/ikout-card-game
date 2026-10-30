@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { useAppBack } from '@/utils/appBackNav';
-import UnoLobby from './UnoLobby';
-import { Play } from '@/routes/uno.play';
-import { Room } from '@/routes/uno.room';
-import { Join } from '@/routes/uno.join';
+import React, { useState } from "react";
+import { useAppBack } from "@/utils/appBackNav";
+import UnoLobby from "./UnoLobby";
+import { Play } from "@/routes/uno.play";
+import { Room } from "@/routes/uno.room";
+import { Join } from "@/routes/uno.join";
 
-type UnoScreen = 'lobby' | 'room' | 'join' | 'play';
+type UnoScreen = "lobby" | "room" | "join" | "play";
 
 interface UnoGameWrapperProps {
   onBack: () => void;
@@ -18,36 +18,36 @@ interface UnoGameWrapperProps {
  * دون إعادة تعيين الحالة أو فتح شاشة الجوكر أو مقدمة اللعبة.
  */
 export default function UnoGameWrapper({ onBack }: UnoGameWrapperProps) {
-  const [screen, setScreen] = useState<UnoScreen>('lobby');
+  const [screen, setScreen] = useState<UnoScreen>("lobby");
 
   // زر الرجوع النظامي يتبع نفس منطق أزرار الرجوع داخل أونو: طاولة → لوبي → الرئيسية.
   useAppBack(() => {
-    if (screen === 'lobby') onBack();
-    else setScreen('lobby');
+    if (screen === "lobby") onBack();
+    else setScreen("lobby");
   });
 
-  if (screen === 'play') {
+  if (screen === "play") {
     return (
       <div className="uno-app">
-        <Play onBack={() => setScreen('lobby')} onGoHome={onBack} />
+        <Play onBack={() => setScreen("lobby")} onGoHome={onBack} />
       </div>
     );
   }
 
-  if (screen === 'room') {
-    return <Room onBack={() => setScreen('lobby')} onStartPlay={() => setScreen('play')} />;
+  if (screen === "room") {
+    return <Room onBack={() => setScreen("lobby")} onStartPlay={() => setScreen("play")} />;
   }
 
-  if (screen === 'join') {
-    return <Join onBack={() => setScreen('lobby')} />;
+  if (screen === "join") {
+    return <Join onBack={() => setScreen("lobby")} />;
   }
 
   return (
     <UnoLobby
       onBack={onBack}
-      onStartPlay={() => setScreen('play')}
-      onCreateRoom={() => setScreen('room')}
-      onJoinRoom={() => setScreen('join')}
+      onStartPlay={() => setScreen("play")}
+      onCreateRoom={() => setScreen("room")}
+      onJoinRoom={() => setScreen("join")}
     />
   );
 }

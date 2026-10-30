@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { BookOpen, X, Award, Shield, Crown, Sparkles } from 'lucide-react';
-import { playTapSound } from '../utils/audio';
+import React from "react";
+import { BookOpen, X, Award, Shield, Crown, Sparkles } from "lucide-react";
+import { playTapSound } from "../utils/audio";
 
 export interface RulesModalProps {
   isOpen: boolean;
@@ -21,7 +21,6 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
       className="fixed inset-0 p-safe z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-200"
     >
       <div className="relative w-full max-w-md max-h-[85vh] bg-neutral-950 border-2 border-amber-500/50 rounded-3xl flex flex-col shadow-2xl text-amber-50 overflow-hidden">
-        
         {/* Header */}
         <header className="px-4 py-3 border-b border-amber-500/20 bg-gradient-to-r from-neutral-900 to-black flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -30,7 +29,9 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div>
               <h2 className="text-sm font-black text-amber-300">قوانين كوت بوستة والديوانية</h2>
-              <p className="text-[10px] text-amber-200/70 font-semibold">الدليل الرسمي لقواعد اللعبة</p>
+              <p className="text-[10px] text-amber-200/70 font-semibold">
+                الدليل الرسمي لقواعد اللعبة
+              </p>
             </div>
           </div>
 
@@ -48,7 +49,6 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3.5 text-xs">
-          
           {/* Section 1: الأنواع وتوزيع اللاعبين */}
           <section className="bg-neutral-900/60 border border-neutral-800 rounded-2xl p-3">
             <div className="flex items-center gap-1.5 text-amber-300 font-bold mb-1.5">
@@ -56,9 +56,11 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
               <span className="text-xs font-black">الفرق واللاعبين</span>
             </div>
             <p className="text-[11px] text-neutral-300 leading-relaxed">
-              • <strong className="text-white">كوت بوستة (٦ لاعبين):</strong> تلعب بـ ٥٤ ورقة (شاملة الجيكر الأحمر والميكر الأسود)، يتوزع اللاعبون بالتناوب في فريقين (فريق لنا مقابل فريق لهم).
-              <br />
-              • <strong className="text-white">كوت بوأربعة (٤ لاعبين):</strong> تلعب بـ ٣٢ ورقة (من ورقة ٧ إلى الآكة، بدون جياكر).
+              • <strong className="text-white">كوت بوستة (٦ لاعبين):</strong> تلعب بـ ٥٤ ورقة (شاملة
+              الجيكر الأحمر والميكر الأسود)، يتوزع اللاعبون بالتناوب في فريقين (فريق لنا مقابل فريق
+              لهم).
+              <br />• <strong className="text-white">كوت بوأربعة (٤ لاعبين):</strong> تلعب بـ ٣٢
+              ورقة (من ورقة ٧ إلى الآكة، بدون جياكر).
             </p>
           </section>
 
@@ -70,16 +72,20 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
             </div>
             <div className="text-[11px] text-neutral-300 space-y-1">
               <div>
-                <span className="text-rose-400 font-bold">١. الجيكر الأحمر:</span> أقوى ورقة في اللعبة مطلقاً، يأكل أي ورقة حتى الحكم.
+                <span className="text-rose-400 font-bold">١. الجيكر الأحمر:</span> أقوى ورقة في
+                اللعبة مطلقاً، يأكل أي ورقة حتى الحكم.
               </div>
               <div>
-                <span className="text-neutral-200 font-bold">٢. الميكر الأسود:</span> ثاني أقوى ورقة ويأتي مباشرة بعد الجيكر.
+                <span className="text-neutral-200 font-bold">٢. الميكر الأسود:</span> ثاني أقوى ورقة
+                ويأتي مباشرة بعد الجيكر.
               </div>
               <div>
-                <span className="text-amber-300 font-bold">٣. أوراق الحكم:</span> الآكة (A) ثم الشايب (K) ثم البنت (Q) ثم الولد (J) ثم الأرقام التنازلية.
+                <span className="text-amber-300 font-bold">٣. أوراق الحكم:</span> الآكة (A) ثم
+                الشايب (K) ثم البنت (Q) ثم الولد (J) ثم الأرقام التنازلية.
               </div>
               <div>
-                <span className="text-neutral-400">٤. الأوراق العادية:</span> A, K, Q, J, 10, 9, 8, 7, ...
+                <span className="text-neutral-400">٤. الأوراق العادية:</span> A, K, Q, J, 10, 9, 8,
+                7, ...
               </div>
             </div>
           </section>
@@ -91,11 +97,12 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
               <span className="text-xs font-black">المزايدة (الطلب) والملزوم</span>
             </div>
             <p className="text-[11px] text-neutral-300 leading-relaxed">
-              • يبدأ المزاد من <strong className="text-white">٥ أكلات</strong> وحتى ٩ أكلات (أو كوت).
-              <br />
-              • إذا قال جميع اللاعبين <strong className="text-white">طاف (Pass)</strong>، يصبح الموزع <strong className="text-rose-400">ملزوماً (Forced)</strong> بطلب ٥ أكلات.
-              <br />
-              • الفائز بالمزاد يحدد لون <strong className="text-amber-300">الحكم (الأمر)</strong> ويبدأ اللعب.
+              • يبدأ المزاد من <strong className="text-white">٥ أكلات</strong> وحتى ٩ أكلات (أو
+              كوت).
+              <br />• إذا قال جميع اللاعبين <strong className="text-white">طاف (Pass)</strong>، يصبح
+              الموزع <strong className="text-rose-400">ملزوماً (Forced)</strong> بطلب ٥ أكلات.
+              <br />• الفائز بالمزاد يحدد لون{" "}
+              <strong className="text-amber-300">الحكم (الأمر)</strong> ويبدأ اللعب.
             </p>
           </section>
 
@@ -109,8 +116,8 @@ export const RulesModal: React.FC<RulesModalProps> = ({ isOpen, onClose }) => {
               • إذا أحرز الفريق الطالب عدد الأكلات المطلوبة أو أكثر، تُحسب له النقاط.
               <br />
               • إذا فشل الفريق الطالب (انكسر)، تذهب النقاط للخصم مضاعفة!
-              <br />
-              • <strong className="text-amber-300">الفوز بالمباراة:</strong> أول فريق يبلغ مجموع نقاطه الهدف المحدد (٥١ أو ١٠١ نقطة) في النشرة.
+              <br />• <strong className="text-amber-300">الفوز بالمباراة:</strong> أول فريق يبلغ
+              مجموع نقاطه الهدف المحدد (٥١ أو ١٠١ نقطة) في النشرة.
             </p>
           </section>
         </div>

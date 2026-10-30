@@ -1,28 +1,28 @@
-import { useSettings } from '../../store/useSettings';
+import { useSettings } from "../../store/useSettings";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Player187 } from '../types';
-import { useProfile, characterFace } from '../../utils/profile';
-import { flagUrl, countryName } from '../../utils/countries';
-import { useXp } from '../../utils/xp';
-import { useStageFit } from '../../hooks/use-stage-fit';
-import { playTapSound } from '../../utils/audio';
-import { ProfileEditor } from '../../components/ProfileEditor';
-import { Room187Channel, Client187Packet, Host187Packet } from '../network/network187';
-import '../styles/room187.css';
+import React, { useEffect, useRef, useState } from "react";
+import { Player187 } from "../types";
+import { useProfile, characterFace } from "../../utils/profile";
+import { flagUrl, countryName } from "../../utils/countries";
+import { useXp } from "../../utils/xp";
+import { useStageFit } from "../../hooks/use-stage-fit";
+import { playTapSound } from "../../utils/audio";
+import { ProfileEditor } from "../../components/ProfileEditor";
+import { Room187Channel, Client187Packet, Host187Packet } from "../network/network187";
+import "../styles/room187.css";
 
 export interface Room187ScreenProps {
   onBack: () => void;
-  onStartMatch: (players: Player187[], mode: 'single' | 'room', roomCode?: string) => void;
+  onStartMatch: (players: Player187[], mode: "single" | "room", roomCode?: string) => void;
   onResumeMatch: () => void;
   hasSavedGame?: boolean;
 }
 
-type ScreenMode = 'main' | 'room' | 'join';
+type ScreenMode = "main" | "room" | "join";
 
 export const Room187Screen: React.FC<Room187ScreenProps> = ({
   onBack,
@@ -35,10 +35,10 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
   const stageRef = useRef<HTMLDivElement | null>(null);
   const { settings } = useSettings();
 
-  const [screen, setScreen] = useState<ScreenMode>('main');
-  const [roomMode, setRoomMode] = useState<'host' | 'join'>('host');
-  const [roomCode, setRoomCode] = useState('');
-  const [inputCode, setInputCode] = useState('');
+  const [screen, setScreen] = useState<ScreenMode>("main");
+  const [roomMode, setRoomMode] = useState<"host" | "join">("host");
+  const [roomCode, setRoomCode] = useState("");
+  const [inputCode, setInputCode] = useState("");
   const [seats, setSeats] = useState<(Player187 | null)[]>([null, null, null, null, null]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
@@ -57,8 +57,8 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
   useStageFit(stageRef, 2400, 1080, settings.orientationPreference);
 
   const generateCode = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let res = '';
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let res = "";
     for (let i = 0; i < 5; i++) res += chars[Math.floor(Math.random() * chars.length)];
     return res;
   };
@@ -74,10 +74,16 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     playTapSound();
     const code = generateCode();
     setRoomCode(code);
-    setRoomMode('host');
+    setRoomMode("host");
 
     const initialSeats: (Player187 | null)[] = [
-      { seatIndex: 0, kind: 'HUMAN_LOCAL', name: profile.name || 'أنت', isHost: true, characterId: profile.characterId },
+      {
+        seatIndex: 0,
+        kind: "HUMAN_LOCAL",
+        name: profile.name || "أنت",
+        isHost: true,
+        characterId: profile.characterId,
+      },
       null,
       null,
       null,
@@ -91,43 +97,43 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
 
     // استماع المضيف لانضمام لاعبين حقيقيين عبر الشبكة
     ch.onMessage((msg: Client187Packet) => {
-      if (msg.type === 'JOIN') {
+      if (msg.type === "JOIN") {
         setSeats((prev) => {
           const emptyIdx = prev.findIndex((s, idx) => idx > 0 && s === null);
           if (emptyIdx === -1) {
-            ch.send({ type: 'ERROR', message: 'الغرفة ممتلئة' });
+            ch.send({ type: "ERROR", message: "الغرفة ممتلئة" });
             return prev;
           }
           const updated = [...prev];
           updated[emptyIdx] = {
             seatIndex: emptyIdx,
-            kind: 'REMOTE',
+            kind: "REMOTE",
             name: msg.playerName,
             characterId: msg.characterId,
           };
-          ch.send({ type: 'ROOM_SEATS_UPDATE', seats: updated });
+          ch.send({ type: "ROOM_SEATS_UPDATE", seats: updated });
           return updated;
         });
       }
     });
 
-    setScreen('room');
+    setScreen("room");
   };
 
   const openJoinScreen = () => {
     playTapSound();
-    setInputCode('');
-    setScreen('join');
+    setInputCode("");
+    setScreen("join");
   };
 
   const handleJoinByCode = (code: string) => {
     const trimmed = code.trim().toUpperCase();
     if (trimmed.length < 4) {
-      showToast('أدخل رمز الغرفة بشكل صحيح');
+      showToast("أدخل رمز الغرفة بشكل صحيح");
       return;
     }
     setRoomCode(trimmed);
-    setRoomMode('join');
+    setRoomMode("join");
 
     channelRef.current?.close();
     const ch = new Room187Channel(trimmed);
@@ -135,41 +141,41 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
 
     // استماع المنضم لتحديثات مقاعد المضيف أو بدء المباراة
     ch.onMessage((msg: Host187Packet) => {
-      if (msg.type === 'ROOM_SEATS_UPDATE') {
+      if (msg.type === "ROOM_SEATS_UPDATE") {
         setSeats(msg.seats);
-      } else if (msg.type === 'GAME_START') {
+      } else if (msg.type === "GAME_START") {
         const activePlayers = msg.state.players;
-        onStartMatch(activePlayers, 'room', trimmed);
-      } else if (msg.type === 'ERROR') {
+        onStartMatch(activePlayers, "room", trimmed);
+      } else if (msg.type === "ERROR") {
         showToast(msg.message);
       }
     });
 
     // إرسال طلب الانضمام
     ch.send({
-      type: 'JOIN',
-      playerName: profile.name || 'لاعب',
+      type: "JOIN",
+      playerName: profile.name || "لاعب",
       characterId: profile.characterId,
       clientToken: String(Date.now()),
     });
 
-    setScreen('room');
+    setScreen("room");
   };
 
   const addBotToSeat = (idx: number) => {
     playTapSound();
-    const botNames = ['سالم', 'فهد', 'مبارك', 'طلال', 'سعد'];
-    const usedNames = seats.filter((s) => s && s.kind === 'AI_BOT').map((s) => s!.name);
+    const botNames = ["سالم", "فهد", "مبارك", "طلال", "سعد"];
+    const usedNames = seats.filter((s) => s && s.kind === "AI_BOT").map((s) => s!.name);
     const availableName = botNames.find((n) => !usedNames.includes(n)) || `بوت ${idx + 1}`;
 
     const newSeats = [...seats];
     newSeats[idx] = {
       seatIndex: idx,
-      kind: 'AI_BOT',
+      kind: "AI_BOT",
       name: availableName,
     };
     setSeats(newSeats);
-    channelRef.current?.send({ type: 'ROOM_SEATS_UPDATE', seats: newSeats });
+    channelRef.current?.send({ type: "ROOM_SEATS_UPDATE", seats: newSeats });
   };
 
   const removeSeat = (idx: number) => {
@@ -177,13 +183,13 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     const newSeats = [...seats];
     newSeats[idx] = null;
     setSeats(newSeats);
-    channelRef.current?.send({ type: 'ROOM_SEATS_UPDATE', seats: newSeats });
+    channelRef.current?.send({ type: "ROOM_SEATS_UPDATE", seats: newSeats });
   };
 
   const handleStartRoomGame = () => {
     playTapSound();
     if (!seats.every(Boolean)) {
-      showToast('أكمل جميع المقاعد الـ 5 أولاً');
+      showToast("أكمل جميع المقاعد الـ 5 أولاً");
       return;
     }
     const finalPlayers: Player187[] = seats.map((s, i) => ({
@@ -193,7 +199,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
 
     // إرسال بدء المباراة لجميع المنضمين في الغرفة
     channelRef.current?.send({
-      type: 'GAME_START',
+      type: "GAME_START",
       state: {
         roundNo: 1,
         dealer: 0,
@@ -214,7 +220,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         earlySettled: false,
         earlySettledWinner: null,
         continueAfterEarlySettle: false,
-        phase: 'DEAL',
+        phase: "DEAL",
         players: finalPlayers,
         winner: null,
         version: 1,
@@ -222,19 +228,24 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
       yourSeat: 1,
     });
 
-    onStartMatch(finalPlayers, 'room', roomCode);
+    onStartMatch(finalPlayers, "room", roomCode);
   };
 
   const handleStartTrainingNew = () => {
     playTapSound();
     const trainingPlayers: Player187[] = [
-      { seatIndex: 0, kind: 'HUMAN_LOCAL', name: profile.name || 'أنت', characterId: profile.characterId },
-      { seatIndex: 1, kind: 'AI_BOT', name: 'سالم' },
-      { seatIndex: 2, kind: 'AI_BOT', name: 'فهد' },
-      { seatIndex: 3, kind: 'AI_BOT', name: 'مبارك' },
-      { seatIndex: 4, kind: 'AI_BOT', name: 'طلال' },
+      {
+        seatIndex: 0,
+        kind: "HUMAN_LOCAL",
+        name: profile.name || "أنت",
+        characterId: profile.characterId,
+      },
+      { seatIndex: 1, kind: "AI_BOT", name: "سالم" },
+      { seatIndex: 2, kind: "AI_BOT", name: "فهد" },
+      { seatIndex: 3, kind: "AI_BOT", name: "مبارك" },
+      { seatIndex: 4, kind: "AI_BOT", name: "طلال" },
     ];
-    onStartMatch(trainingPlayers, 'single');
+    onStartMatch(trainingPlayers, "single");
   };
 
   const handleResumeTraining = () => {
@@ -242,15 +253,15 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     if (hasSavedGame) {
       onResumeMatch();
     } else {
-      showToast('لا توجد مباراة محفوظة');
+      showToast("لا توجد مباراة محفوظة");
     }
   };
 
   const handleBack = () => {
     playTapSound();
-    if (screen === 'room' || screen === 'join') {
+    if (screen === "room" || screen === "join") {
       channelRef.current?.close();
-      setScreen('main');
+      setScreen("main");
     } else {
       onBack();
     }
@@ -260,7 +271,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     playTapSound();
     try {
       navigator.clipboard.writeText(roomCode);
-      showToast('تم نسخ رمز الغرفة');
+      showToast("تم نسخ رمز الغرفة");
     } catch {
       showToast(`الرمز: ${roomCode}`);
     }
@@ -304,11 +315,21 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
           aria-label="الملف الشخصي"
         >
           <div className="r187-av">
-            <img src={characterFace(profile.characterId)} alt={profile.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img
+              src={characterFace(profile.characterId)}
+              alt={profile.name}
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
           </div>
           <div className="r187-ls">
             <svg viewBox="0 0 40 40">
-              <polygon points="20,2 25,14 38,15 28,24 31,37 20,30 9,37 12,24 2,15 15,14" fill="#1fa3e6" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
+              <polygon
+                points="20,2 25,14 38,15 28,24 31,37 20,30 9,37 12,24 2,15 15,14"
+                fill="#1fa3e6"
+                stroke="#fff"
+                strokeWidth="2"
+                strokeLinejoin="round"
+              />
             </svg>
             <b>{level}</b>
           </div>
@@ -320,28 +341,34 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
               className="r187-fb"
               src={flagUrl(profile.country) ?? undefined}
               alt={countryName(profile.country) ?? profile.country}
-              style={{ width: 44, height: 30, objectFit: 'cover', borderRadius: 6, border: '2px solid #fff' }}
+              style={{
+                width: 44,
+                height: 30,
+                objectFit: "cover",
+                borderRadius: 6,
+                border: "2px solid #fff",
+              }}
             />
           ) : (
             <div className="r187-fb">🌐</div>
           )}
-          <div className="r187-un" dir="ltr">{profile.name || 'أنت'}</div>
+          <div className="r187-un" dir="ltr">
+            {profile.name || "أنت"}
+          </div>
         </div>
 
         {/* Back Button */}
-        <button
-          type="button"
-          className="r187-back"
-          onClick={handleBack}
-          aria-label="رجوع"
-        >
+        <button type="button" className="r187-back" onClick={handleBack} aria-label="رجوع">
           <svg viewBox="0 0 100 80">
-            <path fill="#fff" d="M6 40 L42 8 L42 28 C66 26 86 26 96 8 C98 40 78 58 42 56 L42 72 Z" />
+            <path
+              fill="#fff"
+              d="M6 40 L42 8 L42 28 C66 26 86 26 96 8 C98 40 78 58 42 56 L42 72 Z"
+            />
           </svg>
         </button>
 
         {/* ===== Main Menu: تدريب / لعب مشترك ===== */}
-        {screen === 'main' && (
+        {screen === "main" && (
           <div className="r187-mm">
             {/* بطاقة التدريب */}
             <div className="r187-mm-card pk">
@@ -349,7 +376,10 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
               <div className="r187-mm-ring">
                 <svg viewBox="0 0 100 100">
                   <circle cx="50" cy="35.4" r="14.8" fill="#fff" />
-                  <path fill="#fff" d="M23 86.8V67.2A14 14 0 0 1 37 53.2H63A14 14 0 0 1 77 67.2V86.8Z" />
+                  <path
+                    fill="#fff"
+                    d="M23 86.8V67.2A14 14 0 0 1 37 53.2H63A14 14 0 0 1 77 67.2V86.8Z"
+                  />
                 </svg>
               </div>
               <button
@@ -374,7 +404,15 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
               <div className="r187-mm-globe">
                 <svg viewBox="0 0 100 100">
                   <circle cx="50" cy="50" r="46.4" fill="none" stroke="#fff" strokeWidth="7.2" />
-                  <ellipse cx="50" cy="50" rx="19.5" ry="44" fill="none" stroke="#fff" strokeWidth="6.5" />
+                  <ellipse
+                    cx="50"
+                    cy="50"
+                    rx="19.5"
+                    ry="44"
+                    fill="none"
+                    stroke="#fff"
+                    strokeWidth="6.5"
+                  />
                   <path d="M4 50H96 M12 25H88 M12 75H88" stroke="#fff" strokeWidth="5.5" />
                 </svg>
               </div>
@@ -397,7 +435,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         )}
 
         {/* ===== Join Screen ===== */}
-        {screen === 'join' && (
+        {screen === "join" && (
           <div className="r187-card r187-jv-card">
             <div className="r187-hd">الانضمام إلى غرفة</div>
             <div className="r187-bd">
@@ -414,7 +452,13 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
               <button
                 type="button"
                 className="r187-btn r187-red"
-                style={{ position: 'relative', width: 340, height: 78, margin: '0 auto 16px', display: 'grid' }}
+                style={{
+                  position: "relative",
+                  width: 340,
+                  height: 78,
+                  margin: "0 auto 16px",
+                  display: "grid",
+                }}
                 onClick={() => handleJoinByCode(inputCode)}
               >
                 <span>انضمام</span>
@@ -423,7 +467,13 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
               <button
                 type="button"
                 className="r187-btn r187-blue"
-                style={{ position: 'relative', width: 380, height: 72, margin: '0 auto', display: 'grid' }}
+                style={{
+                  position: "relative",
+                  width: 380,
+                  height: 72,
+                  margin: "0 auto",
+                  display: "grid",
+                }}
                 onClick={() => setScanOpen(true)}
               >
                 <span>📷 مسح رمز QR</span>
@@ -433,10 +483,10 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         )}
 
         {/* ===== Room Screen (5 مقاعد) ===== */}
-        {screen === 'room' && (
+        {screen === "room" && (
           <div className="r187-card r187-rm-card">
             <div className="r187-hd">
-              {roomMode === 'host' ? 'إنشاء غرفة (187)' : 'الانضمام إلى غرفة (187)'}
+              {roomMode === "host" ? "إنشاء غرفة (187)" : "الانضمام إلى غرفة (187)"}
             </div>
             <div className="r187-bd">
               {/* Left Panel */}
@@ -455,7 +505,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
                   </div>
                 </div>
 
-                {roomMode === 'host' ? (
+                {roomMode === "host" ? (
                   <>
                     <button
                       type="button"
@@ -468,7 +518,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
                     <button
                       type="button"
                       id="r187-go"
-                      className={`r187-btn r187-red ${seats.every(Boolean) ? '' : 'r187-gray'}`}
+                      className={`r187-btn r187-red ${seats.every(Boolean) ? "" : "r187-gray"}`}
                       onClick={handleStartRoomGame}
                     >
                       <span>ابدأ المباراة</span>
@@ -479,7 +529,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
                     <div>
                       بانتظار المضيف يبدأ المباراة...
                       <br />
-                      <span style={{ fontSize: 22, color: 'var(--cyan)' }}>• • •</span>
+                      <span style={{ fontSize: 22, color: "var(--cyan)" }}>• • •</span>
                     </div>
                   </div>
                 )}
@@ -494,7 +544,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
                         <div className="r187-seatnum">{idx + 1}</div>
                         <div className="r187-av2">+</div>
                         <div className="r187-sn">مقعد فارغ</div>
-                        {roomMode === 'host' && (
+                        {roomMode === "host" && (
                           <button
                             type="button"
                             className="r187-chip"
@@ -507,27 +557,40 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
                     );
                   }
 
-                  const isBot = seat.kind === 'AI_BOT';
-                  const isMe = idx === (roomMode === 'host' ? 0 : 1);
+                  const isBot = seat.kind === "AI_BOT";
+                  const isMe = idx === (roomMode === "host" ? 0 : 1);
 
                   return (
-                    <div key={idx} className={`r187-seat ${isBot ? 'bot' : ''} ${isMe ? 'me' : ''}`}>
+                    <div
+                      key={idx}
+                      className={`r187-seat ${isBot ? "bot" : ""} ${isMe ? "me" : ""}`}
+                    >
                       <div className="r187-seatnum">{idx + 1}</div>
                       <div className="r187-av2">
-                        {isBot ? '🤖' : <img src={characterFace(profile.characterId)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                        {isBot ? (
+                          "🤖"
+                        ) : (
+                          <img
+                            src={characterFace(profile.characterId)}
+                            alt=""
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        )}
                       </div>
-                      <div className="r187-sn" dir="auto">{seat.name}</div>
+                      <div className="r187-sn" dir="auto">
+                        {seat.name}
+                      </div>
                       <div className="r187-bg">
                         {seat.isHost && <b className="r187-ho">المضيف</b>}
-                        <b className={isBot ? 'r187-bt' : 'r187-hu'}>{isBot ? 'بوت' : 'بشري'}</b>
+                        <b className={isBot ? "r187-bt" : "r187-hu"}>{isBot ? "بوت" : "بشري"}</b>
                       </div>
-                      {roomMode === 'host' && !seat.isHost && (
+                      {roomMode === "host" && !seat.isHost && (
                         <button
                           type="button"
                           className="r187-chip"
                           style={{
-                            background: 'linear-gradient(var(--red-top), var(--red-bot))',
-                            borderColor: '#ff948a',
+                            background: "linear-gradient(var(--red-top), var(--red-bot))",
+                            borderColor: "#ff948a",
                           }}
                           onClick={() => removeSeat(idx)}
                         >
@@ -550,7 +613,15 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
           <div className="r187-md" onClick={() => setQrOpen(false)}>
             <div className="r187-mc" onClick={(e) => e.stopPropagation()}>
               <h2 style={{ fontSize: 32, fontWeight: 900, marginBottom: 16 }}>رمز QR للغرفة</h2>
-              <div style={{ background: '#fff', padding: 16, borderRadius: 16, display: 'inline-block', marginBottom: 16 }}>
+              <div
+                style={{
+                  background: "#fff",
+                  padding: 16,
+                  borderRadius: 16,
+                  display: "inline-block",
+                  marginBottom: 16,
+                }}
+              >
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=ikout187:${roomCode}`}
                   alt="QR Code"
@@ -558,12 +629,21 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
                 />
               </div>
               <p style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
-                رمز الغرفة: <span dir="ltr" style={{ color: 'var(--cyan)' }}>{roomCode}</span>
+                رمز الغرفة:{" "}
+                <span dir="ltr" style={{ color: "var(--cyan)" }}>
+                  {roomCode}
+                </span>
               </p>
               <button
                 type="button"
                 className="r187-btn r187-red"
-                style={{ position: 'relative', width: 200, height: 60, margin: '0 auto', display: 'grid' }}
+                style={{
+                  position: "relative",
+                  width: 200,
+                  height: 60,
+                  margin: "0 auto",
+                  display: "grid",
+                }}
                 onClick={() => setQrOpen(false)}
               >
                 <span>إغلاق</span>
@@ -581,7 +661,13 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
               <button
                 type="button"
                 className="r187-btn r187-red"
-                style={{ position: 'relative', width: 200, height: 60, margin: '0 auto', display: 'grid' }}
+                style={{
+                  position: "relative",
+                  width: 200,
+                  height: 60,
+                  margin: "0 auto",
+                  display: "grid",
+                }}
                 onClick={() => setScanOpen(false)}
               >
                 <span>إلغاء</span>
@@ -594,14 +680,14 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         {toastMsg && (
           <div
             style={{
-              position: 'absolute',
+              position: "absolute",
               bottom: 40,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: 'rgba(0,0,0,0.85)',
-              border: '2px solid var(--cyan)',
-              color: '#fff',
-              padding: '12px 28px',
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: "rgba(0,0,0,0.85)",
+              border: "2px solid var(--cyan)",
+              color: "#fff",
+              padding: "12px 28px",
               borderRadius: 30,
               fontSize: 22,
               fontWeight: 800,
