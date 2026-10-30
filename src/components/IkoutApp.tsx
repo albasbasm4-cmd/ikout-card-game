@@ -18,8 +18,10 @@ import type { GameState } from '../types/kout';
 import { Room187Screen } from '../game187/components/Room187Screen';
 import { Game187Screen } from '../game187/components/Game187Screen';
 import type { GameState187, Player187 } from '../game187/types';
+import UnoGameWrapper from './uno/UnoGameWrapper';
+import JokerApp from '../joker/JokerApp';
 
-type View = 'splash' | 'home' | 'setup' | 'game' | 'lobby' | 'join' | '187';
+type View = 'splash' | 'home' | 'setup' | 'game' | 'lobby' | 'join' | '187' | 'uno' | 'joker';
 
 export default function App() {
   const navigate = useNavigate();
@@ -60,8 +62,8 @@ export default function App() {
       <div className="fixed inset-0 w-full h-[100dvh] overflow-hidden bg-black select-none">
         {view === 'home' && (
           <HomeScreen
-            onEnterUno={() => navigate({ to: '/uno' })}
-            onEnterJoker={() => navigate({ to: '/joker' })}
+            onEnterUno={() => setView('uno')}
+            onEnterJoker={() => setView('joker')}
             onEnterSetup={() => setView('setup')}
             onEnter187={() => {
               setPlayers187(null);
@@ -107,6 +109,14 @@ export default function App() {
             initialState={resumedState ?? (roomConfig ? undefined : loadSavedGameState() ?? undefined)}
             onGoHome={() => setView('home')}
           />
+        )}
+
+        {view === 'uno' && (
+          <UnoGameWrapper onBack={() => setView('home')} />
+        )}
+
+        {view === 'joker' && (
+          <JokerApp onBack={() => setView('home')} />
         )}
 
         {/* لعبة 187 منفصلة بمحركها وشاشاتها الخاصة */}

@@ -37,7 +37,12 @@ const STAGE_H = 450;
 const COLOR_BG: Record<Color, string> = { red: "bg-uno-red", blue: "bg-uno-blue", green: "bg-uno-green", yellow: "bg-uno-yellow" };
 const COLOR_AR: Record<Color, string> = { red: "أحمر", blue: "أزرق", green: "أخضر", yellow: "أصفر" };
 
-function Play() {
+export interface PlayProps {
+  onBack?: () => void;
+  onGoHome?: () => void;
+}
+
+export function Play({ onBack, onGoHome }: PlayProps = {}) {
   const nav = useNavigate();
   const profile = useProfile();
   const reduced = useReducedMotion();
@@ -112,7 +117,7 @@ function Play() {
   if (!s) return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4">
       <p>لا توجد مباراة محفوظة.</p>
-      <Button asChild><Link to="/uno">إلى إعداد أونو</Link></Button>
+      <Button onClick={() => { if (onBack) onBack(); else nav({ to: "/uno" }); }}>إلى إعداد أونو</Button>
     </main>
   );
 
@@ -157,8 +162,8 @@ function Play() {
           <Button type="button" onClick={() => { playTapSound(); toggleSound(); }} aria-label="كتم/تشغيل الصوت" title="كتم/تشغيل الصوت">
             {settings.soundEnabled ? <Volume2 /> : <VolumeX />}
           </Button>
-          <Button type="button" onClick={() => nav({ to: "/uno" })} aria-label="الخروج (محفوظة)" title="الخروج (محفوظة)"><ArrowRight /></Button>
-          <Button type="button" onClick={() => nav({ to: "/" })} aria-label="الشاشة الرئيسية" title="الشاشة الرئيسية"><Home /></Button>
+          <Button type="button" onClick={() => { if (onBack) onBack(); else nav({ to: "/uno" }); }} aria-label="الخروج (محفوظة)" title="الخروج (محفوظة)"><ArrowRight /></Button>
+          <Button type="button" onClick={() => { if (onGoHome) onGoHome(); else if (onBack) onBack(); else nav({ to: "/" }); }} aria-label="الشاشة الرئيسية" title="الشاشة الرئيسية"><Home /></Button>
         </div>
         <span className="uno-score absolute right-2 top-2 z-40 text-xs">الجولة {s.round} · الهدف {s.rules.targetScore}</span>
 
@@ -241,7 +246,7 @@ function Play() {
           </ul>
           {s.status === "roundOver"
             ? <Button onClick={() => { const n2 = dealRound(s); setS(n2); saveGame(n2); }}>الجولة التالية</Button>
-            : <Button onClick={() => { clearGame(); nav({ to: "/uno" }); }}>مباراة جديدة</Button>}
+            : <Button onClick={() => { clearGame(); if (onBack) onBack(); else nav({ to: "/uno" }); }}>مباراة جديدة</Button>}
         </DialogContent>
       </Dialog>
     </div></LayoutGroup>

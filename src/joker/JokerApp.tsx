@@ -11,7 +11,11 @@ import { actJoker, chooseJokerBot, createJokerGame, dealJoker, jokerMode, type J
 import './styles.css';
 
 const COPY = { pick: 'لمّح للآخرين، ثم اختر من تظن أنه صاحب الجوكر', joker: 'ورقتك هي الجوكر! أنزل ورقتك قبل أن تُكشف', wait: 'بانتظار نزول ورقة الجوكر…', final: 'بقيت وحدك! خمّن من هو صاحب ورقة الجوكر', out: 'تم تسجيل اختيارك. تابع بقية اللاعبين' };
-export default function JokerApp() {
+export interface JokerAppProps {
+  onBack?: () => void;
+}
+
+export default function JokerApp({ onBack }: JokerAppProps = {}) {
   const nav = useNavigate();
   const profile = useProfile();
   const { settings, toggleSound } = useSettings();
@@ -45,7 +49,7 @@ export default function JokerApp() {
     if (game.results.find(r => r.id === human)?.outcome === 'فائز') playWinSound(); else playLoseSound();
     setModal(null);
   }, [game]);
-  const back = () => { setGame(null); setModal(null); if (screen === 'entry') nav({ to: '/' }); else setScreen('entry'); };
+  const back = () => { setGame(null); setModal(null); if (screen === 'entry') { if (onBack) onBack(); else nav({ to: '/' }); } else setScreen('entry'); };
   const mode = game ? jokerMode(game, human) : 'wait';
   const card = game?.cards[human];
   return <main className="joker-app" dir="rtl">
