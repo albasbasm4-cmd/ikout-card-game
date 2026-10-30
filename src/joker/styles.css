@@ -1426,39 +1426,6 @@
     flex-direction: column;
     gap: 14px;
   }
-  .gcard {
-    height: 340px;
-    flex: none;
-    border-radius: 24px;
-    background: var(--joker-color-66);
-    color: var(--joker-color-14);
-    display: grid;
-    place-items: center;
-    text-align: center;
-    font:
-      900 150px/1 Cairo,
-      sans-serif;
-    cursor: pointer;
-    border: 6px solid var(--joker-color-59);
-    box-shadow: 0 6px 0 var(--joker-color-69);
-  }
-  .gcard.back {
-    background: repeating-linear-gradient(
-      45deg,
-      var(--joker-color-43) 0 16px,
-      var(--joker-color-55) 16px 32px
-    );
-    color: var(--joker-color-66);
-    font-size: 42px;
-  }
-  .gcard.r {
-    color: var(--joker-color-50);
-  }
-  .gcard.jk {
-    color: var(--joker-color-33);
-    font-size: 64px;
-    line-height: 1.3;
-  }
   .gst {
     flex: 1;
     display: grid;
@@ -1468,6 +1435,23 @@
       800 34px/1.4 Cairo,
       sans-serif;
     padding: 0 20px;
+  }
+  /* صندوق الإرشادات الثلاثي: يظهر لكل اللاعبين دون كشف حامل الجوكر */
+  .gst.ghints {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 24px;
+    text-align: right;
+    align-items: stretch;
+    font:
+      800 30px/1.5 Cairo,
+      sans-serif;
+    padding: 12px 30px;
+  }
+  .gst.ghints b {
+    color: var(--joker-color-24);
+    margin-inline-end: 8px;
   }
   .glp .kb {
     height: 100px;
@@ -1851,6 +1835,27 @@
   display: flex;
   gap: 10px;
 }
+/* داخل شاشة اللعب: محاذاة الأزرار مع خانة «الباقون على الطاولة» (66px ترويسة + 14px) */
+.joker-app #kg .joker-tool {
+  top: 80px;
+}
+/* نفس المقاس المعتمد 72px مع تعويض تكبير مسرح اللعب (2400px) */
+.joker-app #kg .joker-tool button {
+  width: 150px;
+  height: 150px;
+  border-radius: 36px;
+  border-width: 4px;
+  box-shadow: 0 6px 12px var(--joker-color-75);
+}
+.joker-app #kg .joker-tool button svg {
+  width: 92px;
+  height: 92px;
+  stroke-width: 2.4;
+}
+.joker-app #kg .joker-tool {
+  gap: 20px;
+  right: 24px;
+}
 /* أزرار الصوت والقواعد والرئيسية: مقاس معتدل يتناسق مع شريط الأعلى */
 .joker-app .joker-tool button {
   width: 72px;
@@ -1966,4 +1971,8 @@
 #scr.wood .gmain {
   height: auto;
   bottom: 14px;
+}
+/* تضييق لوحات اللعب لترك شريط يمين فارغ لأزرار الأدوات دون تغطية البانرات */
+#scr.wood .gmain {
+  width: 1340px;
 }

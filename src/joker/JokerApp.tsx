@@ -19,13 +19,12 @@ import {
 } from "./engine";
 import "./styles.css";
 
-const COPY = {
-  pick: "لمّح للآخرين، ثم اختر من تظن أنه صاحب الجوكر",
-  joker: "ورقتك هي الجوكر! أنزل ورقتك قبل أن تُكشف",
-  wait: "بانتظار نزول ورقة الجوكر…",
-  final: "بقيت وحدك! خمّن من هو صاحب ورقة الجوكر",
-  out: "تم تسجيل اختيارك. تابع بقية اللاعبين",
-};
+// إرشادات اللعب تظهر لكل اللاعبين دون أي نص يكشف حامل الجوكر
+const HINTS = [
+  "إذا كان عندك الجوكر: لمّح للاعبين دون أن تكشف، وترك لاعباً واحداً أخيراً",
+  "إذا لم يكن لديك الجوكر: ركز على أعين اللاعبين، إذا لمّح لك شخص ما أدخل اسمه هنا حتى تنزل بطاقتك وتفوز باللعبة",
+  "إذا لم يلمح لك أي شخص: حاول تخمين صاحب الجوكر",
+];
 export interface JokerAppProps {
   onBack?: () => void;
 }
@@ -116,6 +115,25 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   useAppBack(() => back());
   const mode = game ? jokerMode(game, human) : "wait";
   const card = game?.cards[human];
+  // أزرار الصوت والقواعد والرئيسية مشتركة بين اللوبي وشاشة اللعب
+  const toolButtons = (
+    <>
+      <Button variant="ghost" size="icon" aria-label="كتم الصوت" onClick={toggleSound}>
+        {settings.soundEnabled ? <Volume2 /> : <VolumeX />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="قواعد اللعبة"
+        onClick={() => setModal("rules")}
+      >
+        <BookOpen />
+      </Button>
+      <Button variant="ghost" size="icon" aria-label="الشاشة الرئيسية" onClick={back}>
+        <Home />
+      </Button>
+    </>
+  );
   return (
     <main className="joker-app" dir="rtl">
       <div ref={stage} id="st">
@@ -207,40 +225,18 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
             {screen === "game" && game && (
               <div className="kpg" id="kp3" style={{ display: "block" }}>
                 <div id="kg">
+                  <div className="joker-tool">{toolButtons}</div>
                   <div className="kh">الجوكر · الجولة {game.round}</div>
                   <div className="kd">
                     {game.phase === "play" ? (
                       <>
                         <div className="glp">
-                          <Button
-                            id="gcard"
-                            variant="ghost"
-                            className={`gcard ${holdingId !== human ? "back" : card === "JK" ? "jk" : /[♥♦]/.test(card ?? "") ? "r" : ""}`}
-                            onPointerDown={(e) => {
-                              e.preventDefault();
-                              setHoldingId(human);
-                              playCardSound();
-                            }}
-                            onPointerUp={() => setHoldingId(null)}
-                            onPointerLeave={() => setHoldingId(null)}
-                            onPointerCancel={() => setHoldingId(null)}
-                            onTouchStart={(e) => {
-                              e.preventDefault();
-                              setHoldingId(human);
-                              playCardSound();
-                            }}
-                            onTouchEnd={() => setHoldingId(null)}
-                            onTouchCancel={() => setHoldingId(null)}
-                            onContextMenu={(e) => e.preventDefault()}
-                          >
-                            {holdingId === human
-                              ? card === "JK"
-                                ? "🃏 الجوكر"
-                                : card
-                              : "اضغط باستمرار"}
-                          </Button>
-                          <div id="gst" className="gst kdk">
-                            {COPY[mode]}
+                          <div id="gst" className="gst kdk ghints">
+                            {HINTS.map((h, i) => (
+                              <div key={i}>
+                                <b>{i + 1}-</b> {h}
+                              </div>
+                            ))}
                           </div>
                           {["pick", "final", "joker"].includes(mode) && (
                             <Button
@@ -275,9 +271,9 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                           <div id="gsa">
                             <div className="gtab">
                               {game.players.map((p, i) => {
-                                // صف أفقي واحد يبدأ من اليمين قليلاً فوق منتصف الشاشة
+                                // صف أفقي واحد يمتد بعرض الطاولة مع فاصل أوسع بين اللاعبين
                                 const n = game.players.length;
-                                const rowLeft = n > 1 ? 90 - (80 * i) / (n - 1) : 50;
+                                const rowLeft = n > 1 ? 96 - (92 * i) / (n - 1) : 50;
                                 const isHolding = holdingId === p.id;
                                 const playerCard = game.cards[p.id];
                                 const isRed = /[♥♦]/.test(playerCard ?? "");
@@ -415,22 +411,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
             <span className="un">{profile.name}</span>
           </Button>
         )}
-        <div className="joker-tool">
-          <Button variant="ghost" size="icon" aria-label="كتم الصوت" onClick={toggleSound}>
-            {settings.soundEnabled ? <Volume2 /> : <VolumeX />}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="قواعد اللعبة"
-            onClick={() => setModal("rules")}
-          >
-            <BookOpen />
-          </Button>
-          <Button variant="ghost" size="icon" aria-label="الشاشة الرئيسية" onClick={back}>
-            <Home />
-          </Button>
-        </div>
+        {screen !== "game" && <div className="joker-tool">{toolButtons}</div>}
         {profileOpen && <ProfileEditor onClose={() => setProfileOpen(false)} />}
         {modal && (
           <div id="md" className="on">
