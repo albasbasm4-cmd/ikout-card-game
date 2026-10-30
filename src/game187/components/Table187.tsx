@@ -119,6 +119,11 @@ export const Table187: React.FC<Table187Props> = ({
   const { settings, updateSettings, toggleSound, setBotSpeed, toggleOrientationPreference } =
     useSettings();
   const orientation = settings.orientationPreference;
+  // أهداف البلاغ المسموحة: الفرقاطتان هما الحاكم بمفرده ضد فريق الخصوم،
+  // فلا يجوز الإبلاغ عن لاعب في نفس الفريق (ثغرة إهداء الفوز للحاكم)
+  const hakemSeatForCheat = state.bidderSeat ?? -1;
+  const cheatTargetAllowed = (seat: number) =>
+    seat !== mySeat && (mySeat === hakemSeatForCheat || seat === hakemSeatForCheat);
 
   const [stageW, setStageW] = useState(800);
   useEffect(() => {
@@ -353,6 +358,8 @@ export const Table187: React.FC<Table187Props> = ({
           className={tool}
           onClick={() => {
             playTapSound();
+            setSelectedCheatPlayer(null);
+            setSelectedCheatSuit(null);
             setShowCheatModal(true);
           }}
           aria-label="البلاغ عن غش"
@@ -783,11 +790,11 @@ export const Table187: React.FC<Table187Props> = ({
             title="إبلاغ عن غش (كسر التبعية)"
           >
             <p className="text-xs text-white/70 mb-2 text-right">
-              حدد اللاعب ونوع البطاقة التي غش فيها:
+              حدد اللاعب المتهم ونوع الورقة التي رمى بها خلافاً لنوع بداية الأكلة:
             </p>
             <div className="grid grid-cols-2 gap-2 mb-3">
               {state.players.map((p) =>
-                p.seatIndex === mySeat ? null : (
+                !cheatTargetAllowed(p.seatIndex) ? null : (
                   <button
                     key={p.seatIndex}
                     type="button"
@@ -885,17 +892,23 @@ export const Table187: React.FC<Table187Props> = ({
                 {orientation === "landscape" ? "أفقي" : "عمودي"}
               </Button>
             </div>
-            {onRestart && (
-              <label className="flex items-center justify-between py-2.5" htmlFor="187-card-sound">
-                <span>صوت إنزال البطاقات</span>
-                <input
-                  id="187-card-sound"
-                  type="checkbox"
-                  checked={settings.cardPlacementSoundEnabled}
-                  onChange={(e) => updateSettings({ cardPlacementSoundEnabled: e.target.checked })}
-                />
-              </label>
-            )}
+            <div className="flex items-center justify-between py-2.5 border-t border-neutral-800">
+              <span className="text-xs text-amber-200/80 font-bold">صوت إنزال البطاقات</span>
+              <Button
+                type="button"
+                onClick={() =>
+                  updateSettings({ cardPlacementSoundEnabled: !settings.cardPlacementSoundEnabled })
+                }
+                className="p-2 rounded-xl bg-neutral-900 text-amber-300 border border-neutral-700 cursor-pointer"
+                aria-label="تفعيل/كتم صوت إنزال البطاقات"
+              >
+                {settings.cardPlacementSoundEnabled ? (
+                  <Volume2 className="w-4 h-4 text-emerald-400" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-neutral-500" />
+                )}
+              </Button>
+            </div>
             {onRestart && (
               <div className="mt-3 pt-3 border-t border-neutral-800">
                 <Button

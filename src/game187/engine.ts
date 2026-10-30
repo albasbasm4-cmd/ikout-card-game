@@ -453,27 +453,48 @@ export class GameEngine187 {
     )
       return;
 
-    // فحص هل اللاعب المتهم كسر التبعية في أكلة سابقة
+    const bidderSeat = this._state.bidderSeat ?? 0;
+    const reporterIsHakem = reporterSeat === bidderSeat;
+    const accusedIsHakem = accusedSeat === bidderSeat;
+
+    // الفرقاطتان: الحاكم بمفرده مقابل فريق الخصوم الأربعة.
+    // لا يجوز لأحد أعضاء الفريق الإبلاغ عن زميله (ثغرة إهداء الفوز).
+    if (reporterIsHakem === accusedIsHakem) return;
+
     let confirmed = false;
-    for (const [index, trick] of this._state.trickHistory.entries()) {
+
+    // فحص الأكلات المؤرشفة + الأكلة الجارية على الطاولة قبل أرشفتها
+    const allTricks: TrickPlay187[][] = [...this._state.trickHistory];
+    if (this._state.currentTrick.length > 0) allTricks.push(this._state.currentTrick);
+
+    for (const [index, trick] of allTricks.entries()) {
       const leadCard = trick[0]?.card;
       if (!leadCard) continue;
-      const accusedPlay = trick.find((p) => p.seat === accusedSeat);
-      if (!accusedPlay) continue;
+      const accusedIdx = trick.findIndex((p) => p.seat === accusedSeat);
+      if (accusedIdx === -1) continue;
+      const accusedPlay = trick[accusedIdx];
 
-      if (leadCard.suit === accusedSuit && accusedPlay.card.suit !== accusedSuit) {
-        const laterCards = [
-          ...this._state.trickHistory.slice(index),
-          this._state.currentTrick,
-        ].flatMap((t) => t.filter((p) => p.seat === accusedSeat).map((p) => p.card));
+      // كسر التبعية: الغشاش رمى ورقة من نوع مختلف عن نوع بداية الأكلة رغم امتلاكه للنوع.
+      // البلاغ يقبل إما نوع الورقة التي رماها الغشاش أو نوع بداية الأكلة نفسه.
+      if (
+        accusedPlay.card.suit !== leadCard.suit &&
+        (accusedSuit === accusedPlay.card.suit || accusedSuit === leadCard.suit)
+      ) {
+        const laterPlays: TrickPlay187[][] = [
+          trick.slice(accusedIdx),
+          ...allTricks.slice(index + 1),
+        ];
+        const laterCards = laterPlays.flatMap((t) =>
+          t.filter((p) => p.seat === accusedSeat).map((p) => p.card),
+        );
         const heldAtPlay = [...this._state.hands[accusedSeat], ...laterCards];
-        const prefix = trick.slice(0, trick.indexOf(accusedPlay));
+        const prefix = trick.slice(0, accusedIdx);
         const legal = getLegalCards187(
           heldAtPlay,
           prefix,
           this._state.trump,
           accusedSeat,
-          this._state.bidderSeat ?? 0,
+          bidderSeat,
           index,
         );
         if (!legal.some((c) => c.id === accusedPlay.card.id)) {
@@ -483,8 +504,8 @@ export class GameEngine187 {
       }
     }
 
-    const isAccusedHakem = accusedSeat === this._state.bidderSeat;
-    const isReporterHakem = reporterSeat === this._state.bidderSeat;
+    const isAccusedHakem = accusedSeat === bidderSeat;
+    const isReporterHakem = reporterSeat === bidderSeat;
 
     let winner: "HAKEM" | "OPPONENTS";
     let announcement: string;

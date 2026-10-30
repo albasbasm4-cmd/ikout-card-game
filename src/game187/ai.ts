@@ -97,6 +97,17 @@ export function chooseBotDiscards(hand: Card187[], trumpSuit: Suit187): string[]
   return scoredCards.slice(0, 4).map((sc) => sc.card.id);
 }
 
+/**
+ * خطة الحاكم البوت قبل الطرد: يختار نوع الحكم أولاً بناءً على يده الكاملة (12 ورقة)
+ * ثم يطرد الأوراق بناءً على الحكم المختار. هذا يمنع الخطأ القديم حيث كان يُمرر
+ * حكم افتراضي ثابت ("S") فيحتفظ البوت بأوراق السبيد الميتة ويطرد أوراقه القوية
+ * في الأنواع الأخرى قبل أن يحدد الحكم الحقيقي.
+ */
+export function planBotDiscardAndTrump(hand: Card187[]): { trump: Suit187; discards: string[] } {
+  const trump = chooseBotTrump(hand);
+  return { trump, discards: chooseBotDiscards(hand, trump) };
+}
+
 /** اختيار الورقة التي ينزلها البوت في دوره */
 export function chooseBotCardToPlay(state: GameState187, seat: number): Card187 {
   const hand = state.hands[seat];

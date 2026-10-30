@@ -9,7 +9,13 @@ import { Card187, GameState187, Player187, Suit187, TrickPlay187 } from "../type
 import { calculateTrickPoints, resolveTrickWinner187 } from "../rules";
 import { loadSettings } from "../../store/useSettings";
 import { Table187 } from "./Table187";
-import { evaluateBotBid, chooseBotTrump, chooseBotDiscards, chooseBotCardToPlay } from "../ai";
+import {
+  evaluateBotBid,
+  chooseBotTrump,
+  chooseBotDiscards,
+  chooseBotCardToPlay,
+  planBotDiscardAndTrump,
+} from "../ai";
 import { playTapSound } from "../../utils/audio";
 import { play187Sound } from "../audio";
 import { isMessage187 } from "../messages";
@@ -110,6 +116,8 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
   const playersRef = useRef(gameState.players);
   playersRef.current = gameState.players;
   const bubbleTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+  /** حكم الحاكم البوت المخطط له أثناء الطرد، ليُعلن في مرحلة TRUMP من نفس الاختيار */
+  const botTrumpPlanRef = useRef<Suit187 | null>(null);
   const showMessage = useCallback((seat: number, message: string) => {
     if (
       !Number.isInteger(seat) ||
@@ -235,8 +243,10 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
 
     if (gameState.phase === "BID" && isBotTurn) {
       timer = window.setTimeout(() => {
-        const hand = gameState.hands[currentSeat];
-        const bid = evaluateBotBid(hand, gameState.highBid);
+        const st = engineRef.current?.state;
+        // تجاهل الجدولة القديمة إذا تغيرت الحالة أو الدور منذ لحظة الجدولة
+        if (!st || st.phase !== "BID" || st.currentSeat !== currentSeat) return;
+        const bid = evaluateBotBid(st.hands[currentSeat], st.highBid);
         try {
           eng.placeBid(currentSeat, bid);
           syncState();
@@ -250,9 +260,12 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       const hakemPlayer = gameState.players[hakemSeat];
       if (hakemPlayer?.kind === "AI_BOT") {
         timer = window.setTimeout(() => {
-          const hand = gameState.hands[hakemSeat];
-          const discards = chooseBotDiscards(hand, "S");
-          eng.giveAwayCards(hakemSeat, discards);
+          const st = engineRef.current?.state;
+          if (!st || st.phase !== "DISCARD") return;
+          // يختار الحكم من يده الكاملة (12 ورقة) ثم يطرد بناءً عليه
+          const plan = planBotDiscardAndTrump(st.hands[hakemSeat]);
+          botTrumpPlanRef.current = plan.trump;
+          eng.giveAwayCards(hakemSeat, plan.discards);
           syncState();
         }, 700 * k);
       }
@@ -261,8 +274,11 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       const hakemPlayer = gameState.players[hakemSeat];
       if (hakemPlayer?.kind === "AI_BOT") {
         timer = window.setTimeout(() => {
-          const hand = gameState.hands[hakemSeat];
-          const trump = chooseBotTrump(hand);
+          const st = engineRef.current?.state;
+          if (!st || st.phase !== "TRUMP") return;
+          // نفس الحكم المخطط له أثناء الطرد حتى لا تتعارض الخطة مع الإعلان
+          const trump = botTrumpPlanRef.current ?? chooseBotTrump(st.hands[hakemSeat]);
+          botTrumpPlanRef.current = null;
           eng.declareTrump(hakemSeat, trump);
           syncState();
         }, 700 * k);
@@ -270,7 +286,10 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
     } else if (gameState.phase === "PLAY" && isBotTurn) {
       timer = window.setTimeout(() => {
         try {
-          const card = chooseBotCardToPlay(gameState, currentSeat);
+          const st = engineRef.current?.state;
+          // تجاهل الجدولة القديمة إذا تغيرت الحالة أو الدور منذ لحظة الجدولة
+          if (!st || st.phase !== "PLAY" || st.currentSeat !== currentSeat) return;
+          const card = chooseBotCardToPlay(st, currentSeat);
           play187Sound("card");
           eng.playCard(currentSeat, card);
           syncState();
