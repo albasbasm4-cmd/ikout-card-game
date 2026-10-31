@@ -34,12 +34,15 @@ export const BidPanel: React.FC<BidPanelProps> = ({
         <Button
           type="button"
           className="kt-tile kt-tile-pass"
-          aria-label={isDealerForced ? "ملزوم 5" : "طاف"}
+          aria-label={isDealerForced ? "ملزوم" : "طاف"}
           title={isDealerForced ? "ملزوم" : "طاف"}
           onClick={() => choose(isDealerForced ? 5 : 0)}
         >
-          {isDealerForced ? <span>5</span> : <Hand className="kt-tile-hand" strokeWidth={2.4} />}
-          {isDealerForced && <small>ملزوم</small>}
+          {isDealerForced ? (
+            <span className="kt-tile-word">ملزوم</span>
+          ) : (
+            <Hand className="kt-tile-hand" strokeWidth={2.4} />
+          )}
         </Button>
         {bids.map((bid) => (
           <Button

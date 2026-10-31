@@ -267,20 +267,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
       </Button>
 
-      {/* Scoreboard Drawer */}
-      <Button
-        type="button"
-        onClick={() => {
-          playTapSound();
-          setShowScoreboardModal(true);
-        }}
-        className="px-2 sm:px-2.5 h-7 sm:h-8 rounded-full bg-black/75 border border-amber-400/40 text-amber-300 text-[10px] sm:text-xs font-black flex items-center gap-1 shadow-lg backdrop-blur-md active:scale-95 cursor-pointer hover:bg-black/90 hover:border-amber-300"
-        aria-label="النشرة"
-        title="النشرة والتفاصيل"
-      >
-        <Trophy className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400 fill-current" />
-        <span className="hidden sm:inline">النشرة</span>
-      </Button>
 
       {/* Quick Mute Toggle */}
       <Button

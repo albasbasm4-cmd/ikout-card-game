@@ -1156,6 +1156,7 @@
 .kt-tile small{font-size:10px;line-height:1}
 .kt-tile-current{background:#1d5f8f!important}
 .kt-tile-hand{width:26px;height:26px}
+.kt-tile-word{font-size:17px;letter-spacing:.5px;padding:0 2px}
 .kt-tile-suit{background:#f6f1e6}
 .kt-tile-suit-icon{width:34px;height:34px}
 
