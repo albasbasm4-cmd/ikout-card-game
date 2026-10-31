@@ -345,7 +345,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
           ref={stageRef}
           // useStageFit owns the centering transform; Tailwind translate utilities would double it.
           style={{ width: `${stageW}px`, height: `${STAGE_H}px` }}
-          className="uno-room uno-stage absolute left-1/2 top-1/2 overflow-hidden"
+          className={`uno-room uno-stage absolute left-1/2 top-1/2 overflow-hidden bg-theme-${profile.background}`}
         >
           <img
             className="uno-table-image"

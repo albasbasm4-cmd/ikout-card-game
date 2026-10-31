@@ -504,7 +504,7 @@ export const Table187: React.FC<Table187Props> = ({
           dir="rtl"
           className={`kt-root kt-187 table-theme-${profile.table} card-theme-${profile.cards} ${centerOverlay ? "kt-picking" : ""}`}
         >
-          <section className="kt-arena" aria-label="طاولة 187">
+          <section className={`kt-arena bg-theme-${profile.background}`} aria-label="طاولة 187">
             <div className="kt-tools" dir="ltr">
               {headerControls}
             </div>

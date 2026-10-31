@@ -30,6 +30,19 @@ export const CARD_THEMES: { id: CardTheme; label: string; back: string }[] = [
   { id: "squares", label: "مربعات حمراء", back: back("Card Back - New - Squares Red.png") },
 ];
 
+/** خلفيات سطح اللعب؛ خشب هي الافتراضية دائماً. */
+export type BgTheme = "wood" | "grass" | "pattern" | "pattern1" | "spotlight";
+export const BG_THEMES: { id: BgTheme; label: string; image: string }[] = [
+  { id: "wood", label: "خشب", image: "/assets/ikout/backgrounds/wood-bg.png" },
+  { id: "grass", label: "عشب", image: "/assets/ikout/backgrounds/grass-bg.png" },
+  { id: "pattern", label: "نقشة", image: "/assets/ikout/backgrounds/pattern-bg.png" },
+  { id: "pattern1", label: "نقشة ٢", image: "/assets/ikout/backgrounds/pattern1-bg.png" },
+  { id: "spotlight", label: "أضواء", image: "/assets/ikout/backgrounds/spotlight.png" },
+];
+export function backgroundImage(theme: BgTheme): string {
+  return (BG_THEMES.find((b) => b.id === theme) ?? BG_THEMES[0]).image;
+}
+
 export function tableImage(theme: TableTheme): string {
   return (TABLE_THEMES.find((t) => t.id === theme) ?? TABLE_THEMES[0]).image;
 }
@@ -61,6 +74,7 @@ export interface PlayerProfile {
   characterId: string;
   table: TableTheme;
   cards: CardTheme;
+  background: BgTheme;
   country: string | null;
 }
 export const DEFAULT_PROFILE: PlayerProfile = {
@@ -68,6 +82,7 @@ export const DEFAULT_PROFILE: PlayerProfile = {
   characterId: "a1",
   table: "wood",
   cards: "deck",
+  background: "wood",
   country: "kw",
 };
 const KEY = "ikout_profile_v2";
@@ -123,6 +138,11 @@ export function loadProfile(): PlayerProfile {
       characterId,
       table: LEGACY_TABLE[raw.table ?? ""] ?? DEFAULT_PROFILE.table,
       cards: LEGACY_CARDS[raw.cards ?? ""] ?? DEFAULT_PROFILE.cards,
+      background:
+        typeof raw.background === "string" &&
+        BG_THEMES.some((b) => b.id === raw.background)
+          ? (raw.background as BgTheme)
+          : DEFAULT_PROFILE.background,
       country:
         typeof raw.country === "string"
           ? raw.country

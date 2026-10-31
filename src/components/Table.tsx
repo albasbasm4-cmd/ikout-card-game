@@ -388,7 +388,7 @@ export const Table: React.FC<TableProps> = ({
       dir="rtl"
       className={`kt-root table-theme-${profile.table} card-theme-${profile.cards} ${centerOverlay ? "kt-picking" : ""} ${className}`}
     >
-      <section className="kt-arena" aria-label="طاولة كوت">
+      <section className={`kt-arena bg-theme-${profile.background}`} aria-label="طاولة كوت">
         <div className="kt-tools" dir="ltr">
           {headerControls}
         </div>

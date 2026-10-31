@@ -1326,3 +1326,20 @@
 .uno-stage .kt-tools button { width: 48px; height: 48px; min-width: 48px; border-radius: 12px; }
 .uno-stage .kt-tools svg { width: 26px; height: 26px; }
 .uno-stage .kt-name { max-width: 170px; font-size: 15px; line-height: 20px; border-radius: 6px; padding: 2px 8px; }
+
+/* ============ خلفيات سطح اللعب (كوت / 187 / أونو) — خشب افتراضياً ============ */
+.kt-arena[class*="bg-theme-"], .uno-stage[class*="bg-theme-"] {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.kt-arena.bg-theme-wood { background-image: linear-gradient(rgba(8,5,2,.28),rgba(8,5,2,.28)), url("/assets/ikout/backgrounds/wood-bg.png"); }
+.kt-arena.bg-theme-grass { background-image: linear-gradient(rgba(8,5,2,.18),rgba(8,5,2,.18)), url("/assets/ikout/backgrounds/grass-bg.png"); }
+.kt-arena.bg-theme-pattern { background-image: linear-gradient(rgba(8,5,2,.28),rgba(8,5,2,.28)), url("/assets/ikout/backgrounds/pattern-bg.png"); }
+.kt-arena.bg-theme-pattern1 { background-image: linear-gradient(rgba(8,5,2,.28),rgba(8,5,2,.28)), url("/assets/ikout/backgrounds/pattern1-bg.png"); }
+.kt-arena.bg-theme-spotlight { background-image: linear-gradient(rgba(8,5,2,.22),rgba(8,5,2,.22)), url("/assets/ikout/backgrounds/spotlight.png"); }
+.uno-stage.bg-theme-wood { background-image: linear-gradient(rgba(8,5,2,.28),rgba(8,5,2,.28)), url("/assets/ikout/backgrounds/wood-bg.png"); }
+.uno-stage.bg-theme-grass { background-image: linear-gradient(rgba(8,5,2,.18),rgba(8,5,2,.18)), url("/assets/ikout/backgrounds/grass-bg.png"); }
+.uno-stage.bg-theme-pattern { background-image: linear-gradient(rgba(8,5,2,.28),rgba(8,5,2,.28)), url("/assets/ikout/backgrounds/pattern-bg.png"); }
+.uno-stage.bg-theme-pattern1 { background-image: linear-gradient(rgba(8,5,2,.28),rgba(8,5,2,.28)), url("/assets/ikout/backgrounds/pattern1-bg.png"); }
+.uno-stage.bg-theme-spotlight { background-image: linear-gradient(rgba(8,5,2,.22),rgba(8,5,2,.22)), url("/assets/ikout/backgrounds/spotlight.png"); }

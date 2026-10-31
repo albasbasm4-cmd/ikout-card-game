@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import {
   UserRound,
   Layers,
+  Image as ImageIcon,
   RectangleHorizontal,
   Flag,
   Volume2,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
+  BG_THEMES,
   CARD_THEMES,
   CHARACTER_IDS,
   TABLE_THEMES,
@@ -28,11 +30,12 @@ export interface ProfileEditorProps {
   onClose: () => void;
   game?: "kout" | "187";
 }
-type Tab = "character" | "cards" | "table" | "flag" | "identity";
+type Tab = "character" | "cards" | "table" | "background" | "flag" | "identity";
 const TABS = [
   { id: "character" as const, label: "الشخصيات", icon: UserRound },
   { id: "cards" as const, label: "الأوراق", icon: Layers },
   { id: "table" as const, label: "الطاولات", icon: RectangleHorizontal },
+  { id: "background" as const, label: "الخلفيات", icon: ImageIcon },
   { id: "flag" as const, label: "الأعلام", icon: Flag },
   { id: "identity" as const, label: "الملف الشخصي", icon: IdCard },
 ];
@@ -122,6 +125,22 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
             >
               <img src={t.image} alt="" loading="lazy" />
               <span>{t.label}</span>
+            </Button>
+          ))}
+        </div>
+      )}
+      {tab === "background" && (
+        <div className="pc-grid pc-grid-table">
+          {BG_THEMES.map((b) => (
+            <Button
+              key={b.id}
+              variant="ghost"
+              className={`pc-item ${profile.background === b.id ? "pc-selected" : ""}`}
+              aria-pressed={profile.background === b.id}
+              onClick={() => choose({ background: b.id })}
+            >
+              <img src={b.image} alt="" loading="lazy" />
+              <span>{b.label}</span>
             </Button>
           ))}
         </div>
