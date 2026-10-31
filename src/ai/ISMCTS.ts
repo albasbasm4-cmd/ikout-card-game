@@ -8,6 +8,10 @@ import { RULES } from "../rules/config";
 import { buildDeck, shuffle } from "../rules/deck";
 import { getLegalCards, trickWinner, cardStrength } from "../rules/cards";
 import { getPlayedCards } from "../engine/KoutTricks";
+import { koutTacticDecision, rolloutPolicy, isTrumpClass } from "./tactics";
+
+/** سياسة البوت فقط (انتقلت إلى tactics.ts) — يبقى التصدير للتوافق. */
+export { partnerSafeCards } from "./tactics";
 
 export interface ChooseCardOptions {
   iterations?: number;
@@ -152,6 +156,7 @@ function simulateRollout(
   allPlayedCards: Card[],
   highBid: number | null,
   numSeats: number,
+  bidderSeat: number | null,
 ): [number, number] {
   const hands = initialHands.map((h) => [...h]);
   let trick = [...currentTrick];
@@ -168,7 +173,7 @@ function simulateRollout(
       highBid: (highBid as any) ?? 5,
     });
 
-    const candidates = partnerSafeCards(legal, trick, trump, seat);
+    const candidates = rolloutPolicy(legal, hand, trick, trump, seat, bidderSeat, played);
     const chosenCard = candidates[Math.floor(Math.random() * candidates.length)];
     const cIdx = hand.findIndex((c) => c.id === chosenCard.id);
     if (cIdx !== -1) hand.splice(cIdx, 1);
@@ -188,19 +193,6 @@ function simulateRollout(
   }
 
   return tricksWon;
-}
-
-/** Bot policy only: never spend protected cards on an ally's winning trick
- * when another legal card is available. Never relax follow-suit rules. */
-export function partnerSafeCards(
-  legal: Card[],
-  trick: TrickPlay[],
-  trump: Suit | null,
-  seat: number,
-): Card[] {
-  if (!trick.length || trickWinner(trick, trump).seat % 2 !== seat % 2) return legal;
-  const ordinary = legal.filter((c) => !c.joker && !(trump && c.suit === trump && c.rank === 14));
-  return ordinary.length ? ordinary : legal;
 }
 
 /**
@@ -234,6 +226,16 @@ function chooseHeuristicCard(
   const partnerIsWinning = currentWinningPlay.seat % 2 === myTeam;
 
   if (partnerIsWinning) {
+    // الصاحب رابح بورقة عادية هشة: ثبّت الأكلة بورقة حكم إن وُجدت
+    const winnerVulnerable = !isTrumpClass(currentWinningPlay.card, trump);
+    if (winnerVulnerable) {
+      const secures = legalCards.filter((c) => isTrumpClass(c, trump));
+      if (secures.length > 0) {
+        return [...secures].sort(
+          (a, b) => cardStrength(a, trump, ledSuit) - cardStrength(b, trump, ledSuit),
+        )[0];
+      }
+    }
     // Partner is winning: duck with lowest legal card
     const sorted = [...legalCards].sort(
       (a, b) => cardStrength(a, trump, ledSuit) - cardStrength(b, trump, ledSuit),
@@ -267,15 +269,17 @@ function chooseHeuristicCard(
 export function chooseCard(state: GameState, seat: number, opts: ChooseCardOptions = {}): Card {
   const hand = state.hands[seat] || [];
   const playedCards = getPlayedCards(state.trickHistory, state.currentTrick);
-  const legalCards = partnerSafeCards(
+  const tactic = koutTacticDecision(
+    state,
+    seat,
     getLegalCards(hand, state.currentTrick, state.trump, {
       playedCards,
       highBid: state.highBid,
     }),
-    state.currentTrick,
-    state.trump,
-    seat,
+    opts.difficulty,
   );
+  if (tactic.forced) return tactic.forced;
+  const legalCards = tactic.candidates;
 
   if (legalCards.length === 0) {
     throw new Error(`Seat ${seat} has no legal cards to play.`);
@@ -374,6 +378,7 @@ export function chooseCard(state: GameState, seat: number, opts: ChooseCardOptio
       simPlayed,
       state.highBid,
       numSeats,
+      state.bidderSeat,
     );
 
     // 5. Reward: tricks won by player's team
