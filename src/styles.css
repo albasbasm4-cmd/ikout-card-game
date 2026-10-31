@@ -1161,6 +1161,7 @@
 .kt-tile-suit-icon{width:34px;height:34px}
 
 /* ============ 187 (5 players) ============ */
+.kt-187 .kt-tools button{border-color:rgba(251,191,36,.4);color:#fcd34d}
 .kt-187 .kt-pos-TR{right:30%}
 .kt-187 .kt-pos-TL{left:30%}
 .kt187-score-suit{width:13px;height:13px;display:inline-block}
@@ -1236,7 +1237,6 @@
 
 /* 187 table and fans (stage units): table fills more of the room; cards spread into a fan instead of stacking */
 .kt-187 .kt-table{width:47%;height:58%;top:50%;transform:translate(-50%,-50%)}
-.kt-187 .kt-mini{transform:translate(var(--dx,0px),var(--dy,0px)) rotate(var(--r))}
 
 /* Isolated UNO presentation; never modifies Kout or 187. */
 @theme inline {
