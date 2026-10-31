@@ -1,588 +1,2024 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>أونو</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
-html,body{margin:0;height:100%;overflow:hidden;background:#1a2128;font-family:Cairo,Tahoma,'Segoe UI',sans-serif;color:#fff}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>أونو</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #1a2128;
+        font-family: Cairo, Tahoma, "Segoe UI", sans-serif;
+        color: #fff;
+      }
 
-/* المسرح 2400×1080 */
-#st{position:absolute;left:50%;top:50%;width:2400px;height:1080px;transform-origin:center;overflow:hidden;
- background:linear-gradient(#6a92b4 0,#86aac3 14%,#adc4d2 26%,#c5d3da 30.3%)}
-.glow{position:absolute;left:700px;top:60px;width:1000px;height:560px;background:radial-gradient(ellipse at 50% 50%,rgba(255,255,255,.85),rgba(255,255,255,0) 68%)}
-.cl{position:absolute;aspect-ratio:3;opacity:.92;animation:drift 22s ease-in-out infinite alternate}
-@keyframes drift{from{transform:translateX(-26px)}to{transform:translateX(26px)}}
-.haze{position:absolute;left:0;right:0;top:327px;bottom:0;background:linear-gradient(rgba(118,126,130,.94),rgba(112,111,92,.97))}
-.sun{position:absolute;left:1103px;top:283px;width:194px;height:194px;border-radius:50%;background:rgba(236,236,236,.82)}
-#sk{position:absolute;inset:0;width:100%;height:100%}
+      /* المسرح 2400×1080 */
+      #st {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 2400px;
+        height: 1080px;
+        transform-origin: center;
+        overflow: hidden;
+        background: linear-gradient(#6a92b4 0, #86aac3 14%, #adc4d2 26%, #c5d3da 30.3%);
+      }
+      .glow {
+        position: absolute;
+        left: 700px;
+        top: 60px;
+        width: 1000px;
+        height: 560px;
+        background: radial-gradient(
+          ellipse at 50% 50%,
+          rgba(255, 255, 255, 0.85),
+          rgba(255, 255, 255, 0) 68%
+        );
+      }
+      .cl {
+        position: absolute;
+        aspect-ratio: 3;
+        opacity: 0.92;
+        animation: drift 22s ease-in-out infinite alternate;
+      }
+      @keyframes drift {
+        from {
+          transform: translateX(-26px);
+        }
+        to {
+          transform: translateX(26px);
+        }
+      }
+      .haze {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 327px;
+        bottom: 0;
+        background: linear-gradient(rgba(118, 126, 130, 0.94), rgba(112, 111, 92, 0.97));
+      }
+      .sun {
+        position: absolute;
+        left: 1103px;
+        top: 283px;
+        width: 194px;
+        height: 194px;
+        border-radius: 50%;
+        background: rgba(236, 236, 236, 0.82);
+      }
+      #sk {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
 
-/* الملف الشخصي */
-#prof{position:absolute;left:0;top:0;width:380px;height:110px;cursor:pointer;transform:scale(1.5625);transform-origin:0 0;z-index:5}
-#prof>*{position:absolute}
-.av{left:82px;top:6px;width:78px;height:88px;border-radius:50% 50% 46% 46%;background:radial-gradient(#ecd0a8,#b58658);border:3px solid #fff;display:grid;place-items:center;font-size:52px}
-.ls{left:166px;top:2px;width:48px;height:48px;display:grid;place-items:center;z-index:2}
-.ls svg{position:absolute;inset:0;width:100%;height:100%}
-.ls b{position:relative;font-size:21px;font-weight:900}
-.bump{animation:bp .9s}
-@keyframes bp{40%{transform:scale(1.6) rotate(18deg)}}
-.xpb{left:200px;top:14px;width:148px;height:26px;border-radius:9px;background:#27323b;border:2px solid #1b242b;overflow:hidden}
-.xpb i{display:block;height:100%;border-radius:6px;background:linear-gradient(#5ed3ff,#1c9be0);transition:width .6s}
-.fb{left:174px;top:56px;font-size:34px;line-height:1;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4))}
-.un{left:222px;top:52px;font-size:26px;font-weight:800;text-shadow:0 2px 3px rgba(0,0,0,.45)}
+      /* الملف الشخصي */
+      #prof {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 380px;
+        height: 110px;
+        cursor: pointer;
+        transform: scale(1.5625);
+        transform-origin: 0 0;
+        z-index: 5;
+      }
+      #prof > * {
+        position: absolute;
+      }
+      .av {
+        left: 82px;
+        top: 6px;
+        width: 78px;
+        height: 88px;
+        border-radius: 50% 50% 46% 46%;
+        background: radial-gradient(#ecd0a8, #b58658);
+        border: 3px solid #fff;
+        display: grid;
+        place-items: center;
+        font-size: 52px;
+      }
+      .ls {
+        left: 166px;
+        top: 2px;
+        width: 48px;
+        height: 48px;
+        display: grid;
+        place-items: center;
+        z-index: 2;
+      }
+      .ls svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .ls b {
+        position: relative;
+        font-size: 21px;
+        font-weight: 900;
+      }
+      .bump {
+        animation: bp 0.9s;
+      }
+      @keyframes bp {
+        40% {
+          transform: scale(1.6) rotate(18deg);
+        }
+      }
+      .xpb {
+        left: 200px;
+        top: 14px;
+        width: 148px;
+        height: 26px;
+        border-radius: 9px;
+        background: #27323b;
+        border: 2px solid #1b242b;
+        overflow: hidden;
+      }
+      .xpb i {
+        display: block;
+        height: 100%;
+        border-radius: 6px;
+        background: linear-gradient(#5ed3ff, #1c9be0);
+        transition: width 0.6s;
+      }
+      .fb {
+        left: 174px;
+        top: 56px;
+        font-size: 34px;
+        line-height: 1;
+        filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4));
+      }
+      .un {
+        left: 222px;
+        top: 52px;
+        font-size: 26px;
+        font-weight: 800;
+        text-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
+      }
 
-/* زر الرجوع */
-#back{position:absolute;left:115px;top:228px;width:108px;height:96px;border-radius:30px;border:4px solid #1b9bf2;
- background:linear-gradient(#3cbcff,#0e86e0);box-shadow:0 7px 0 #0a5a9c;cursor:pointer;display:grid;place-items:center;padding:0;z-index:5}
-#back::before{content:"";position:absolute;left:10%;right:10%;top:6px;height:34%;border-radius:22px;background:rgba(255,255,255,.22)}
-#back svg{position:relative;width:70px;height:56px}
-#back:active{transform:translateY(3px);box-shadow:0 4px 0 #0a5a9c}
+      /* زر الرجوع */
+      #back {
+        position: absolute;
+        left: 115px;
+        top: 228px;
+        width: 108px;
+        height: 96px;
+        border-radius: 30px;
+        border: 4px solid #1b9bf2;
+        background: linear-gradient(#3cbcff, #0e86e0);
+        box-shadow: 0 7px 0 #0a5a9c;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        z-index: 5;
+      }
+      #back::before {
+        content: "";
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        top: 6px;
+        height: 34%;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.22);
+      }
+      #back svg {
+        position: relative;
+        width: 70px;
+        height: 56px;
+      }
+      #back:active {
+        transform: translateY(3px);
+        box-shadow: 0 4px 0 #0a5a9c;
+      }
 
-/* بطاقة التدريب */
-#card{position:absolute;left:340px;top:360px;width:920px;height:560px;border:10px solid #fff;border-radius:28px;overflow:hidden;
- background:linear-gradient(#e27fc2,#cc55a6);box-shadow:0 10px 0 rgba(0,0,0,.22),0 0 44px rgba(0,0,0,.25);animation:up .55s backwards}
-@keyframes up{from{opacity:0;transform:translateY(40px)}}
-.hd{position:absolute;left:0;right:0;top:0;height:66px;background:rgba(255,255,255,.13);border-bottom:2px solid rgba(255,255,255,.85);
- text-align:center;font:900 46px/66px Cairo,sans-serif;text-shadow:0 3px 0 rgba(0,0,0,.3)}
-.bd{position:absolute;left:0;right:0;top:66px;bottom:0}
+      /* بطاقة التدريب */
+      #card {
+        position: absolute;
+        left: 340px;
+        top: 360px;
+        width: 920px;
+        height: 560px;
+        border: 10px solid #fff;
+        border-radius: 28px;
+        overflow: hidden;
+        background: linear-gradient(#e27fc2, #cc55a6);
+        box-shadow:
+          0 10px 0 rgba(0, 0, 0, 0.22),
+          0 0 44px rgba(0, 0, 0, 0.25);
+        animation: up 0.55s backwards;
+      }
+      @keyframes up {
+        from {
+          opacity: 0;
+          transform: translateY(40px);
+        }
+      }
+      .hd {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 66px;
+        background: rgba(255, 255, 255, 0.13);
+        border-bottom: 2px solid rgba(255, 255, 255, 0.85);
+        text-align: center;
+        font:
+          900 46px/66px Cairo,
+          sans-serif;
+        text-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+      }
+      .bd {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 66px;
+        bottom: 0;
+      }
 
-/* لوحة الملخص (يسار) — بدل لوحة المتابعة القديمة */
-.rp{position:absolute;left:18px;top:14px;width:268px;height:446px;background:rgba(92,30,70,.55);border-radius:16px}
-.rq{position:absolute;left:10px;right:10px;top:12px;text-align:center;font:900 28px/1.2 Cairo,sans-serif;text-shadow:0 2px 0 rgba(0,0,0,.3)}
-.rb{position:absolute;left:16px;right:16px;top:88px;background:rgba(70,22,54,.62);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:14px}
-/* صف عدد اللاعبين */
-.inf-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.inf-lbl{font:800 24px/1.1 Cairo,sans-serif}
-.inf-val{font:900 48px/1 Cairo,sans-serif;color:#4df3ff;text-shadow:0 3px 0 rgba(0,0,0,.35);min-width:60px;text-align:center}
-/* صف مستوى البوت */
-.inf-bot{font:800 28px/1.2 Cairo,sans-serif;border-top:2px solid rgba(255,255,255,.2);padding-top:10px;text-align:center}
-.inf-bot em{font-style:normal;color:#ffd23f}
-/* زر البدء */
-.btn{position:absolute;display:grid;place-items:center;cursor:pointer;color:#fff;font-family:Cairo,sans-serif;font-weight:900;padding:0;text-shadow:0 3px 0 rgba(0,0,0,.3)}
-.btn::before{content:"";position:absolute;left:12%;right:12%;top:6px;height:36%;border-radius:22px;background:rgba(255,255,255,.28)}
-.btn span{position:relative}
-.btn:active{transform:translateY(3px)}
-.red{left:18px;right:18px;bottom:18px;height:80px;font-size:38px;border-radius:40px;border:3px solid #ff948a;
- background:linear-gradient(#f2594d,#cc2821);box-shadow:0 6px 0 #8c1a17}
-.red:active{box-shadow:0 3px 0 #8c1a17}
-.nb{left:97px;top:358px;width:254px;height:92px;font-size:38px;border-radius:28px;border:4px solid #f3b6e6;
- background:linear-gradient(#e993d8,#c24fa8);box-shadow:0 6px 0 #9c3a86}
-.nb:active{box-shadow:0 3px 0 #9c3a86}
+      /* لوحة الملخص (يسار) — بدل لوحة المتابعة القديمة */
+      .rp {
+        position: absolute;
+        left: 18px;
+        top: 14px;
+        width: 268px;
+        height: 446px;
+        background: rgba(92, 30, 70, 0.55);
+        border-radius: 16px;
+      }
+      .rq {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        top: 12px;
+        text-align: center;
+        font:
+          900 28px/1.2 Cairo,
+          sans-serif;
+        text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+      }
+      .rb {
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        top: 88px;
+        background: rgba(70, 22, 54, 0.62);
+        border-radius: 14px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      /* صف عدد اللاعبين */
+      .inf-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .inf-lbl {
+        font:
+          800 24px/1.1 Cairo,
+          sans-serif;
+      }
+      .inf-val {
+        font:
+          900 48px/1 Cairo,
+          sans-serif;
+        color: #4df3ff;
+        text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+        min-width: 60px;
+        text-align: center;
+      }
+      /* صف مستوى البوت */
+      .inf-bot {
+        font:
+          800 28px/1.2 Cairo,
+          sans-serif;
+        border-top: 2px solid rgba(255, 255, 255, 0.2);
+        padding-top: 10px;
+        text-align: center;
+      }
+      .inf-bot em {
+        font-style: normal;
+        color: #ffd23f;
+      }
+      /* زر البدء */
+      .btn {
+        position: absolute;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        color: #fff;
+        font-family: Cairo, sans-serif;
+        font-weight: 900;
+        padding: 0;
+        text-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+      }
+      .btn::before {
+        content: "";
+        position: absolute;
+        left: 12%;
+        right: 12%;
+        top: 6px;
+        height: 36%;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.28);
+      }
+      .btn span {
+        position: relative;
+      }
+      .btn:active {
+        transform: translateY(3px);
+      }
+      .red {
+        left: 18px;
+        right: 18px;
+        bottom: 18px;
+        height: 80px;
+        font-size: 38px;
+        border-radius: 40px;
+        border: 3px solid #ff948a;
+        background: linear-gradient(#f2594d, #cc2821);
+        box-shadow: 0 6px 0 #8c1a17;
+      }
+      .red:active {
+        box-shadow: 0 3px 0 #8c1a17;
+      }
+      .nb {
+        left: 97px;
+        top: 358px;
+        width: 254px;
+        height: 92px;
+        font-size: 38px;
+        border-radius: 28px;
+        border: 4px solid #f3b6e6;
+        background: linear-gradient(#e993d8, #c24fa8);
+        box-shadow: 0 6px 0 #9c3a86;
+      }
+      .nb:active {
+        box-shadow: 0 3px 0 #9c3a86;
+      }
 
-/* العمود الأيمن: الاختيارات */
-.col{position:absolute;left:304px;width:578px;top:0;height:474px}
-.lb{position:absolute;left:0;right:0;text-align:center;font:800 30px/1.2 Cairo,sans-serif;text-shadow:0 2px 0 rgba(0,0,0,.3)}
-.sp{position:absolute;left:66px;width:446px;height:66px}
-.nm{position:absolute;left:80px;width:286px;top:6px;height:54px;background:#1c1c1e;box-shadow:inset 0 4px 8px rgba(0,0,0,.6);
- display:grid;place-items:center;font:900 44px/1 Cairo,sans-serif;color:#4df3ff;text-shadow:0 3px 0 rgba(0,0,0,.45)}
-.nm.t{font-size:38px}
-.ab{position:absolute;top:0;width:86px;height:66px;border-radius:20px;border:3px solid rgba(255,255,255,.55);cursor:pointer;padding:0;
- background:linear-gradient(#e592d4,#c557ad);box-shadow:0 5px 0 #a13e8b,inset 0 3px 0 rgba(255,255,255,.3);z-index:2}
-.ab:active{transform:translateY(3px);box-shadow:0 2px 0 #a13e8b}
-.ab.l{left:0}.ab.r{right:0}
-.tri{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:0;height:0;border-style:solid;border-color:transparent;filter:drop-shadow(0 2px 1px rgba(0,0,0,.25))}
-.l .tri{border-width:20px 34px 20px 0;border-right-color:#fff}
-.r .tri{border-width:20px 0 20px 34px;border-left-color:#fff}
+      /* العمود الأيمن: الاختيارات */
+      .col {
+        position: absolute;
+        left: 304px;
+        width: 578px;
+        top: 0;
+        height: 474px;
+      }
+      .lb {
+        position: absolute;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font:
+          800 30px/1.2 Cairo,
+          sans-serif;
+        text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+      }
+      .sp {
+        position: absolute;
+        left: 66px;
+        width: 446px;
+        height: 66px;
+      }
+      .nm {
+        position: absolute;
+        left: 80px;
+        width: 286px;
+        top: 6px;
+        height: 54px;
+        background: #1c1c1e;
+        box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.6);
+        display: grid;
+        place-items: center;
+        font:
+          900 44px/1 Cairo,
+          sans-serif;
+        color: #4df3ff;
+        text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+      }
+      .nm.t {
+        font-size: 38px;
+      }
+      .ab {
+        position: absolute;
+        top: 0;
+        width: 86px;
+        height: 66px;
+        border-radius: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.55);
+        cursor: pointer;
+        padding: 0;
+        background: linear-gradient(#e592d4, #c557ad);
+        box-shadow:
+          0 5px 0 #a13e8b,
+          inset 0 3px 0 rgba(255, 255, 255, 0.3);
+        z-index: 2;
+      }
+      .ab:active {
+        transform: translateY(3px);
+        box-shadow: 0 2px 0 #a13e8b;
+      }
+      .ab.l {
+        left: 0;
+      }
+      .ab.r {
+        right: 0;
+      }
+      .tri {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-color: transparent;
+        filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.25));
+      }
+      .l .tri {
+        border-width: 20px 34px 20px 0;
+        border-right-color: #fff;
+      }
+      .r .tri {
+        border-width: 20px 0 20px 34px;
+        border-left-color: #fff;
+      }
 
-/* بطاقة اللعب المشترك */
-#net{position:absolute;left:1420px;top:360px;width:400px;height:560px;border:10px solid #fff;border-radius:28px;overflow:hidden;
- background:linear-gradient(#10a6f4,#0376d2);box-shadow:0 10px 0 rgba(0,0,0,.22),0 0 44px rgba(0,0,0,.25);animation:up .55s .1s backwards}
-#net .hd{background:none;border-bottom:0}
-#net .ic{position:absolute;left:0;right:0;top:20px;height:220px;display:grid;place-items:center}
-#net .ic svg{width:200px;height:200px;filter:drop-shadow(0 6px 0 rgba(0,0,0,.28))}
-#net .red{font-size:36px}
-#net .c1{bottom:116px}
+      /* بطاقة اللعب المشترك */
+      #net {
+        position: absolute;
+        left: 1420px;
+        top: 360px;
+        width: 400px;
+        height: 560px;
+        border: 10px solid #fff;
+        border-radius: 28px;
+        overflow: hidden;
+        background: linear-gradient(#10a6f4, #0376d2);
+        box-shadow:
+          0 10px 0 rgba(0, 0, 0, 0.22),
+          0 0 44px rgba(0, 0, 0, 0.25);
+        animation: up 0.55s 0.1s backwards;
+      }
+      #net .hd {
+        background: none;
+        border-bottom: 0;
+      }
+      #net .ic {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 20px;
+        height: 220px;
+        display: grid;
+        place-items: center;
+      }
+      #net .ic svg {
+        width: 200px;
+        height: 200px;
+        filter: drop-shadow(0 6px 0 rgba(0, 0, 0, 0.28));
+      }
+      #net .red {
+        font-size: 36px;
+      }
+      #net .c1 {
+        bottom: 116px;
+      }
 
-/* ======= غرفة اللعب (مثل الجوكر) ======= */
-/* Stage wrapper مثل الجوكر: 1536×691 */
-#rscr{position:absolute;left:50%;top:50%;width:1536px;height:691px;transform-origin:center;overflow:hidden;display:none;
- background:radial-gradient(ellipse 560px 320px at 50% 56%,#f4f7f8,transparent 72%),linear-gradient(#6a8ba3,#a7bfce 45%,#e2eaee 78%)}
-.kcl{position:absolute;left:0;aspect-ratio:3;opacity:.95;animation:kdr linear infinite}
-@keyframes kdr{from{transform:translateX(-420px)}to{transform:translateX(1560px)}}
-.kgd{position:absolute;left:0;right:0;top:612px;bottom:0;background:linear-gradient(#2c363c,#222a30);border-top:3px solid #1b2328}
-@keyframes kup{from{opacity:0;transform:translateY(40px)}}
-.ksun{position:absolute;left:660px;top:110px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.55)}
-#ksk{position:absolute;inset:0;width:100%;height:100%}
+      /* ======= غرفة اللعب (مثل الجوكر) ======= */
+      /* Stage wrapper مثل الجوكر: 1536×691 */
+      #rscr {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1536px;
+        height: 691px;
+        transform-origin: center;
+        overflow: hidden;
+        display: none;
+        background:
+          radial-gradient(ellipse 560px 320px at 50% 56%, #f4f7f8, transparent 72%),
+          linear-gradient(#6a8ba3, #a7bfce 45%, #e2eaee 78%);
+      }
+      .kcl {
+        position: absolute;
+        left: 0;
+        aspect-ratio: 3;
+        opacity: 0.95;
+        animation: kdr linear infinite;
+      }
+      @keyframes kdr {
+        from {
+          transform: translateX(-420px);
+        }
+        to {
+          transform: translateX(1560px);
+        }
+      }
+      .kgd {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 612px;
+        bottom: 0;
+        background: linear-gradient(#2c363c, #222a30);
+        border-top: 3px solid #1b2328;
+      }
+      @keyframes kup {
+        from {
+          opacity: 0;
+          transform: translateY(40px);
+        }
+      }
+      .ksun {
+        position: absolute;
+        left: 660px;
+        top: 110px;
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.55);
+      }
+      #ksk {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
 
-/* زر رجوع داخل الغرفة */
-#kback{position:absolute;left:14px;top:16px;width:74px;height:60px;border-radius:18px;border:4px solid #1b9bf2;
- background:linear-gradient(#3cbcff,#0e86e0);box-shadow:0 5px 0 #0a5a9c;cursor:pointer;display:grid;place-items:center;padding:0;z-index:10}
-#kback::before{content:"";position:absolute;left:10%;right:10%;top:5px;height:34%;border-radius:14px;background:rgba(255,255,255,.22)}
-#kback svg{width:44px;height:34px;position:relative}
-#kback:active{transform:translateY(3px);box-shadow:0 2px 0 #0a5a9c}
+      /* زر رجوع داخل الغرفة */
+      #kback {
+        position: absolute;
+        left: 14px;
+        top: 16px;
+        width: 74px;
+        height: 60px;
+        border-radius: 18px;
+        border: 4px solid #1b9bf2;
+        background: linear-gradient(#3cbcff, #0e86e0);
+        box-shadow: 0 5px 0 #0a5a9c;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        z-index: 10;
+      }
+      #kback::before {
+        content: "";
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        top: 5px;
+        height: 34%;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.22);
+      }
+      #kback svg {
+        width: 44px;
+        height: 34px;
+        position: relative;
+      }
+      #kback:active {
+        transform: translateY(3px);
+        box-shadow: 0 2px 0 #0a5a9c;
+      }
 
-/* الملف الشخصي داخل الغرفة */
-#kprof{position:absolute;right:14px;top:10px;width:260px;height:74px;cursor:pointer;z-index:8}
-#kprof>*{position:absolute}
-.kav2{right:4px;top:4px;width:56px;height:64px;border-radius:50% 50% 46% 46%;background:radial-gradient(#ecd0a8,#b58658);border:2px solid #fff;display:grid;place-items:center;font-size:36px}
-.kls{right:66px;top:0;width:36px;height:36px;display:grid;place-items:center;z-index:2}
-.kls svg{position:absolute;inset:0;width:100%;height:100%}
-.kls b{position:relative;font-size:15px;font-weight:900}
-.kxpb{right:106px;top:10px;width:110px;height:20px;border-radius:7px;background:#27323b;border:2px solid #1b242b;overflow:hidden}
-.kxpb i{display:block;height:100%;border-radius:5px;background:linear-gradient(#5ed3ff,#1c9be0);transition:width .6s}
-.kfb{right:90px;top:40px;font-size:24px;line-height:1}
-.kun{right:120px;top:38px;font-size:18px;font-weight:800;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+      /* الملف الشخصي داخل الغرفة */
+      #kprof {
+        position: absolute;
+        right: 14px;
+        top: 10px;
+        width: 260px;
+        height: 74px;
+        cursor: pointer;
+        z-index: 8;
+      }
+      #kprof > * {
+        position: absolute;
+      }
+      .kav2 {
+        right: 4px;
+        top: 4px;
+        width: 56px;
+        height: 64px;
+        border-radius: 50% 50% 46% 46%;
+        background: radial-gradient(#ecd0a8, #b58658);
+        border: 2px solid #fff;
+        display: grid;
+        place-items: center;
+        font-size: 36px;
+      }
+      .kls {
+        right: 66px;
+        top: 0;
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        z-index: 2;
+      }
+      .kls svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .kls b {
+        position: relative;
+        font-size: 15px;
+        font-weight: 900;
+      }
+      .kxpb {
+        right: 106px;
+        top: 10px;
+        width: 110px;
+        height: 20px;
+        border-radius: 7px;
+        background: #27323b;
+        border: 2px solid #1b242b;
+        overflow: hidden;
+      }
+      .kxpb i {
+        display: block;
+        height: 100%;
+        border-radius: 5px;
+        background: linear-gradient(#5ed3ff, #1c9be0);
+        transition: width 0.6s;
+      }
+      .kfb {
+        right: 90px;
+        top: 40px;
+        font-size: 24px;
+        line-height: 1;
+      }
+      .kun {
+        right: 120px;
+        top: 38px;
+        font-size: 18px;
+        font-weight: 800;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+      }
 
-/* الصفحات داخل الغرفة */
-.kpg{position:absolute;left:0;right:0;top:0;bottom:0;display:none}
-@keyframes kin{from{opacity:0;transform:translateX(-60px)}}
-@keyframes kout{to{opacity:0;transform:translateX(60px)}}
-.kpg.in{display:block;animation:kin .28s}
-.kpg.out{animation:kout .28s forwards}
+      /* الصفحات داخل الغرفة */
+      .kpg {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        display: none;
+      }
+      @keyframes kin {
+        from {
+          opacity: 0;
+          transform: translateX(-60px);
+        }
+      }
+      @keyframes kout {
+        to {
+          opacity: 0;
+          transform: translateX(60px);
+        }
+      }
+      .kpg.in {
+        display: block;
+        animation: kin 0.28s;
+      }
+      .kpg.out {
+        animation: kout 0.28s forwards;
+      }
 
-/* بطاقة الغرفة العامة */
-#kr{position:absolute;left:200px;top:18px;width:1120px;height:655px;border:8px solid #fff;border-radius:24px;overflow:hidden;
- background:linear-gradient(#e27fc2,#cc55a6);box-shadow:0 8px 0 rgba(0,0,0,.22)}
-#kr.join #krv{display:none}
-#kr.join #kjv{display:block}
-#kr.host #kjv{display:none}
-#kr.host #krv{display:block}
-.kh{position:absolute;left:0;right:0;top:0;height:58px;background:rgba(255,255,255,.13);border-bottom:2px solid rgba(255,255,255,.85);
- text-align:center;font:900 40px/58px Cairo,sans-serif;text-shadow:0 2px 0 rgba(0,0,0,.3)}
-#ttl{position:absolute;left:0;right:0;top:0;height:58px;background:rgba(255,255,255,.13);border-bottom:2px solid rgba(255,255,255,.85);
- text-align:center;font:900 40px/58px Cairo,sans-serif;text-shadow:0 2px 0 rgba(0,0,0,.3)}
-/* زر لاعب تجريبي */
-#kdemo{position:absolute;right:14px;top:10px;z-index:6;height:38px;padding:0 14px;border-radius:14px;border:2px solid #fff;
- background:rgba(0,0,0,.3);color:#fff;font:800 18px Cairo,sans-serif;cursor:pointer;display:none}
-#kdemo:active{transform:scale(.96)}
+      /* بطاقة الغرفة العامة */
+      #kr {
+        position: absolute;
+        left: 200px;
+        top: 18px;
+        width: 1120px;
+        height: 655px;
+        border: 8px solid #fff;
+        border-radius: 24px;
+        overflow: hidden;
+        background: linear-gradient(#e27fc2, #cc55a6);
+        box-shadow: 0 8px 0 rgba(0, 0, 0, 0.22);
+      }
+      #kr.join #krv {
+        display: none;
+      }
+      #kr.join #kjv {
+        display: block;
+      }
+      #kr.host #kjv {
+        display: none;
+      }
+      #kr.host #krv {
+        display: block;
+      }
+      .kh {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 58px;
+        background: rgba(255, 255, 255, 0.13);
+        border-bottom: 2px solid rgba(255, 255, 255, 0.85);
+        text-align: center;
+        font:
+          900 40px/58px Cairo,
+          sans-serif;
+        text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+      }
+      #ttl {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 58px;
+        background: rgba(255, 255, 255, 0.13);
+        border-bottom: 2px solid rgba(255, 255, 255, 0.85);
+        text-align: center;
+        font:
+          900 40px/58px Cairo,
+          sans-serif;
+        text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+      }
+      /* زر لاعب تجريبي */
+      #kdemo {
+        position: absolute;
+        right: 14px;
+        top: 10px;
+        z-index: 6;
+        height: 38px;
+        padding: 0 14px;
+        border-radius: 14px;
+        border: 2px solid #fff;
+        background: rgba(0, 0, 0, 0.3);
+        color: #fff;
+        font:
+          800 18px Cairo,
+          sans-serif;
+        cursor: pointer;
+        display: none;
+      }
+      #kdemo:active {
+        transform: scale(0.96);
+      }
 
-/* واجهة الانضمام */
-#kjv{position:absolute;left:0;right:0;top:58px;bottom:0;display:block}
-.kjp{position:absolute;left:80px;right:80px;top:20px;bottom:20px;display:flex;flex-direction:column;align-items:center;gap:0}
-.kjl{font:900 30px Cairo,sans-serif;text-align:center;margin-bottom:18px;text-shadow:0 2px 0 rgba(0,0,0,.3)}
-#ci{width:520px;height:86px;border-radius:16px;border:4px solid #f3b6e6;background:#1c1c1e;
- box-shadow:inset 0 4px 8px rgba(0,0,0,.6);color:#4df3ff;font:900 58px/1 Cairo,sans-serif;
- text-align:center;letter-spacing:8px;outline:0;direction:ltr;text-transform:uppercase}
-.kor{margin:16px 0;font:800 22px Cairo,sans-serif;opacity:.7}
-/* أزرار داخل الغرفة */
-.kb{display:grid;place-items:center;cursor:pointer;color:#fff;font-family:Cairo,sans-serif;font-weight:900;padding:0;border:none;
- text-shadow:0 2px 0 rgba(0,0,0,.3);position:relative;width:520px;height:72px;border-radius:22px;font-size:30px;margin-bottom:12px}
-.kb::before{content:"";position:absolute;left:10%;right:10%;top:6px;height:34%;border-radius:14px;background:rgba(255,255,255,.25)}
-.kb span{position:relative}
-.kb:active{transform:translateY(3px)}
-.kr2{border:4px solid #ff948a;background:linear-gradient(#f2594d,#cc2821);box-shadow:0 6px 0 #8c1a17}
-.kr2:active{box-shadow:0 3px 0 #8c1a17}
-.kbl{border:4px solid #a8d4f8;background:linear-gradient(#3cbcff,#0e86e0);box-shadow:0 6px 0 #0a5a9c}
-.kbl:active{box-shadow:0 3px 0 #0a5a9c}
+      /* واجهة الانضمام */
+      #kjv {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 58px;
+        bottom: 0;
+        display: block;
+      }
+      .kjp {
+        position: absolute;
+        left: 80px;
+        right: 80px;
+        top: 20px;
+        bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+      }
+      .kjl {
+        font:
+          900 30px Cairo,
+          sans-serif;
+        text-align: center;
+        margin-bottom: 18px;
+        text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+      }
+      #ci {
+        width: 520px;
+        height: 86px;
+        border-radius: 16px;
+        border: 4px solid #f3b6e6;
+        background: #1c1c1e;
+        box-shadow: inset 0 4px 8px rgba(0, 0, 0, 0.6);
+        color: #4df3ff;
+        font:
+          900 58px/1 Cairo,
+          sans-serif;
+        text-align: center;
+        letter-spacing: 8px;
+        outline: 0;
+        direction: ltr;
+        text-transform: uppercase;
+      }
+      .kor {
+        margin: 16px 0;
+        font:
+          800 22px Cairo,
+          sans-serif;
+        opacity: 0.7;
+      }
+      /* أزرار داخل الغرفة */
+      .kb {
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        color: #fff;
+        font-family: Cairo, sans-serif;
+        font-weight: 900;
+        padding: 0;
+        border: none;
+        text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+        position: relative;
+        width: 520px;
+        height: 72px;
+        border-radius: 22px;
+        font-size: 30px;
+        margin-bottom: 12px;
+      }
+      .kb::before {
+        content: "";
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        top: 6px;
+        height: 34%;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.25);
+      }
+      .kb span {
+        position: relative;
+      }
+      .kb:active {
+        transform: translateY(3px);
+      }
+      .kr2 {
+        border: 4px solid #ff948a;
+        background: linear-gradient(#f2594d, #cc2821);
+        box-shadow: 0 6px 0 #8c1a17;
+      }
+      .kr2:active {
+        box-shadow: 0 3px 0 #8c1a17;
+      }
+      .kbl {
+        border: 4px solid #a8d4f8;
+        background: linear-gradient(#3cbcff, #0e86e0);
+        box-shadow: 0 6px 0 #0a5a9c;
+      }
+      .kbl:active {
+        box-shadow: 0 3px 0 #0a5a9c;
+      }
 
-/* واجهة المضيف */
-#krv{position:absolute;left:0;right:0;top:58px;bottom:0;display:none}
-.kd{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;gap:0}
-.klp{width:300px;flex:none;background:rgba(70,22,54,.55);display:flex;flex-direction:column;gap:10px;padding:14px 12px;overflow:hidden}
-.kdk{background:rgba(0,0,0,.25);border-radius:14px;padding:10px 12px}
-.kcb{text-align:center}
-.kcb .t{font:800 18px Cairo,sans-serif;opacity:.8;margin-bottom:4px}
-.kcb .c{font:900 42px/1.1 Cairo,sans-serif;color:#4df3ff;letter-spacing:4px;direction:ltr;margin-bottom:6px}
-.kcb .kb{width:100%;height:48px;font-size:22px;margin-bottom:0}
-.ksb{text-align:center}
-.ksb .t{font:800 18px Cairo,sans-serif;opacity:.8;margin-bottom:4px}
-.ksb .n{font:900 32px/1.1 Cairo,sans-serif}
-.ksb .n small{font-size:20px;opacity:.8}
-.kstp{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px}
-.kchip{height:36px;min-width:36px;padding:0 10px;border-radius:10px;border:2px solid rgba(255,255,255,.6);
- background:rgba(255,255,255,.18);color:#fff;font:900 22px Cairo,sans-serif;cursor:pointer}
-.kchip:active{transform:scale(.92)}
-.kstp span{font:800 18px Cairo,sans-serif;opacity:.8}
-#kqrb{width:100%;height:48px;font-size:22px;margin-bottom:0}
-.kst{text-align:center;font:800 18px/1.4 Cairo,sans-serif}
-.dots{display:inline-flex;gap:6px}
-.dots i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#fff;animation:dot 1.4s infinite}
-.dots i:nth-child(2){animation-delay:.2s}
-.dots i:nth-child(3){animation-delay:.4s}
-@keyframes dot{0%,80%,100%{transform:scale(.5);opacity:.4}40%{transform:scale(1);opacity:1}}
-#kgo{width:100%;height:54px;font-size:24px;margin-bottom:0}
+      /* واجهة المضيف */
+      #krv {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 58px;
+        bottom: 0;
+        display: none;
+      }
+      .kd {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        gap: 0;
+      }
+      .klp {
+        width: 300px;
+        flex: none;
+        background: rgba(70, 22, 54, 0.55);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px 12px;
+        overflow: hidden;
+      }
+      .kdk {
+        background: rgba(0, 0, 0, 0.25);
+        border-radius: 14px;
+        padding: 10px 12px;
+      }
+      .kcb {
+        text-align: center;
+      }
+      .kcb .t {
+        font:
+          800 18px Cairo,
+          sans-serif;
+        opacity: 0.8;
+        margin-bottom: 4px;
+      }
+      .kcb .c {
+        font:
+          900 42px/1.1 Cairo,
+          sans-serif;
+        color: #4df3ff;
+        letter-spacing: 4px;
+        direction: ltr;
+        margin-bottom: 6px;
+      }
+      .kcb .kb {
+        width: 100%;
+        height: 48px;
+        font-size: 22px;
+        margin-bottom: 0;
+      }
+      .ksb {
+        text-align: center;
+      }
+      .ksb .t {
+        font:
+          800 18px Cairo,
+          sans-serif;
+        opacity: 0.8;
+        margin-bottom: 4px;
+      }
+      .ksb .n {
+        font:
+          900 32px/1.1 Cairo,
+          sans-serif;
+      }
+      .ksb .n small {
+        font-size: 20px;
+        opacity: 0.8;
+      }
+      .kstp {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .kchip {
+        height: 36px;
+        min-width: 36px;
+        padding: 0 10px;
+        border-radius: 10px;
+        border: 2px solid rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.18);
+        color: #fff;
+        font:
+          900 22px Cairo,
+          sans-serif;
+        cursor: pointer;
+      }
+      .kchip:active {
+        transform: scale(0.92);
+      }
+      .kstp span {
+        font:
+          800 18px Cairo,
+          sans-serif;
+        opacity: 0.8;
+      }
+      #kqrb {
+        width: 100%;
+        height: 48px;
+        font-size: 22px;
+        margin-bottom: 0;
+      }
+      .kst {
+        text-align: center;
+        font:
+          800 18px/1.4 Cairo,
+          sans-serif;
+      }
+      .dots {
+        display: inline-flex;
+        gap: 6px;
+      }
+      .dots i {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #fff;
+        animation: dot 1.4s infinite;
+      }
+      .dots i:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .dots i:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes dot {
+        0%,
+        80%,
+        100% {
+          transform: scale(0.5);
+          opacity: 0.4;
+        }
+        40% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+      #kgo {
+        width: 100%;
+        height: 54px;
+        font-size: 24px;
+        margin-bottom: 0;
+      }
 
-/* شبكة المقاعد */
-#ksa{flex:1;padding:10px;display:grid;gap:8px;align-content:start;overflow:hidden;
- --c:3;--r:2;grid-template-columns:repeat(var(--c),1fr)}
-.ks{border-radius:14px;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.25);
- display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
- padding:6px;text-align:center;position:relative;animation:kup .35s backwards}
-@keyframes kup{from{opacity:0;transform:scale(.85)}}
-@keyframes kpop{0%{transform:scale(1)}50%{transform:scale(1.12)}100%{transform:scale(1)}}
-.ks.pop{animation:kpop .35s}
-.ks.me{border-color:#ffd23f;background:rgba(255,210,63,.18)}
-.ks.empty{border-style:dashed;background:rgba(255,255,255,.05)}
-.knum{position:absolute;top:5px;right:7px;font:900 16px Cairo,sans-serif;opacity:.6}
-.kav{font-size:32px;line-height:1.1}
-.ksn{font:800 16px/1.2 Cairo,sans-serif;word-break:break-all}
-.kbg{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
-.ho,.hu{font:900 13px Cairo,sans-serif;padding:2px 8px;border-radius:8px;border:2px solid rgba(255,255,255,.7)}
-.ho{background:#e27fc2;color:#fff}
-.hu{background:#ffd23f;color:#1a2128}
-.kx{position:absolute;top:5px;left:6px;width:24px;height:24px;border-radius:50%;border:2px solid #ff948a;
- background:linear-gradient(#f2594d,#cc2821);color:#fff;font-size:12px;font-weight:900;cursor:pointer;padding:0}
-#ksa.dn .ks{font-size:13px}
-#ksa.dn .kav{font-size:24px}
+      /* شبكة المقاعد */
+      #ksa {
+        flex: 1;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+        align-content: start;
+        overflow: hidden;
+        --c: 3;
+        --r: 2;
+        grid-template-columns: repeat(var(--c), 1fr);
+      }
+      .ks {
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.12);
+        border: 2px solid rgba(255, 255, 255, 0.25);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 6px;
+        text-align: center;
+        position: relative;
+        animation: kup 0.35s backwards;
+      }
+      @keyframes kup {
+        from {
+          opacity: 0;
+          transform: scale(0.85);
+        }
+      }
+      @keyframes kpop {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.12);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      .ks.pop {
+        animation: kpop 0.35s;
+      }
+      .ks.me {
+        border-color: #ffd23f;
+        background: rgba(255, 210, 63, 0.18);
+      }
+      .ks.empty {
+        border-style: dashed;
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .knum {
+        position: absolute;
+        top: 5px;
+        right: 7px;
+        font:
+          900 16px Cairo,
+          sans-serif;
+        opacity: 0.6;
+      }
+      .kav {
+        font-size: 32px;
+        line-height: 1.1;
+      }
+      .ksn {
+        font:
+          800 16px/1.2 Cairo,
+          sans-serif;
+        word-break: break-all;
+      }
+      .kbg {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .ho,
+      .hu {
+        font:
+          900 13px Cairo,
+          sans-serif;
+        padding: 2px 8px;
+        border-radius: 8px;
+        border: 2px solid rgba(255, 255, 255, 0.7);
+      }
+      .ho {
+        background: #e27fc2;
+        color: #fff;
+      }
+      .hu {
+        background: #ffd23f;
+        color: #1a2128;
+      }
+      .kx {
+        position: absolute;
+        top: 5px;
+        left: 6px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid #ff948a;
+        background: linear-gradient(#f2594d, #cc2821);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 900;
+        cursor: pointer;
+        padding: 0;
+      }
+      #ksa.dn .ks {
+        font-size: 13px;
+      }
+      #ksa.dn .kav {
+        font-size: 24px;
+      }
 
-/* نافذة QR / مودال */
-#md{position:absolute;inset:0;background:rgba(0,0,0,.7);display:none;place-items:center;z-index:30}
-#md.on{display:grid}
-#mdin{background:linear-gradient(#34506a,#1d2f3f);border:5px solid #fff;border-radius:20px;padding:24px 28px;
- min-width:380px;max-width:600px;text-align:center}
-#mdin h2{margin:0 0 14px;font-size:32px;color:#ffd23f}
-#mdin p{font:800 18px Cairo,sans-serif;margin:10px 0;opacity:.85;line-height:1.5}
-.kmc .kb{width:100%}
-.qbox{display:flex;justify-content:center;margin:10px 0}
+      /* نافذة QR / مودال */
+      #md {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        place-items: center;
+        z-index: 30;
+      }
+      #md.on {
+        display: grid;
+      }
+      #mdin {
+        background: linear-gradient(#34506a, #1d2f3f);
+        border: 5px solid #fff;
+        border-radius: 20px;
+        padding: 24px 28px;
+        min-width: 380px;
+        max-width: 600px;
+        text-align: center;
+      }
+      #mdin h2 {
+        margin: 0 0 14px;
+        font-size: 32px;
+        color: #ffd23f;
+      }
+      #mdin p {
+        font:
+          800 18px Cairo,
+          sans-serif;
+        margin: 10px 0;
+        opacity: 0.85;
+        line-height: 1.5;
+      }
+      .kmc .kb {
+        width: 100%;
+      }
+      .qbox {
+        display: flex;
+        justify-content: center;
+        margin: 10px 0;
+      }
 
-/* إشعار */
-#toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(0,0,0,.75);
- border:3px solid rgba(255,255,255,.6);border-radius:40px;padding:10px 36px;font-size:28px;font-weight:800;
- opacity:0;pointer-events:none;transition:opacity .25s;white-space:nowrap;z-index:40}
-#toast.on{opacity:1}
+      /* إشعار */
+      #toast {
+        position: absolute;
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.75);
+        border: 3px solid rgba(255, 255, 255, 0.6);
+        border-radius: 40px;
+        padding: 10px 36px;
+        font-size: 28px;
+        font-weight: 800;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s;
+        white-space: nowrap;
+        z-index: 40;
+      }
+      #toast.on {
+        opacity: 1;
+      }
 
-/* نافذة الملف الشخصي */
-#ov{position:absolute;inset:0;background:transparent;display:none;place-items:center;z-index:20}
-#ov.on{display:grid}
-.pn{position:relative;width:860px;height:530px;border:6px solid #fff;border-radius:26px;
- background:linear-gradient(#34506a,#1d2f3f);box-shadow:0 12px 0 rgba(0,0,0,.3);padding:20px 28px;
- transform:scale(1.5625);animation:pnIn .3s}
-@keyframes pnIn{from{opacity:0;transform:scale(1.5625) translateY(40px)}}
-.pn h2{margin:0 0 12px;text-align:center;font-size:34px;font-weight:900;color:#ffd23f}
-.x{position:absolute;left:14px;top:12px;width:46px;height:46px;border-radius:50%;border:3px solid #fff;
- background:#5b7488;color:#fff;font-size:22px;font-weight:900;cursor:pointer}
-.pb{display:flex;gap:26px;height:420px}
-.pcol{flex:1;display:flex;flex-direction:column;gap:10px;min-height:0}
-.pcol.l{flex:0 0 320px;align-items:center;text-align:center}
-.pcol h3{margin:0;font-size:20px;font-weight:800}
-.big{width:112px;height:112px;border-radius:50%;background:radial-gradient(#ecd0a8,#b58658);border:4px solid #fff;
- display:grid;place-items:center;font-size:72px}
-#nm{width:100%;height:44px;border-radius:12px;border:3px solid #5b7488;background:#14212b;
- color:#fff;font:800 22px Cairo,sans-serif;text-align:center;outline:0}
-.rel{position:relative;width:100%}
-.xpb.big{position:relative;left:auto;top:auto;width:100%;height:34px;border-radius:12px;display:grid;place-items:center}
-.xpb.big i{position:absolute;left:0;top:0}
-.xpb.big span{position:relative;font-weight:800;font-size:16px;text-shadow:0 1px 2px #000}
-.sm{font-size:13px;opacity:.8;line-height:1.4}
-.pbtn{height:48px;width:100%;border-radius:14px;border:3px solid #fff;background:linear-gradient(#58d27a,#2fa55a);
- color:#fff;font:900 20px Cairo,sans-serif;cursor:pointer}
-.pgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;overflow:auto;padding:8px;flex:1;
- background:rgba(0,0,0,.22);border-radius:14px;align-content:start}
-.f{border:3px solid transparent;border-radius:12px;background:rgba(255,255,255,.08);color:#fff;
- font:700 13px Cairo,sans-serif;padding:6px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
-.f span{font-size:34px;line-height:1.15}
-.f.on{border-color:#ffd23f;background:rgba(255,210,63,.22)}
-.pop{position:absolute;left:50%;white-space:nowrap;font-weight:900;font-size:22px;color:#ffe45e;
- text-shadow:0 2px 3px #000;pointer-events:none;animation:rs 1.3s forwards;z-index:5}
-@keyframes rs{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-46px)}}
-#prof .pop{left:275px;top:44px}
-#pm .pop{top:-8px}
-</style>
-</head>
-<body>
-<svg width="0" height="0" style="position:absolute"><defs>
-<linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
- <stop offset="0" stop-color="#eef2ea"/><stop offset="1" stop-color="#bfc9bb"/>
-</linearGradient>
-<g id="c" fill="url(#cg)">
- <ellipse cx="150" cy="78" rx="145" ry="20"/>
- <circle cx="85" cy="58" r="30"/><circle cx="145" cy="42" r="40"/><circle cx="210" cy="56" r="32"/>
-</g>
-<symbol id="p" viewBox="0 0 100 200">
- <circle cx="50" cy="24" r="21"/>
- <path d="M8 200V84a32 32 0 0 1 32-32h20a32 32 0 0 1 32 32V200z"/>
-</symbol>
-</defs></svg>
+      /* نافذة الملف الشخصي */
+      #ov {
+        position: absolute;
+        inset: 0;
+        background: transparent;
+        display: none;
+        place-items: center;
+        z-index: 20;
+      }
+      #ov.on {
+        display: grid;
+      }
+      .pn {
+        position: relative;
+        width: 860px;
+        height: 530px;
+        border: 6px solid #fff;
+        border-radius: 26px;
+        background: linear-gradient(#34506a, #1d2f3f);
+        box-shadow: 0 12px 0 rgba(0, 0, 0, 0.3);
+        padding: 20px 28px;
+        transform: scale(1.5625);
+        animation: pnIn 0.3s;
+      }
+      @keyframes pnIn {
+        from {
+          opacity: 0;
+          transform: scale(1.5625) translateY(40px);
+        }
+      }
+      .pn h2 {
+        margin: 0 0 12px;
+        text-align: center;
+        font-size: 34px;
+        font-weight: 900;
+        color: #ffd23f;
+      }
+      .x {
+        position: absolute;
+        left: 14px;
+        top: 12px;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        border: 3px solid #fff;
+        background: #5b7488;
+        color: #fff;
+        font-size: 22px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+      .pb {
+        display: flex;
+        gap: 26px;
+        height: 420px;
+      }
+      .pcol {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-height: 0;
+      }
+      .pcol.l {
+        flex: 0 0 320px;
+        align-items: center;
+        text-align: center;
+      }
+      .pcol h3 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 800;
+      }
+      .big {
+        width: 112px;
+        height: 112px;
+        border-radius: 50%;
+        background: radial-gradient(#ecd0a8, #b58658);
+        border: 4px solid #fff;
+        display: grid;
+        place-items: center;
+        font-size: 72px;
+      }
+      #nm {
+        width: 100%;
+        height: 44px;
+        border-radius: 12px;
+        border: 3px solid #5b7488;
+        background: #14212b;
+        color: #fff;
+        font:
+          800 22px Cairo,
+          sans-serif;
+        text-align: center;
+        outline: 0;
+      }
+      .rel {
+        position: relative;
+        width: 100%;
+      }
+      .xpb.big {
+        position: relative;
+        left: auto;
+        top: auto;
+        width: 100%;
+        height: 34px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+      }
+      .xpb.big i {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+      .xpb.big span {
+        position: relative;
+        font-weight: 800;
+        font-size: 16px;
+        text-shadow: 0 1px 2px #000;
+      }
+      .sm {
+        font-size: 13px;
+        opacity: 0.8;
+        line-height: 1.4;
+      }
+      .pbtn {
+        height: 48px;
+        width: 100%;
+        border-radius: 14px;
+        border: 3px solid #fff;
+        background: linear-gradient(#58d27a, #2fa55a);
+        color: #fff;
+        font:
+          900 20px Cairo,
+          sans-serif;
+        cursor: pointer;
+      }
+      .pgrid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        overflow: auto;
+        padding: 8px;
+        flex: 1;
+        background: rgba(0, 0, 0, 0.22);
+        border-radius: 14px;
+        align-content: start;
+      }
+      .f {
+        border: 3px solid transparent;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        font:
+          700 13px Cairo,
+          sans-serif;
+        padding: 6px 2px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      .f span {
+        font-size: 34px;
+        line-height: 1.15;
+      }
+      .f.on {
+        border-color: #ffd23f;
+        background: rgba(255, 210, 63, 0.22);
+      }
+      .pop {
+        position: absolute;
+        left: 50%;
+        white-space: nowrap;
+        font-weight: 900;
+        font-size: 22px;
+        color: #ffe45e;
+        text-shadow: 0 2px 3px #000;
+        pointer-events: none;
+        animation: rs 1.3s forwards;
+        z-index: 5;
+      }
+      @keyframes rs {
+        from {
+          opacity: 1;
+          transform: translate(-50%, 0);
+        }
+        to {
+          opacity: 0;
+          transform: translate(-50%, -46px);
+        }
+      }
+      #prof .pop {
+        left: 275px;
+        top: 44px;
+      }
+      #pm .pop {
+        top: -8px;
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute">
+      <defs>
+        <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#eef2ea" />
+          <stop offset="1" stop-color="#bfc9bb" />
+        </linearGradient>
+        <g id="c" fill="url(#cg)">
+          <ellipse cx="150" cy="78" rx="145" ry="20" />
+          <circle cx="85" cy="58" r="30" />
+          <circle cx="145" cy="42" r="40" />
+          <circle cx="210" cy="56" r="32" />
+        </g>
+        <symbol id="p" viewBox="0 0 100 200">
+          <circle cx="50" cy="24" r="21" />
+          <path d="M8 200V84a32 32 0 0 1 32-32h20a32 32 0 0 1 32 32V200z" />
+        </symbol>
+      </defs>
+    </svg>
 
-<!-- ======= شاشة اللوبي (2400×1080) ======= -->
-<div id="st">
- <div class="glow"></div>
- <svg class="cl" viewBox="0 0 300 100" style="left:215px;top:150px;width:430px;animation-duration:24s"><use href="#c"/></svg>
- <svg class="cl" viewBox="0 0 300 100" style="left:1030px;top:150px;width:445px;animation-duration:30s;animation-delay:-8s"><use href="#c"/></svg>
- <svg class="cl" viewBox="0 0 300 100" style="left:1930px;top:160px;width:440px;animation-duration:27s;animation-delay:-14s"><use href="#c"/></svg>
- <svg class="cl" viewBox="0 0 300 100" style="left:1285px;top:295px;width:255px;animation-duration:20s;animation-delay:-5s"><use href="#c"/></svg>
- <svg class="cl" viewBox="0 0 300 100" style="left:400px;top:390px;width:185px;animation-duration:26s;animation-delay:-11s"><use href="#c"/></svg>
- <svg class="cl" viewBox="0 0 300 100" style="left:-40px;top:325px;width:100px;animation-duration:18s"><use href="#c"/></svg>
- <svg class="cl" viewBox="0 0 300 100" style="left:1720px;top:390px;width:160px;animation-duration:23s;animation-delay:-3s"><use href="#c"/></svg>
- <div class="sun"></div>
- <svg id="sk" viewBox="0 0 2400 1080" preserveAspectRatio="none"></svg>
+    <!-- ======= شاشة اللوبي (2400×1080) ======= -->
+    <div id="st">
+      <div class="glow"></div>
+      <svg
+        class="cl"
+        viewBox="0 0 300 100"
+        style="left: 215px; top: 150px; width: 430px; animation-duration: 24s"
+      >
+        <use href="#c" />
+      </svg>
+      <svg
+        class="cl"
+        viewBox="0 0 300 100"
+        style="
+          left: 1030px;
+          top: 150px;
+          width: 445px;
+          animation-duration: 30s;
+          animation-delay: -8s;
+        "
+      >
+        <use href="#c" />
+      </svg>
+      <svg
+        class="cl"
+        viewBox="0 0 300 100"
+        style="
+          left: 1930px;
+          top: 160px;
+          width: 440px;
+          animation-duration: 27s;
+          animation-delay: -14s;
+        "
+      >
+        <use href="#c" />
+      </svg>
+      <svg
+        class="cl"
+        viewBox="0 0 300 100"
+        style="
+          left: 1285px;
+          top: 295px;
+          width: 255px;
+          animation-duration: 20s;
+          animation-delay: -5s;
+        "
+      >
+        <use href="#c" />
+      </svg>
+      <svg
+        class="cl"
+        viewBox="0 0 300 100"
+        style="
+          left: 400px;
+          top: 390px;
+          width: 185px;
+          animation-duration: 26s;
+          animation-delay: -11s;
+        "
+      >
+        <use href="#c" />
+      </svg>
+      <svg
+        class="cl"
+        viewBox="0 0 300 100"
+        style="left: -40px; top: 325px; width: 100px; animation-duration: 18s"
+      >
+        <use href="#c" />
+      </svg>
+      <svg
+        class="cl"
+        viewBox="0 0 300 100"
+        style="
+          left: 1720px;
+          top: 390px;
+          width: 160px;
+          animation-duration: 23s;
+          animation-delay: -3s;
+        "
+      >
+        <use href="#c" />
+      </svg>
+      <div class="sun"></div>
+      <svg id="sk" viewBox="0 0 2400 1080" preserveAspectRatio="none"></svg>
 
- <!-- الملف الشخصي -->
- <div id="prof" onclick="openP()">
-  <div class="av">🧔</div>
-  <div class="ls" id="lvs">
-   <svg viewBox="0 0 40 40"><polygon points="20,2 25,14 38,15 28,24 31,37 20,30 9,37 12,24 2,15 15,14" fill="#1fa3e6" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
-   <b id="lvn">5</b>
-  </div>
-  <div class="xpb"><i id="xpf"></i></div>
-  <div class="fb" id="fl">🇰🇼</div>
-  <div class="un" id="un" dir="ltr">usbysg.</div>
- </div>
-
- <!-- رجوع -->
- <button id="back" onclick="goBackLobby()" aria-label="رجوع">
-  <svg viewBox="0 0 100 80"><path fill="#fff" d="M6 40 L42 8 L42 28 C66 26 86 26 96 8 C98 40 78 58 42 56 L42 72 Z"/></svg>
- </button>
-
- <!-- بطاقة التدريب -->
- <div id="card">
-  <div class="hd">تدريب</div>
-  <div class="bd">
-
-   <!-- لوحة الملخص (يسار) -->
-   <div class="rp">
-    <div class="rq">الإعدادات المختارة</div>
-    <div class="rb">
-     <div class="inf-row">
-      <div class="inf-lbl">اللاعبون:</div>
-      <div class="inf-val" id="sumP">4</div>
-     </div>
-     <div class="inf-bot">البوت: <em id="sumL">متوسط</em></div>
-    </div>
-    <button class="btn red" onclick="newGame()"><span>مباراة جديدة</span></button>
-   </div>
-
-   <!-- العمود الأيمن: الاختيارات -->
-   <div class="col">
-    <!-- عدد اللاعبين: 2 → 10 -->
-    <div class="lb" style="top:4px">اللاعبين:</div>
-    <div class="sp" style="top:40px">
-     <button class="ab l" onclick="step('p',-1)" aria-label="السابق"><i class="tri"></i></button>
-     <div class="nm" id="vp">4</div>
-     <button class="ab r" onclick="step('p',1)" aria-label="التالي"><i class="tri"></i></button>
-    </div>
-
-    <!-- مستوى البوتات -->
-    <div class="lb" style="top:118px">مستوى البوتات:</div>
-    <div class="sp" style="top:154px">
-     <button class="ab l" onclick="step('l',-1)" aria-label="السابق"><i class="tri"></i></button>
-     <div class="nm t" id="vl">متوسط</div>
-     <button class="ab r" onclick="step('l',1)" aria-label="التالي"><i class="tri"></i></button>
-    </div>
-
-    <button class="btn nb" onclick="newGame()"><span>ابدأ</span></button>
-   </div>
-
-  </div>
- </div>
-
- <!-- بطاقة اللعب المشترك -->
- <div id="net">
-  <div class="hd">لعب مشترك</div>
-  <div class="bd">
-   <div class="ic"><svg viewBox="0 0 200 200">
-    <circle cx="100" cy="100" r="78" fill="none" stroke="#fff" stroke-width="12"/>
-    <ellipse cx="100" cy="100" rx="34" ry="78" fill="none" stroke="#fff" stroke-width="10"/>
-    <path d="M24 100H176M36 62H164M36 138H164" stroke="#fff" stroke-width="9" fill="none" stroke-linecap="round"/>
-   </svg></div>
-   <button class="btn red c1" onclick="createRoom()"><span>إنشاء غرفة</span></button>
-   <button class="btn red" onclick="joinRoom()"><span>الانضمام إلى غرفة</span></button>
-  </div>
- </div>
-
- <div id="toast"></div>
-
- <!-- نافذة الملف الشخصي -->
- <div id="ov"><div class="pn">
-  <button class="x" onclick="closeP()">✕</button>
-  <h2>الملف الشخصي</h2>
-  <div class="pb">
-   <div class="pcol l">
-    <div class="big">🧔</div>
-    <input id="nm" maxlength="14" dir="ltr" aria-label="اسم اللاعب">
-    <h3>المستوى <span id="pl2" style="color:#5ed3ff">5</span></h3>
-    <div class="rel" id="pm"><div class="xpb big"><i id="pf"></i><span id="pt"></span></div></div>
-    <div class="sm">كل فوز = 30 خبرة، ومع كل فوز متتالٍ +5 إضافية</div>
-    <button class="pbtn" onclick="addWin()">🏆 جرّب فوز</button>
-   </div>
-   <div class="pcol">
-    <h3>اختر علم بلدك</h3>
-    <div class="pgrid" id="gr"></div>
-   </div>
-  </div>
- </div></div>
-</div><!-- /st اللوبي -->
-
-<!-- ======= شاشة الغرفة (1536×691، نفس الجوكر) ======= -->
-<div id="rscr">
- <!-- خلفية المدينة -->
- <svg class="kcl" viewBox="0 0 300 100" style="left:215px;top:50px;width:380px;animation-duration:24s"><use href="#c"/></svg>
- <svg class="kcl" viewBox="0 0 300 100" style="left:900px;top:50px;width:390px;animation-duration:30s;animation-delay:-8s"><use href="#c"/></svg>
- <svg class="kcl" viewBox="0 0 300 100" style="left:1200px;top:60px;width:300px;animation-duration:27s;animation-delay:-14s"><use href="#c"/></svg>
- <div class="ksun"></div>
- <div class="kgd"></div>
- <svg id="ksk" viewBox="0 0 1536 691" preserveAspectRatio="none"></svg>
-
- <!-- زر رجوع -->
- <button id="kback" onclick="leaveRoom()" aria-label="رجوع">
-  <svg viewBox="0 0 100 80"><path fill="#fff" d="M6 40 L42 8 L42 28 C66 26 86 26 96 8 C98 40 78 58 42 56 L42 72 Z"/></svg>
- </button>
-
- <!-- الملف الشخصي داخل الغرفة -->
- <div id="kprof" onclick="openP()">
-  <div class="kav2">🧔</div>
-  <div class="kls"><svg viewBox="0 0 40 40"><polygon points="20,2 25,14 38,15 28,24 31,37 20,30 9,37 12,24 2,15 15,14" fill="#1fa3e6" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg><b id="klvn">5</b></div>
-  <div class="kxpb"><i id="kxpf"></i></div>
-  <div class="kfb" id="kfl">🇰🇼</div>
-  <div class="kun" id="kun" dir="ltr">usbysg.</div>
- </div>
-
- <!-- الغرفة -->
- <div id="kr">
-  <div id="ttl">إنشاء غرفة</div>
-  <button id="kdemo" onclick="addSim()">+ لاعب تجريبي</button>
-
-  <!-- واجهة الانضمام -->
-  <div id="kjv">
-   <div class="kjp">
-    <div class="kjl">أدخل رمز الغرفة</div>
-    <input id="ci" dir="ltr" maxlength="6" placeholder="• • • • •" autocomplete="off" aria-label="رمز الغرفة">
-    <button class="kb kr2" onclick="joinCode()"><span>انضمام</span></button>
-    <div class="kor">— أو —</div>
-    <button class="kb kbl" onclick="openScan()"><span>📷 مسح رمز QR</span></button>
-   </div>
-  </div>
-
-  <!-- واجهة المضيف -->
-  <div id="krv">
-   <div class="kd">
-    <div class="klp">
-     <div class="kcb kdk">
-      <div class="t">رمز الغرفة</div>
-      <div class="c" id="code">-----</div>
-      <button class="kb kbl" onclick="copyCode()"><span>نسخ</span></button>
-     </div>
-     <div class="ksb kdk">
-      <div class="t">اللاعبون</div>
-      <div class="n"><span id="kocn">1</span> <small>/ <span id="kot">4</span></small></div>
-      <div class="kstp" id="kstp_host">
-       <button class="kchip" onclick="setCap(-1)">−</button>
-       <span>المقاعد</span>
-       <button class="kchip" onclick="setCap(1)">+</button>
+      <!-- الملف الشخصي -->
+      <div id="prof" onclick="openP()">
+        <div class="av">🧔</div>
+        <div class="ls" id="lvs">
+          <svg viewBox="0 0 40 40">
+            <polygon
+              points="20,2 25,14 38,15 28,24 31,37 20,30 9,37 12,24 2,15 15,14"
+              fill="#1fa3e6"
+              stroke="#fff"
+              stroke-width="2"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <b id="lvn">5</b>
+        </div>
+        <div class="xpb"><i id="xpf"></i></div>
+        <div class="fb" id="fl">🇰🇼</div>
+        <div class="un" id="un" dir="ltr">usbysg.</div>
       </div>
-     </div>
-     <button class="kb kbl" id="kqrb" onclick="openQR()"><span>رمز QR</span></button>
-     <button class="kb kr2" id="kgo" onclick="startRoom()" style="display:none"><span>ابدأ اللعبة</span></button>
-     <div class="kst kdk" id="kwt">
-      <div><span id="kwtx"></span><br><span class="dots"><i></i><i></i><i></i></span></div>
-     </div>
+
+      <!-- رجوع -->
+      <button id="back" onclick="goBackLobby()" aria-label="رجوع">
+        <svg viewBox="0 0 100 80">
+          <path fill="#fff" d="M6 40 L42 8 L42 28 C66 26 86 26 96 8 C98 40 78 58 42 56 L42 72 Z" />
+        </svg>
+      </button>
+
+      <!-- بطاقة التدريب -->
+      <div id="card">
+        <div class="hd">تدريب</div>
+        <div class="bd">
+          <!-- لوحة الملخص (يسار) -->
+          <div class="rp">
+            <div class="rq">الإعدادات المختارة</div>
+            <div class="rb">
+              <div class="inf-row">
+                <div class="inf-lbl">اللاعبون:</div>
+                <div class="inf-val" id="sumP">4</div>
+              </div>
+              <div class="inf-bot">البوت: <em id="sumL">متوسط</em></div>
+            </div>
+            <button class="btn red" onclick="newGame()"><span>مباراة جديدة</span></button>
+          </div>
+
+          <!-- العمود الأيمن: الاختيارات -->
+          <div class="col">
+            <!-- عدد اللاعبين: 2 → 10 -->
+            <div class="lb" style="top: 4px">اللاعبين:</div>
+            <div class="sp" style="top: 40px">
+              <button class="ab l" onclick="step('p', -1)" aria-label="السابق">
+                <i class="tri"></i>
+              </button>
+              <div class="nm" id="vp">4</div>
+              <button class="ab r" onclick="step('p', 1)" aria-label="التالي">
+                <i class="tri"></i>
+              </button>
+            </div>
+
+            <!-- مستوى البوتات -->
+            <div class="lb" style="top: 118px">مستوى البوتات:</div>
+            <div class="sp" style="top: 154px">
+              <button class="ab l" onclick="step('l', -1)" aria-label="السابق">
+                <i class="tri"></i>
+              </button>
+              <div class="nm t" id="vl">متوسط</div>
+              <button class="ab r" onclick="step('l', 1)" aria-label="التالي">
+                <i class="tri"></i>
+              </button>
+            </div>
+
+            <button class="btn nb" onclick="newGame()"><span>ابدأ</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- بطاقة اللعب المشترك -->
+      <div id="net">
+        <div class="hd">لعب مشترك</div>
+        <div class="bd">
+          <div class="ic">
+            <svg viewBox="0 0 200 200">
+              <circle cx="100" cy="100" r="78" fill="none" stroke="#fff" stroke-width="12" />
+              <ellipse
+                cx="100"
+                cy="100"
+                rx="34"
+                ry="78"
+                fill="none"
+                stroke="#fff"
+                stroke-width="10"
+              />
+              <path
+                d="M24 100H176M36 62H164M36 138H164"
+                stroke="#fff"
+                stroke-width="9"
+                fill="none"
+                stroke-linecap="round"
+              />
+            </svg>
+          </div>
+          <button class="btn red c1" onclick="createRoom()"><span>إنشاء غرفة</span></button>
+          <button class="btn red" onclick="joinRoom()"><span>الانضمام إلى غرفة</span></button>
+        </div>
+      </div>
+
+      <div id="toast"></div>
+
+      <!-- نافذة الملف الشخصي -->
+      <div id="ov">
+        <div class="pn">
+          <button class="x" onclick="closeP()">✕</button>
+          <h2>الملف الشخصي</h2>
+          <div class="pb">
+            <div class="pcol l">
+              <div class="big">🧔</div>
+              <input id="nm" maxlength="14" dir="ltr" aria-label="اسم اللاعب" />
+              <h3>المستوى <span id="pl2" style="color: #5ed3ff">5</span></h3>
+              <div class="rel" id="pm">
+                <div class="xpb big"><i id="pf"></i><span id="pt"></span></div>
+              </div>
+              <div class="sm">كل فوز = 30 خبرة، ومع كل فوز متتالٍ +5 إضافية</div>
+              <button class="pbtn" onclick="addWin()">🏆 جرّب فوز</button>
+            </div>
+            <div class="pcol">
+              <h3>اختر علم بلدك</h3>
+              <div class="pgrid" id="gr"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div id="ksa"></div>
-   </div>
-  </div>
- </div><!-- /kr -->
+    <!-- /st اللوبي -->
 
- <!-- مودال QR -->
- <div id="md"><div id="mdin"><div class="kmc" id="mc"></div></div></div>
-</div><!-- /rscr -->
+    <!-- ======= شاشة الغرفة (1536×691، نفس الجوكر) ======= -->
+    <div id="rscr">
+      <!-- خلفية المدينة -->
+      <svg
+        class="kcl"
+        viewBox="0 0 300 100"
+        style="left: 215px; top: 50px; width: 380px; animation-duration: 24s"
+      >
+        <use href="#c" />
+      </svg>
+      <svg
+        class="kcl"
+        viewBox="0 0 300 100"
+        style="left: 900px; top: 50px; width: 390px; animation-duration: 30s; animation-delay: -8s"
+      >
+        <use href="#c" />
+      </svg>
+      <svg
+        class="kcl"
+        viewBox="0 0 300 100"
+        style="
+          left: 1200px;
+          top: 60px;
+          width: 300px;
+          animation-duration: 27s;
+          animation-delay: -14s;
+        "
+      >
+        <use href="#c" />
+      </svg>
+      <div class="ksun"></div>
+      <div class="kgd"></div>
+      <svg id="ksk" viewBox="0 0 1536 691" preserveAspectRatio="none"></svg>
 
-<script>
-const $ = id => document.getElementById(id);
+      <!-- زر رجوع -->
+      <button id="kback" onclick="leaveRoom()" aria-label="رجوع">
+        <svg viewBox="0 0 100 80">
+          <path fill="#fff" d="M6 40 L42 8 L42 28 C66 26 86 26 96 8 C98 40 78 58 42 56 L42 72 Z" />
+        </svg>
+      </button>
 
-/* ===== الملف الشخصي ===== */
-const R = { base: 30, bonus: 5, maxStreak: 5 }, need = l => 100 + (l - 1) * 25;
-let S = { lvl: 5, xp: 50, streak: 0, flag: '🇰🇼', name: 'usbysg.' };
-try { Object.assign(S, JSON.parse(localStorage.getItem('uno1') || '{}')); } catch (e) {}
-try { const pr = JSON.parse(localStorage.getItem('ikout_profile_v1') || '{}'); if (pr.name) S.name = pr.name; } catch (e) {}
-const save = () => { try { localStorage.setItem('uno1', JSON.stringify(S)); } catch (e) {} };
+      <!-- الملف الشخصي داخل الغرفة -->
+      <div id="kprof" onclick="openP()">
+        <div class="kav2">🧔</div>
+        <div class="kls">
+          <svg viewBox="0 0 40 40">
+            <polygon
+              points="20,2 25,14 38,15 28,24 31,37 20,30 9,37 12,24 2,15 15,14"
+              fill="#1fa3e6"
+              stroke="#fff"
+              stroke-width="2"
+              stroke-linejoin="round"
+            /></svg
+          ><b id="klvn">5</b>
+        </div>
+        <div class="kxpb"><i id="kxpf"></i></div>
+        <div class="kfb" id="kfl">🇰🇼</div>
+        <div class="kun" id="kun" dir="ltr">usbysg.</div>
+      </div>
 
-const FL = "🇰🇼 الكويت,🇸🇦 السعودية,🇦🇪 الإمارات,🇶🇦 قطر,🇧🇭 البحرين,🇴🇲 عُمان,🇾🇪 اليمن,🇮🇶 العراق,🇸🇾 سوريا,🇯🇴 الأردن,🇵🇸 فلسطين,🇪🇬 مصر,🇱🇾 ليبيا,🇹🇳 تونس,🇩🇿 الجزائر,🇲🇦 المغرب,🇲🇷 موريتانيا,🇸🇩 السودان,🇸🇴 الصومال,🇩🇯 جيبوتي,🇰🇲 القمر,🇹🇷 تركيا,🇮🇷 إيران,🇵🇰 باكستان,🇦🇫 أفغانستان,🇧🇩 بنغلاديش,🇮🇩 إندونيسيا,🇲🇾 ماليزيا,🇧🇳 بروناي,🇲🇻 المالديف,🇦🇿 أذربيجان,🇺🇿 أوزبكستان,🇰🇿 كازاخستان,🇦🇱 ألبانيا,🇳🇪 النيجر,🇲🇱 مالي,🇸🇳 السنغال";
-$('gr').innerHTML = FL.split(',').map(t => {
- const [f, n] = t.split(' ');
- return `<button class="f" data-f="${f}"><span>${f}</span>${n}</button>`;
-}).join('');
-$('gr').onclick = e => { const b = e.target.closest('.f'); if (!b) return; S.flag = b.dataset.f; renderProfile(); save(); };
+      <!-- الغرفة -->
+      <div id="kr">
+        <div id="ttl">إنشاء غرفة</div>
+        <button id="kdemo" onclick="addSim()">+ لاعب تجريبي</button>
 
-function renderProfile() {
- const p = Math.min(100, S.xp / need(S.lvl) * 100);
- $('xpf').style.width = $('pf').style.width = p + '%';
- if ($('kxpf')) $('kxpf').style.width = p + '%';
- $('lvn').textContent = $('pl2').textContent = S.lvl;
- if ($('klvn')) $('klvn').textContent = S.lvl;
- $('pt').textContent = S.xp + ' / ' + need(S.lvl) + ' XP';
- $('fl').textContent = S.flag;
- $('un').textContent = S.name;
- if ($('kfl')) { $('kfl').textContent = S.flag; $('kun').textContent = S.name; }
- document.querySelectorAll('.f').forEach(b => b.classList.toggle('on', b.dataset.f === S.flag));
-}
-function pop(txt) {
- const d = document.createElement('div'); d.className = 'pop'; d.textContent = txt;
- ($('ov').classList.contains('on') ? $('pm') : $('prof')).appendChild(d);
- setTimeout(() => d.remove(), 1300);
-}
-function addWin() {
- const g = R.base + Math.min(S.streak, R.maxStreak) * R.bonus; S.streak++; S.xp += g;
- let up = false; while (S.xp >= need(S.lvl)) { S.xp -= need(S.lvl); S.lvl++; up = true; }
- renderProfile(); save(); pop(up ? 'ترقية! المستوى ' + S.lvl + ' 🎉' : '+' + g + ' XP');
- if (up) { const s = $('lvs'); s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump'); }
-}
-function resetStreak() { S.streak = 0; save(); }
-function openP() { $('nm').value = S.name; $('ov').classList.add('on'); }
-function closeP() { $('ov').classList.remove('on'); }
-$('ov').onclick = e => { if (e.target === $('ov')) closeP(); };
-$('nm').oninput = e => { S.name = e.target.value.trim() || 'usbysg.'; renderProfile(); save(); };
-renderProfile();
+        <!-- واجهة الانضمام -->
+        <div id="kjv">
+          <div class="kjp">
+            <div class="kjl">أدخل رمز الغرفة</div>
+            <input
+              id="ci"
+              dir="ltr"
+              maxlength="6"
+              placeholder="• • • • •"
+              autocomplete="off"
+              aria-label="رمز الغرفة"
+            />
+            <button class="kb kr2" onclick="joinCode()"><span>انضمام</span></button>
+            <div class="kor">— أو —</div>
+            <button class="kb kbl" onclick="openScan()"><span>📷 مسح رمز QR</span></button>
+          </div>
+        </div>
 
-/* ===== إعدادات التدريب: اللاعبون 2→10، مستوى البوت ===== */
-const PL_MIN = 2, PL_MAX = 10;
-const LV = ['سهل', 'متوسط', 'صعب'], LVK = ['easy', 'medium', 'hard'];
-let C = { p: 4, l: 1 }; // p = عدد اللاعبين (2-10)، l = index مستوى البوت
-try {
- const saved = JSON.parse(localStorage.getItem('uno_cfg') || 'null');
- if (saved && typeof saved.p === 'number' && saved.p >= PL_MIN && saved.p <= PL_MAX) C.p = saved.p;
- if (saved && typeof saved.l === 'number' && saved.l >= 0 && saved.l < LV.length) C.l = saved.l;
-} catch (e) {}
-const saveC = () => { try { localStorage.setItem('uno_cfg', JSON.stringify(C)); } catch (e) {} };
+        <!-- واجهة المضيف -->
+        <div id="krv">
+          <div class="kd">
+            <div class="klp">
+              <div class="kcb kdk">
+                <div class="t">رمز الغرفة</div>
+                <div class="c" id="code">-----</div>
+                <button class="kb kbl" onclick="copyCode()"><span>نسخ</span></button>
+              </div>
+              <div class="ksb kdk">
+                <div class="t">اللاعبون</div>
+                <div class="n">
+                  <span id="kocn">1</span> <small>/ <span id="kot">4</span></small>
+                </div>
+                <div class="kstp" id="kstp_host">
+                  <button class="kchip" onclick="setCap(-1)">−</button>
+                  <span>المقاعد</span>
+                  <button class="kchip" onclick="setCap(1)">+</button>
+                </div>
+              </div>
+              <button class="kb kbl" id="kqrb" onclick="openQR()"><span>رمز QR</span></button>
+              <button class="kb kr2" id="kgo" onclick="startRoom()" style="display: none">
+                <span>ابدأ اللعبة</span>
+              </button>
+              <div class="kst kdk" id="kwt">
+                <div>
+                  <span id="kwtx"></span><br /><span class="dots"><i></i><i></i><i></i></span>
+                </div>
+              </div>
+            </div>
+            <div id="ksa"></div>
+          </div>
+        </div>
+      </div>
+      <!-- /kr -->
 
-function renderC() {
- $('vp').textContent = C.p;
- $('vl').textContent = LV[C.l];
- // تحديث لوحة الملخص
- $('sumP').textContent = C.p;
- $('sumL').textContent = LV[C.l];
-}
-function step(k, d) {
- if (k === 'p') {
-  C.p = Math.max(PL_MIN, Math.min(PL_MAX, C.p + d));
- } else if (k === 'l') {
-  C.l = (C.l + d + LV.length) % LV.length;
- }
- renderC(); saveC();
-}
+      <!-- مودال QR -->
+      <div id="md">
+        <div id="mdin"><div class="kmc" id="mc"></div></div>
+      </div>
+    </div>
+    <!-- /rscr -->
 
-let tt;
-function toast(m) {
- const t = $('toast'); t.textContent = m; t.classList.add('on');
- clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2200);
-}
+    <script>
+      const $ = (id) => document.getElementById(id);
 
-/* إطلاق حدث مباراة جديدة */
-function newGame() {
- const cfg = { players: C.p, botLevel: LVK[C.l] };
- toast('مباراة جديدة: ' + cfg.players + ' لاعبين • ' + LV[C.l]);
- window.dispatchEvent(new CustomEvent('startgame', { detail: cfg }));
-}
-function goBackLobby() { window.dispatchEvent(new CustomEvent('goback')); }
+      /* ===== الملف الشخصي ===== */
+      const R = { base: 30, bonus: 5, maxStreak: 5 },
+        need = (l) => 100 + (l - 1) * 25;
+      let S = { lvl: 5, xp: 50, streak: 0, flag: "🇰🇼", name: "usbysg." };
+      try {
+        Object.assign(S, JSON.parse(localStorage.getItem("uno1") || "{}"));
+      } catch (e) {}
+      try {
+        const pr = JSON.parse(localStorage.getItem("ikout_profile_v1") || "{}");
+        if (pr.name) S.name = pr.name;
+      } catch (e) {}
+      const save = () => {
+        try {
+          localStorage.setItem("uno1", JSON.stringify(S));
+        } catch (e) {}
+      };
 
-renderC();
+      const FL =
+        "🇰🇼 الكويت,🇸🇦 السعودية,🇦🇪 الإمارات,🇶🇦 قطر,🇧🇭 البحرين,🇴🇲 عُمان,🇾🇪 اليمن,🇮🇶 العراق,🇸🇾 سوريا,🇯🇴 الأردن,🇵🇸 فلسطين,🇪🇬 مصر,🇱🇾 ليبيا,🇹🇳 تونس,🇩🇿 الجزائر,🇲🇦 المغرب,🇲🇷 موريتانيا,🇸🇩 السودان,🇸🇴 الصومال,🇩🇯 جيبوتي,🇰🇲 القمر,🇹🇷 تركيا,🇮🇷 إيران,🇵🇰 باكستان,🇦🇫 أفغانستان,🇧🇩 بنغلاديش,🇮🇩 إندونيسيا,🇲🇾 ماليزيا,🇧🇳 بروناي,🇲🇻 المالديف,🇦🇿 أذربيجان,🇺🇿 أوزبكستان,🇰🇿 كازاخستان,🇦🇱 ألبانيا,🇳🇪 النيجر,🇲🇱 مالي,🇸🇳 السنغال";
+      $("gr").innerHTML = FL.split(",")
+        .map((t) => {
+          const [f, n] = t.split(" ");
+          return `<button class="f" data-f="${f}"><span>${f}</span>${n}</button>`;
+        })
+        .join("");
+      $("gr").onclick = (e) => {
+        const b = e.target.closest(".f");
+        if (!b) return;
+        S.flag = b.dataset.f;
+        renderProfile();
+        save();
+      };
 
-/* ===== أفق المدينة (للوبي) ===== */
-const B = [[0,60,482],[60,60,512],[120,70,532],[190,60,500],[250,50,542],[300,60,490],[360,60,532],[420,50,512],[470,40,562],[505,55,440],[560,45,522],[600,50,578],[650,50,546],[700,45,582],[800,50,572],[850,50,536],[900,60,592],[960,60,546],[1020,50,510],[1070,40,552],[1110,38,468],[1148,52,522],[1200,60,562],[1260,60,536],[1320,50,502],[1370,50,546],[1420,50,486],[1470,66,530]];
-let kk = '<g fill="#3b4247">';
-B.forEach(([x, w, t]) => kk += `<rect x="${x + w/2}" y="${t - 38}" width="${w}" height="500"/>`);
-kk += '</g><g fill="#4b5359"><rect x="764" y="500" width="10" height="200"/><ellipse cx="769" cy="494" rx="16" ry="30"/><rect x="767" y="430" width="4" height="64"/></g><g fill="#232628">';
-B.forEach(([x, w, t]) => { kk += `<rect x="${x}" y="${t}" width="${w + 1}" height="${700 - t}"/>`; if (t < 500) kk += `<rect x="${x + w/2 - 1}" y="${t - 26}" width="3" height="27"/>`; });
-$('sk').innerHTML = kk + '</g>';
+      function renderProfile() {
+        const p = Math.min(100, (S.xp / need(S.lvl)) * 100);
+        $("xpf").style.width = $("pf").style.width = p + "%";
+        if ($("kxpf")) $("kxpf").style.width = p + "%";
+        $("lvn").textContent = $("pl2").textContent = S.lvl;
+        if ($("klvn")) $("klvn").textContent = S.lvl;
+        $("pt").textContent = S.xp + " / " + need(S.lvl) + " XP";
+        $("fl").textContent = S.flag;
+        $("un").textContent = S.name;
+        if ($("kfl")) {
+          $("kfl").textContent = S.flag;
+          $("kun").textContent = S.name;
+        }
+        document
+          .querySelectorAll(".f")
+          .forEach((b) => b.classList.toggle("on", b.dataset.f === S.flag));
+      }
+      function pop(txt) {
+        const d = document.createElement("div");
+        d.className = "pop";
+        d.textContent = txt;
+        ($("ov").classList.contains("on") ? $("pm") : $("prof")).appendChild(d);
+        setTimeout(() => d.remove(), 1300);
+      }
+      function addWin() {
+        const g = R.base + Math.min(S.streak, R.maxStreak) * R.bonus;
+        S.streak++;
+        S.xp += g;
+        let up = false;
+        while (S.xp >= need(S.lvl)) {
+          S.xp -= need(S.lvl);
+          S.lvl++;
+          up = true;
+        }
+        renderProfile();
+        save();
+        pop(up ? "ترقية! المستوى " + S.lvl + " 🎉" : "+" + g + " XP");
+        if (up) {
+          const s = $("lvs");
+          s.classList.remove("bump");
+          void s.offsetWidth;
+          s.classList.add("bump");
+        }
+      }
+      function resetStreak() {
+        S.streak = 0;
+        save();
+      }
+      function openP() {
+        $("nm").value = S.name;
+        $("ov").classList.add("on");
+      }
+      function closeP() {
+        $("ov").classList.remove("on");
+      }
+      $("ov").onclick = (e) => {
+        if (e.target === $("ov")) closeP();
+      };
+      $("nm").oninput = (e) => {
+        S.name = e.target.value.trim() || "usbysg.";
+        renderProfile();
+        save();
+      };
+      renderProfile();
 
-/* ===== ملاءمة الشاشة ===== */
-function fitLobby() {
- const w = innerWidth, h = innerHeight, p = h > w;
- const s = p ? Math.min(h / 2400, w / 1080) : Math.min(w / 2400, h / 1080);
- $('st').style.transform = `translate(-50%,-50%)${p ? ' rotate(90deg)' : ''} scale(${s})`;
-}
-function fitRoom() {
- const w = innerWidth, h = innerHeight, p = h > w;
- const s = p ? Math.min(h / 1536, w / 691) : Math.min(w / 1536, h / 691);
- $('rscr').style.transform = `translate(-50%,-50%)${p ? ' rotate(90deg)' : ''} scale(${s})`;
- $('rscr').style.left = '50%'; $('rscr').style.top = '50%';
-}
-addEventListener('resize', () => { fitLobby(); fitRoom(); });
-fitLobby(); fitRoom();
+      /* ===== إعدادات التدريب: اللاعبون 2→10، مستوى البوت ===== */
+      const PL_MIN = 2,
+        PL_MAX = 10;
+      const LV = ["سهل", "متوسط", "صعب"],
+        LVK = ["easy", "medium", "hard"];
+      let C = { p: 4, l: 1 }; // p = عدد اللاعبين (2-10)، l = index مستوى البوت
+      try {
+        const saved = JSON.parse(localStorage.getItem("uno_cfg") || "null");
+        if (saved && typeof saved.p === "number" && saved.p >= PL_MIN && saved.p <= PL_MAX)
+          C.p = saved.p;
+        if (saved && typeof saved.l === "number" && saved.l >= 0 && saved.l < LV.length)
+          C.l = saved.l;
+      } catch (e) {}
+      const saveC = () => {
+        try {
+          localStorage.setItem("uno_cfg", JSON.stringify(C));
+        } catch (e) {}
+      };
 
-/* ===== الغرفة (Hotspot — نفس آلية الجوكر لكن MAX=10) =====
+      function renderC() {
+        $("vp").textContent = C.p;
+        $("vl").textContent = LV[C.l];
+        // تحديث لوحة الملخص
+        $("sumP").textContent = C.p;
+        $("sumL").textContent = LV[C.l];
+      }
+      function step(k, d) {
+        if (k === "p") {
+          C.p = Math.max(PL_MIN, Math.min(PL_MAX, C.p + d));
+        } else if (k === "l") {
+          C.l = (C.l + d + LV.length) % LV.length;
+        }
+        renderC();
+        saveC();
+      }
+
+      let tt;
+      function toast(m) {
+        const t = $("toast");
+        t.textContent = m;
+        t.classList.add("on");
+        clearTimeout(tt);
+        tt = setTimeout(() => t.classList.remove("on"), 2200);
+      }
+
+      /* إطلاق حدث مباراة جديدة */
+      function newGame() {
+        const cfg = { players: C.p, botLevel: LVK[C.l] };
+        toast("مباراة جديدة: " + cfg.players + " لاعبين • " + LV[C.l]);
+        window.dispatchEvent(new CustomEvent("startgame", { detail: cfg }));
+      }
+      function goBackLobby() {
+        window.dispatchEvent(new CustomEvent("goback"));
+      }
+
+      renderC();
+
+      /* ===== أفق المدينة (للوبي) ===== */
+      const B = [
+        [0, 60, 482],
+        [60, 60, 512],
+        [120, 70, 532],
+        [190, 60, 500],
+        [250, 50, 542],
+        [300, 60, 490],
+        [360, 60, 532],
+        [420, 50, 512],
+        [470, 40, 562],
+        [505, 55, 440],
+        [560, 45, 522],
+        [600, 50, 578],
+        [650, 50, 546],
+        [700, 45, 582],
+        [800, 50, 572],
+        [850, 50, 536],
+        [900, 60, 592],
+        [960, 60, 546],
+        [1020, 50, 510],
+        [1070, 40, 552],
+        [1110, 38, 468],
+        [1148, 52, 522],
+        [1200, 60, 562],
+        [1260, 60, 536],
+        [1320, 50, 502],
+        [1370, 50, 546],
+        [1420, 50, 486],
+        [1470, 66, 530],
+      ];
+      let kk = '<g fill="#3b4247">';
+      B.forEach(
+        ([x, w, t]) => (kk += `<rect x="${x + w / 2}" y="${t - 38}" width="${w}" height="500"/>`),
+      );
+      kk +=
+        '</g><g fill="#4b5359"><rect x="764" y="500" width="10" height="200"/><ellipse cx="769" cy="494" rx="16" ry="30"/><rect x="767" y="430" width="4" height="64"/></g><g fill="#232628">';
+      B.forEach(([x, w, t]) => {
+        kk += `<rect x="${x}" y="${t}" width="${w + 1}" height="${700 - t}"/>`;
+        if (t < 500) kk += `<rect x="${x + w / 2 - 1}" y="${t - 26}" width="3" height="27"/>`;
+      });
+      $("sk").innerHTML = kk + "</g>";
+
+      /* ===== ملاءمة الشاشة ===== */
+      function fitLobby() {
+        const w = innerWidth,
+          h = innerHeight,
+          p = h > w;
+        const s = p ? Math.min(h / 2400, w / 1080) : Math.min(w / 2400, h / 1080);
+        $("st").style.transform = `translate(-50%,-50%)${p ? " rotate(90deg)" : ""} scale(${s})`;
+      }
+      function fitRoom() {
+        const w = innerWidth,
+          h = innerHeight,
+          p = h > w;
+        const s = p ? Math.min(h / 1536, w / 691) : Math.min(w / 1536, h / 691);
+        $("rscr").style.transform = `translate(-50%,-50%)${p ? " rotate(90deg)" : ""} scale(${s})`;
+        $("rscr").style.left = "50%";
+        $("rscr").style.top = "50%";
+      }
+      addEventListener("resize", () => {
+        fitLobby();
+        fitRoom();
+      });
+      fitLobby();
+      fitRoom();
+
+      /* ===== الغرفة (Hotspot — نفس آلية الجوكر لكن MAX=10) =====
    window.UnoNative (اختياري):
      UnoNative.host(code)   — يبدأ استقبال الاتصالات
      UnoNative.join(code)   — يتصل بالمضيف
@@ -591,213 +2027,412 @@ fitLobby(); fitRoom();
      UnoNative.stop()       — يغلق الغرفة
    من التطبيق: window.onNativeMessage({from,m})  |  window.onScan(text)  */
 
-const MIN_ROOM = 2, MAX_ROOM = 10;
-const nat = () => window.UnoNative;
-const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const rand = () => { const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r = ''; for (let i = 0; i < 5; i++) r += a[Math.random() * a.length | 0]; return r; };
+      const MIN_ROOM = 2,
+        MAX_ROOM = 10;
+      const nat = () => window.UnoNative;
+      const esc = (s) =>
+        String(s).replace(
+          /[&<>"']/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+        );
+      const rand = () => {
+        const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let r = "";
+        for (let i = 0; i < 5; i++) r += a[(Math.random() * a.length) | 0];
+        return r;
+      };
 
-let isHost = false, ME = null, G = null, L = null, code = '', simN = 0;
-const sim = {};
+      let isHost = false,
+        ME = null,
+        G = null,
+        L = null,
+        code = "",
+        simN = 0;
+      const sim = {};
 
-/* --- النقل --- */
-function sendP(id, m) {
- if (isHost && id === 'h') return void setTimeout(() => cRecv(m), 0);
- if (sim[id]) return void setTimeout(() => sim[id] && sim[id](m), 0);
- const n = nat(); if (n && n.send) n.send(JSON.stringify({ to: id, m }));
-}
-function toHost(m) {
- if (isHost) return void setTimeout(() => hRecv('h', m), 0);
- const n = nat(); if (n && n.send) n.send(JSON.stringify({ to: 'host', m }));
-}
-window.onNativeMessage = s => { const o = typeof s === 'string' ? JSON.parse(s) : s; if (isHost) hRecv(o.from, o.m); else cRecv(o.m); };
-window.onScan = t => { const m = String(t).match(/join=?([A-Za-z0-9]+)/); enterRoom((m ? m[1] : String(t)).trim().slice(0, 6)); };
+      /* --- النقل --- */
+      function sendP(id, m) {
+        if (isHost && id === "h") return void setTimeout(() => cRecv(m), 0);
+        if (sim[id]) return void setTimeout(() => sim[id] && sim[id](m), 0);
+        const n = nat();
+        if (n && n.send) n.send(JSON.stringify({ to: id, m }));
+      }
+      function toHost(m) {
+        if (isHost) return void setTimeout(() => hRecv("h", m), 0);
+        const n = nat();
+        if (n && n.send) n.send(JSON.stringify({ to: "host", m }));
+      }
+      window.onNativeMessage = (s) => {
+        const o = typeof s === "string" ? JSON.parse(s) : s;
+        if (isHost) hRecv(o.from, o.m);
+        else cRecv(o.m);
+      };
+      window.onScan = (t) => {
+        const m = String(t).match(/join=?([A-Za-z0-9]+)/);
+        enterRoom((m ? m[1] : String(t)).trim().slice(0, 6));
+      };
 
-/* --- منطق المضيف --- */
-function lobbyPush() {
- if (!G) return;
- if (G.ph === 'lobby') {
-  if (G.P.length >= MIN_ROOM) { if (!G.P.some(p => p.id === G.starter)) G.starter = G.P[Math.random() * G.P.length | 0].id; }
-  else G.starter = null;
- }
- const L2 = { code: G.code, cap: G.cap, starter: G.starter, players: G.P.map(p => ({ id: p.id, name: p.name })) };
- G.P.forEach(p => sendP(p.id, { t: 'lobby', L: L2, you: p.id }));
-}
-function hRecv(id, m) {
- if (!G) return;
- if (m.t === 'join') {
-  if (G.P.some(p => p.id === id)) return;
-  if (G.ph !== 'lobby') return sendP(id, { t: 'rej', why: 'اللعبة بدأت بالفعل' });
-  if (G.P.length >= G.cap) return sendP(id, { t: 'rej', why: 'الغرفة ممتلئة' });
-  G.P.push({ id, name: String(m.name || 'لاعب').slice(0, 14) }); return lobbyPush();
- }
- if (!G.P.some(p => p.id === id)) return;
- if (m.t === 'leave') goneP(id);
- else if (m.t === 'deal') {
-  if (G.ph === 'lobby' && id === G.starter && G.P.length >= MIN_ROOM) {
-   G.ph = 'play'; G.P.forEach(p => sendP(p.id, { t: 'start', players: G.P.map(q => ({ id: q.id, name: q.name })) }));
-  }
- }
-}
-function goneP(id) {
- if (!G) return; const p = G.P.find(x => x.id === id); if (!p) return;
- G.P = G.P.filter(x => x !== p); delete sim[id]; lobbyPush();
-}
-function setCap(d) {
- if (!G || G.ph !== 'lobby') return;
- const lo = Math.max(MIN_ROOM, G.P.length), n = G.cap + d;
- if (n > MAX_ROOM) return toast('الحد الأقصى ' + MAX_ROOM + ' مقاعد');
- if (n < lo) return toast('لا يمكن أقل من ' + lo + ' مقاعد');
- G.cap = n; lobbyPush();
-}
-function kick(id) { if (!G || G.ph !== 'lobby' || id === 'h') return; sendP(id, { t: 'bye' }); goneP(id); }
-function addSim() {
- if (!G || G.ph !== 'lobby') return;
- if (G.P.length >= G.cap) return toast('لا توجد مقاعد فارغة');
- const id = 's' + (++simN);
- sim[id] = m => { if (m.t === 'start') delete sim[id]; };
- hRecv(id, { t: 'join', name: 'لاعب ' + simN });
-}
+      /* --- منطق المضيف --- */
+      function lobbyPush() {
+        if (!G) return;
+        if (G.ph === "lobby") {
+          if (G.P.length >= MIN_ROOM) {
+            if (!G.P.some((p) => p.id === G.starter))
+              G.starter = G.P[(Math.random() * G.P.length) | 0].id;
+          } else G.starter = null;
+        }
+        const L2 = {
+          code: G.code,
+          cap: G.cap,
+          starter: G.starter,
+          players: G.P.map((p) => ({ id: p.id, name: p.name })),
+        };
+        G.P.forEach((p) => sendP(p.id, { t: "lobby", L: L2, you: p.id }));
+      }
+      function hRecv(id, m) {
+        if (!G) return;
+        if (m.t === "join") {
+          if (G.P.some((p) => p.id === id)) return;
+          if (G.ph !== "lobby") return sendP(id, { t: "rej", why: "اللعبة بدأت بالفعل" });
+          if (G.P.length >= G.cap) return sendP(id, { t: "rej", why: "الغرفة ممتلئة" });
+          G.P.push({ id, name: String(m.name || "لاعب").slice(0, 14) });
+          return lobbyPush();
+        }
+        if (!G.P.some((p) => p.id === id)) return;
+        if (m.t === "leave") goneP(id);
+        else if (m.t === "deal") {
+          if (G.ph === "lobby" && id === G.starter && G.P.length >= MIN_ROOM) {
+            G.ph = "play";
+            G.P.forEach((p) =>
+              sendP(p.id, { t: "start", players: G.P.map((q) => ({ id: q.id, name: q.name })) }),
+            );
+          }
+        }
+      }
+      function goneP(id) {
+        if (!G) return;
+        const p = G.P.find((x) => x.id === id);
+        if (!p) return;
+        G.P = G.P.filter((x) => x !== p);
+        delete sim[id];
+        lobbyPush();
+      }
+      function setCap(d) {
+        if (!G || G.ph !== "lobby") return;
+        const lo = Math.max(MIN_ROOM, G.P.length),
+          n = G.cap + d;
+        if (n > MAX_ROOM) return toast("الحد الأقصى " + MAX_ROOM + " مقاعد");
+        if (n < lo) return toast("لا يمكن أقل من " + lo + " مقاعد");
+        G.cap = n;
+        lobbyPush();
+      }
+      function kick(id) {
+        if (!G || G.ph !== "lobby" || id === "h") return;
+        sendP(id, { t: "bye" });
+        goneP(id);
+      }
+      function addSim() {
+        if (!G || G.ph !== "lobby") return;
+        if (G.P.length >= G.cap) return toast("لا توجد مقاعد فارغة");
+        const id = "s" + ++simN;
+        sim[id] = (m) => {
+          if (m.t === "start") delete sim[id];
+        };
+        hRecv(id, { t: "join", name: "لاعب " + simN });
+      }
 
-/* --- منطق اللاعب --- */
-function cRecv(m) {
- if (m.t === 'lobby') { ME = m.you; L = m.L; showRoomView(true); }
- else if (m.t === 'rej') { toast(m.why); L = null; showRoomView(false); }
- else if (m.t === 'start') {
-  toast('بدأت اللعبة!');
-  window.dispatchEvent(new CustomEvent('unostart', { detail: { players: m.players, code: G ? G.code : code } }));
- }
- else if (m.t === 'bye') { toast(isHost ? '' : 'تم إخراجك من الغرفة'); leaveRoom(); }
-}
+      /* --- منطق اللاعب --- */
+      function cRecv(m) {
+        if (m.t === "lobby") {
+          ME = m.you;
+          L = m.L;
+          showRoomView(true);
+        } else if (m.t === "rej") {
+          toast(m.why);
+          L = null;
+          showRoomView(false);
+        } else if (m.t === "start") {
+          toast("بدأت اللعبة!");
+          window.dispatchEvent(
+            new CustomEvent("unostart", {
+              detail: { players: m.players, code: G ? G.code : code },
+            }),
+          );
+        } else if (m.t === "bye") {
+          toast(isHost ? "" : "تم إخراجك من الغرفة");
+          leaveRoom();
+        }
+      }
 
-/* --- واجهة الغرفة --- */
-function showLobby() { $('st').style.display = 'block'; $('rscr').style.display = 'none'; fitLobby(); }
-function showRoomScreen() { $('st').style.display = 'none'; $('rscr').style.display = 'block'; fitRoom(); }
+      /* --- واجهة الغرفة --- */
+      function showLobby() {
+        $("st").style.display = "block";
+        $("rscr").style.display = "none";
+        fitLobby();
+      }
+      function showRoomScreen() {
+        $("st").style.display = "none";
+        $("rscr").style.display = "block";
+        fitRoom();
+      }
 
-function createRoom() {
- isHost = true; ME = 'h'; code = rand(); L = null; simN = 0;
- G = { code, cap: 4, P: [{ id: 'h', name: S.name }], ph: 'lobby', starter: null };
- $('kr').className = 'host'; $('ttl').textContent = 'إنشاء غرفة'; $('ksa').innerHTML = '';
- showRoomScreen();
- if (nat() && nat().host) nat().host(code);
- lobbyPush();
- window.dispatchEvent(new CustomEvent('createroom', { detail: { code } }));
-}
-function joinRoom() {
- isHost = false; ME = null; L = null; G = null;
- $('kr').className = 'join'; $('ttl').textContent = 'الانضمام إلى غرفة';
- $('ci').value = ''; showRoomView(false); showRoomScreen();
- window.dispatchEvent(new CustomEvent('joinroom'));
-}
-function enterRoom(c) {
- if (!nat()) { toast('الانضمام يعمل عبر الـ Hotspot داخل التطبيق'); return; }
- code = c.toUpperCase(); if (nat().join) nat().join(code);
- toHost({ t: 'join', name: S.name });
- window.dispatchEvent(new CustomEvent('joinroom-request', { detail: { code } }));
-}
-function joinCode() { const v = $('ci').value.trim(); if (v.length < 4) { toast('أدخل رمز الغرفة'); return; } enterRoom(v); }
-function showRoomView(inRoom) {
- $('kjv').style.display = inRoom ? 'none' : '';
- $('krv').style.display = inRoom ? '' : 'none';
- if (inRoom) renderRoom();
-}
-function leaveRoom() {
- if (isHost && G) { G.P.forEach(p => p.id !== 'h' && sendP(p.id, { t: 'bye' })); G = null; if (nat() && nat().stop) nat().stop(); }
- else if (!isHost && L) toHost({ t: 'leave' });
- L = null;
- window.dispatchEvent(new CustomEvent('leaveroom', { detail: { code } }));
- showLobby();
-}
+      function createRoom() {
+        isHost = true;
+        ME = "h";
+        code = rand();
+        L = null;
+        simN = 0;
+        G = { code, cap: 4, P: [{ id: "h", name: S.name }], ph: "lobby", starter: null };
+        $("kr").className = "host";
+        $("ttl").textContent = "إنشاء غرفة";
+        $("ksa").innerHTML = "";
+        showRoomScreen();
+        if (nat() && nat().host) nat().host(code);
+        lobbyPush();
+        window.dispatchEvent(new CustomEvent("createroom", { detail: { code } }));
+      }
+      function joinRoom() {
+        isHost = false;
+        ME = null;
+        L = null;
+        G = null;
+        $("kr").className = "join";
+        $("ttl").textContent = "الانضمام إلى غرفة";
+        $("ci").value = "";
+        showRoomView(false);
+        showRoomScreen();
+        window.dispatchEvent(new CustomEvent("joinroom"));
+      }
+      function enterRoom(c) {
+        if (!nat()) {
+          toast("الانضمام يعمل عبر الـ Hotspot داخل التطبيق");
+          return;
+        }
+        code = c.toUpperCase();
+        if (nat().join) nat().join(code);
+        toHost({ t: "join", name: S.name });
+        window.dispatchEvent(new CustomEvent("joinroom-request", { detail: { code } }));
+      }
+      function joinCode() {
+        const v = $("ci").value.trim();
+        if (v.length < 4) {
+          toast("أدخل رمز الغرفة");
+          return;
+        }
+        enterRoom(v);
+      }
+      function showRoomView(inRoom) {
+        $("kjv").style.display = inRoom ? "none" : "";
+        $("krv").style.display = inRoom ? "" : "none";
+        if (inRoom) renderRoom();
+      }
+      function leaveRoom() {
+        if (isHost && G) {
+          G.P.forEach((p) => p.id !== "h" && sendP(p.id, { t: "bye" }));
+          G = null;
+          if (nat() && nat().stop) nat().stop();
+        } else if (!isHost && L) toHost({ t: "leave" });
+        L = null;
+        window.dispatchEvent(new CustomEvent("leaveroom", { detail: { code } }));
+        showLobby();
+      }
 
-function seatInner(p, i) {
- const num = `<span class="knum">${i + 1}</span>`;
- if (!p) return num + '<div class="kav">+</div><div class="ksn">مقعد فارغ</div>';
- return num + `<div class="kav">🧔</div><div class="ksn" dir="auto">${esc(p.name)}</div>` +
-  `<div class="kbg">${p.id === 'h' ? '<b class="ho">المضيف</b>' : ''}${p.id === ME && p.id !== 'h' ? '<b class="hu">أنت</b>' : ''}</div>` +
-  (isHost && p.id !== ME ? `<button class="kx" data-a="rm" data-id="${p.id}" aria-label="إزالة">✕</button>` : '');
-}
-function renderRoom() {
- if (!L) return;
- const N = L.cap, n = L.players.length, box = $('ksa');
- const c = N <= 4 ? 2 : N <= 6 ? 3 : N <= 8 ? 4 : 5, r = Math.ceil(N / c);
- box.style.setProperty('--c', c); box.style.setProperty('--r', r);
- box.className = r >= 3 ? 'dn' : '';
- if (box.children.length !== N) {
-  box.innerHTML = '';
-  for (let i = 0; i < N; i++) {
-   const d = document.createElement('div'); d.className = 'ks'; d.dataset.i = i;
-   d.style.animationDelay = i * 30 + 'ms';
-   box.appendChild(d);
-  }
- }
- [...box.children].forEach((el, i) => {
-  const p = L.players[i], sig = JSON.stringify([p, isHost, ME]);
-  if (el.dataset.c !== sig) { el.innerHTML = seatInner(p, i); el.dataset.c = sig; }
-  el.classList.toggle('empty', !p); el.classList.toggle('me', !!p && p.id === ME);
- });
- $('kocn').textContent = n; $('kot').textContent = N; $('code').textContent = L.code; code = L.code;
- const go = n >= MIN_ROOM && L.starter === ME;
- $('kgo').style.display = go ? '' : 'none'; $('kwt').style.display = go ? 'none' : '';
- $('kwtx').textContent = n < MIN_ROOM ? 'بانتظار اكتمال ' + MIN_ROOM + ' لاعبين على الأقل' : 'بانتظار اللاعب المُختار ليبدأ اللعبة';
- $('kdemo').style.display = isHost && !nat() ? 'block' : 'none';
- $('kstp_host').style.display = isHost ? 'flex' : 'none';
-}
-$('ksa').onclick = e => { const b = e.target.closest('[data-a="rm"]'); if (b) kick(b.dataset.id); };
-function copyCode() { try { navigator.clipboard.writeText(code).then(() => toast('تم نسخ الرمز'), () => toast('الرمز: ' + code)); } catch (e) { toast('الرمز: ' + code); } }
-function startRoom() { toHost({ t: 'deal' }); }
+      function seatInner(p, i) {
+        const num = `<span class="knum">${i + 1}</span>`;
+        if (!p) return num + '<div class="kav">+</div><div class="ksn">مقعد فارغ</div>';
+        return (
+          num +
+          `<div class="kav">🧔</div><div class="ksn" dir="auto">${esc(p.name)}</div>` +
+          `<div class="kbg">${p.id === "h" ? '<b class="ho">المضيف</b>' : ""}${p.id === ME && p.id !== "h" ? '<b class="hu">أنت</b>' : ""}</div>` +
+          (isHost && p.id !== ME
+            ? `<button class="kx" data-a="rm" data-id="${p.id}" aria-label="إزالة">✕</button>`
+            : "")
+        );
+      }
+      function renderRoom() {
+        if (!L) return;
+        const N = L.cap,
+          n = L.players.length,
+          box = $("ksa");
+        const c = N <= 4 ? 2 : N <= 6 ? 3 : N <= 8 ? 4 : 5,
+          r = Math.ceil(N / c);
+        box.style.setProperty("--c", c);
+        box.style.setProperty("--r", r);
+        box.className = r >= 3 ? "dn" : "";
+        if (box.children.length !== N) {
+          box.innerHTML = "";
+          for (let i = 0; i < N; i++) {
+            const d = document.createElement("div");
+            d.className = "ks";
+            d.dataset.i = i;
+            d.style.animationDelay = i * 30 + "ms";
+            box.appendChild(d);
+          }
+        }
+        [...box.children].forEach((el, i) => {
+          const p = L.players[i],
+            sig = JSON.stringify([p, isHost, ME]);
+          if (el.dataset.c !== sig) {
+            el.innerHTML = seatInner(p, i);
+            el.dataset.c = sig;
+          }
+          el.classList.toggle("empty", !p);
+          el.classList.toggle("me", !!p && p.id === ME);
+        });
+        $("kocn").textContent = n;
+        $("kot").textContent = N;
+        $("code").textContent = L.code;
+        code = L.code;
+        const go = n >= MIN_ROOM && L.starter === ME;
+        $("kgo").style.display = go ? "" : "none";
+        $("kwt").style.display = go ? "none" : "";
+        $("kwtx").textContent =
+          n < MIN_ROOM
+            ? "بانتظار اكتمال " + MIN_ROOM + " لاعبين على الأقل"
+            : "بانتظار اللاعب المُختار ليبدأ اللعبة";
+        $("kdemo").style.display = isHost && !nat() ? "block" : "none";
+        $("kstp_host").style.display = isHost ? "flex" : "none";
+      }
+      $("ksa").onclick = (e) => {
+        const b = e.target.closest('[data-a="rm"]');
+        if (b) kick(b.dataset.id);
+      };
+      function copyCode() {
+        try {
+          navigator.clipboard.writeText(code).then(
+            () => toast("تم نسخ الرمز"),
+            () => toast("الرمز: " + code),
+          );
+        } catch (e) {
+          toast("الرمز: " + code);
+        }
+      }
+      function startRoom() {
+        toHost({ t: "deal" });
+      }
 
-/* --- QR / Camera --- */
-let stream = null, scanning = false;
-function openModal(h) { $('mc').innerHTML = h; $('md').classList.add('on'); }
-function closeModal() { scanning = false; if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } $('md').classList.remove('on'); }
-$('md').onclick = e => { if (e.target === $('md') || e.target === $('mdin')) closeModal(); };
-function openQR() {
- const url = ((nat() && nat().hostInfo && nat().hostInfo()) || location.href.split('#')[0]) + '#join' + code;
- openModal(`<h2>رمز QR للغرفة</h2><div class="qbox" id="qr"></div><p>اطلب من اللاعبين مسح الرمز<br><span dir="ltr">${code}</span></p><button class="kb kbl" onclick="closeModal()"><span>إغلاق</span></button>`);
- if (typeof QRCode !== 'undefined') new QRCode($('qr'), { text: url, width: 260, height: 260, correctLevel: QRCode.CorrectLevel.M }); else $('qr').textContent = code;
-}
-async function openScan() {
- if (nat() && nat().scan) { nat().scan(); return; }
- if (!navigator.mediaDevices || !('BarcodeDetector' in window)) { toast('المسح غير مدعوم، أدخل الرمز يدوياً'); return; }
- openModal(`<h2>مسح رمز QR</h2><video id="vd" playsinline muted></video><p>وجّه الكاميرا نحو الرمز</p><button class="kb kr2" onclick="closeModal()"><span>إلغاء</span></button>`);
- try {
-  stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-  const v = $('vd'); v.srcObject = stream; await v.play();
-  const det = new BarcodeDetector({ formats: ['qr_code'] }); scanning = true;
-  const loop = async () => {
-   if (!scanning) return;
-   try {
-    const r = await det.detect(v);
-    if (r.length) { const m = r[0].rawValue.match(/join=?([A-Za-z0-9]+)/); const c = (m ? m[1] : r[0].rawValue).trim().slice(0, 6); closeModal(); enterRoom(c); return; }
-   } catch (e) {}
-   setTimeout(loop, 250);
-  };
-  loop();
- } catch (e) { closeModal(); toast('تعذّر تشغيل الكاميرا، أدخل الرمز يدوياً'); }
-}
+      /* --- QR / Camera --- */
+      let stream = null,
+        scanning = false;
+      function openModal(h) {
+        $("mc").innerHTML = h;
+        $("md").classList.add("on");
+      }
+      function closeModal() {
+        scanning = false;
+        if (stream) {
+          stream.getTracks().forEach((t) => t.stop());
+          stream = null;
+        }
+        $("md").classList.remove("on");
+      }
+      $("md").onclick = (e) => {
+        if (e.target === $("md") || e.target === $("mdin")) closeModal();
+      };
+      function openQR() {
+        const url =
+          ((nat() && nat().hostInfo && nat().hostInfo()) || location.href.split("#")[0]) +
+          "#join" +
+          code;
+        openModal(
+          `<h2>رمز QR للغرفة</h2><div class="qbox" id="qr"></div><p>اطلب من اللاعبين مسح الرمز<br><span dir="ltr">${code}</span></p><button class="kb kbl" onclick="closeModal()"><span>إغلاق</span></button>`,
+        );
+        if (typeof QRCode !== "undefined")
+          new QRCode($("qr"), {
+            text: url,
+            width: 260,
+            height: 260,
+            correctLevel: QRCode.CorrectLevel.M,
+          });
+        else $("qr").textContent = code;
+      }
+      async function openScan() {
+        if (nat() && nat().scan) {
+          nat().scan();
+          return;
+        }
+        if (!navigator.mediaDevices || !("BarcodeDetector" in window)) {
+          toast("المسح غير مدعوم، أدخل الرمز يدوياً");
+          return;
+        }
+        openModal(
+          `<h2>مسح رمز QR</h2><video id="vd" playsinline muted></video><p>وجّه الكاميرا نحو الرمز</p><button class="kb kr2" onclick="closeModal()"><span>إلغاء</span></button>`,
+        );
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+          const v = $("vd");
+          v.srcObject = stream;
+          await v.play();
+          const det = new BarcodeDetector({ formats: ["qr_code"] });
+          scanning = true;
+          const loop = async () => {
+            if (!scanning) return;
+            try {
+              const r = await det.detect(v);
+              if (r.length) {
+                const m = r[0].rawValue.match(/join=?([A-Za-z0-9]+)/);
+                const c = (m ? m[1] : r[0].rawValue).trim().slice(0, 6);
+                closeModal();
+                enterRoom(c);
+                return;
+              }
+            } catch (e) {}
+            setTimeout(loop, 250);
+          };
+          loop();
+        } catch (e) {
+          closeModal();
+          toast("تعذّر تشغيل الكاميرا، أدخل الرمز يدوياً");
+        }
+      }
 
-/* route عبر hash */
-function route() {
- const m = location.hash.match(/^#join=?([A-Za-z0-9]*)/); if (!m) return;
- joinRoom(); if (m[1]) enterRoom(m[1]);
-}
-addEventListener('hashchange', route); route();
+      /* route عبر hash */
+      function route() {
+        const m = location.hash.match(/^#join=?([A-Za-z0-9]*)/);
+        if (!m) return;
+        joinRoom();
+        if (m[1]) enterRoom(m[1]);
+      }
+      addEventListener("hashchange", route);
+      route();
 
-/* أفق المدينة للغرفة */
-let kkRoom = '<g fill="#3b4247">';
-B.forEach(([x, w, t]) => kkRoom += `<rect x="${x + w/2}" y="${t - 38}" width="${w}" height="400"/>`);
-kkRoom += '</g><g fill="#4b5359"><rect x="764" y="500" width="10" height="140"/><ellipse cx="769" cy="494" rx="16" ry="30"/><rect x="767" y="430" width="4" height="64"/></g><g fill="#25292c">';
-B.forEach(([x, w, t]) => { kkRoom += `<rect x="${x}" y="${t}" width="${w + 1}" height="${640 - t}"/>`; if (t < 500) kkRoom += `<rect x="${x + w/2 - 1}" y="${t - 26}" width="3" height="27"/>`; });
-$('ksk').innerHTML = kkRoom + '</g>';
-</script>
-<script>
-/* iKout bridge: forward lobby actions to the host app (this page runs inside an iframe at /uno). */
-(function(){
-  var post=function(m){ try{ (window.parent!==window?window.parent:window).postMessage(m, location.origin); }catch(e){} };
-  window.addEventListener('startgame', function(e){ post({type:'uno:start', players:e.detail.players, botLevel:e.detail.botLevel}); });
-  window.addEventListener('goback', function(){ post({type:'uno:home'}); });
-  window.addEventListener('createroom', function(){ post({type:'uno:room'}); });
-  window.addEventListener('joinroom', function(){ post({type:'uno:join'}); });
-})();
-</script>
-</body>
+      /* أفق المدينة للغرفة */
+      let kkRoom = '<g fill="#3b4247">';
+      B.forEach(
+        ([x, w, t]) =>
+          (kkRoom += `<rect x="${x + w / 2}" y="${t - 38}" width="${w}" height="400"/>`),
+      );
+      kkRoom +=
+        '</g><g fill="#4b5359"><rect x="764" y="500" width="10" height="140"/><ellipse cx="769" cy="494" rx="16" ry="30"/><rect x="767" y="430" width="4" height="64"/></g><g fill="#25292c">';
+      B.forEach(([x, w, t]) => {
+        kkRoom += `<rect x="${x}" y="${t}" width="${w + 1}" height="${640 - t}"/>`;
+        if (t < 500) kkRoom += `<rect x="${x + w / 2 - 1}" y="${t - 26}" width="3" height="27"/>`;
+      });
+      $("ksk").innerHTML = kkRoom + "</g>";
+    </script>
+    <script>
+      /* iKout bridge: forward lobby actions to the host app (this page runs inside an iframe at /uno). */
+      (function () {
+        var post = function (m) {
+          try {
+            (window.parent !== window ? window.parent : window).postMessage(m, location.origin);
+          } catch (e) {}
+        };
+        window.addEventListener("startgame", function (e) {
+          post({ type: "uno:start", players: e.detail.players, botLevel: e.detail.botLevel });
+        });
+        window.addEventListener("goback", function () {
+          post({ type: "uno:home" });
+        });
+        window.addEventListener("createroom", function () {
+          post({ type: "uno:room" });
+        });
+        window.addEventListener("joinroom", function () {
+          post({ type: "uno:join" });
+        });
+      })();
+    </script>
+  </body>
 </html>

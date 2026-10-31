@@ -21,6 +21,15 @@ export interface LocalHostServerOptions {
 function getCapacitorNodeBridge(): any {
   if (typeof window !== "undefined") {
     const win = window as any;
+    // 1. Native Capacitor WebSocket Server plugin
+    if (win.Capacitor?.Plugins?.WebSocketServer) {
+      return win.Capacitor.Plugins.WebSocketServer;
+    }
+    // 2. Custom Android WebView Bridge
+    if (win.AndroidWsServer) {
+      return win.AndroidWsServer;
+    }
+    // 3. Capacitor NodeJS plugin
     if (win.Capacitor?.Plugins?.NodeJS) {
       return win.Capacitor.Plugins.NodeJS;
     }

@@ -71,6 +71,25 @@ export async function getLocalIpAddress(): Promise<string> {
     return hostname;
   }
 
+  // Check for native Capacitor / Android bridge for IP
+  const win = window as any;
+  if (win.Capacitor?.Plugins?.NetworkServer?.getIpAddress) {
+    try {
+      const res = await win.Capacitor.Plugins.NetworkServer.getIpAddress();
+      if (res && res.ip) return res.ip;
+    } catch {
+      // ignore
+    }
+  }
+  if (win.AndroidBridge?.getIpAddress) {
+    try {
+      const ip = win.AndroidBridge.getIpAddress();
+      if (ip) return ip;
+    } catch {
+      // ignore
+    }
+  }
+
   // WebRTC local candidate discovery
   try {
     const RTCPC =

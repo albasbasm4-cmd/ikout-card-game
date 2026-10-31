@@ -1,0 +1,13 @@
+{
+  "appId": "com.ikout.cardgame",
+  "appName": "iKout Card Game",
+  "webDir": "dist/client",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

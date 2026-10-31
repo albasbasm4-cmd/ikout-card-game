@@ -1,14 +1,14 @@
-import { describe, it, expect } from 'vitest';
-import { TRICK_SLOTS, trickSlotFor } from '../components/Table';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { describe, it, expect } from "vitest";
+import { TRICK_SLOTS, trickSlotFor } from "../components/Table";
+import { readFileSync } from "fs";
+import { join } from "path";
 
-describe('Table cards spacing (6 players)', () => {
-  it('has vertical separation between top and bottom cards in columns 1, 2, and 3', () => {
+describe("Table cards spacing (6 players)", () => {
+  it("has vertical separation between top and bottom cards in columns 1, 2, and 3", () => {
     // Column 1: slots 1 (top) and 4 (bottom)
     // Column 2: slots 2 (top) and 5 (bottom)
     // Column 3: slots 3 (top) and 6 (bottom)
-    
+
     // Top cards should be around ~14% - 15%
     expect(TRICK_SLOTS[1].top).toBeLessThanOrEqual(15);
     expect(TRICK_SLOTS[2].top).toBeLessThanOrEqual(15);
@@ -26,15 +26,15 @@ describe('Table cards spacing (6 players)', () => {
   });
 });
 
-describe('Joker bot cards protection', () => {
-  it('ensures JokerApp only allows the local human player to reveal their own card', () => {
-    const jokerPath = join(process.cwd(), 'src/joker/JokerApp.tsx');
-    const code = readFileSync(jokerPath, 'utf8');
+describe("Joker bot cards protection", () => {
+  it("ensures JokerApp only allows the local human player to reveal their own card", () => {
+    const jokerPath = join(process.cwd(), "src/joker/JokerApp.tsx");
+    const code = readFileSync(jokerPath, "utf8");
 
     // Must check isHuman
-    expect(code).toContain('const isHuman = p.id === human;');
-    expect(code).toContain('const isHolding = isHuman && holdingId === p.id;');
-    expect(code).toContain('if (!isHuman) return;');
+    expect(code).toContain("const isHuman = p.id === human;");
+    expect(code).toContain("const isHolding = isHuman && holdingId === p.id;");
+    expect(code).toContain("if (!isHuman) return;");
     expect(code).toContain('{isHolding && isHuman ? (isJk ? "🃏" : playerCard) : ""}');
   });
 });

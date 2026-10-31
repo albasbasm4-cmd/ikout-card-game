@@ -12,6 +12,7 @@ import { useXp } from "../../utils/xp";
 import { useStageFit } from "../../hooks/use-stage-fit";
 import { playTapSound } from "../../utils/audio";
 import { ProfileEditor } from "../../components/ProfileEditor";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Room187Channel,
   Client187Packet,
@@ -666,11 +667,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
                   marginBottom: 16,
                 }}
               >
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=ikout187:${roomCode}`}
-                  alt="QR Code"
-                  style={{ width: 220, height: 220 }}
-                />
+                <QRCodeSVG value={`ikout187:${roomCode}`} size={220} />
               </div>
               <p style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
                 رمز الغرفة:{" "}

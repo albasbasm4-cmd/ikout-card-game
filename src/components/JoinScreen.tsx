@@ -37,6 +37,8 @@ export class WebBarcodeScanner implements IBarcodeScanner {
   private scanning = false;
 
   public async isAvailable(): Promise<boolean> {
+    const win = window as any;
+    if (win.Capacitor?.Plugins?.BarcodeScanner) return true;
     return (
       typeof navigator !== "undefined" &&
       !!navigator.mediaDevices &&
@@ -46,6 +48,22 @@ export class WebBarcodeScanner implements IBarcodeScanner {
 
   public async startScan(videoElement?: HTMLVideoElement | null): Promise<string> {
     this.scanning = true;
+    const win = window as any;
+
+    // Check for native Capacitor Barcode Scanner plugin first (fastest on Android)
+    if (win.Capacitor?.Plugins?.BarcodeScanner) {
+      try {
+        const scanner = win.Capacitor.Plugins.BarcodeScanner;
+        await scanner.checkPermission({ force: true });
+        const result = await scanner.startScan();
+        if (result && result.hasContent) {
+          this.scanning = false;
+          return result.content;
+        }
+      } catch (err) {
+        console.warn("[Capacitor BarcodeScanner] fallback to WebRTC/WebView camera", err);
+      }
+    }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("الكاميرا غير مدعومة على هذا المتصفح");

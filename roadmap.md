@@ -1,5 +1,7 @@
 # iKout reference matching
+
 ## Remix requests
+
 - [x] Remove both UNO setup and Joker iframes; lazy client-only React screens retain scoped original presentation.
 - [x] Verify landscape hand visibility and controls; lift 187 fan inside screen bounds without redesigning tables.
 - [x] Verify Kout/187 round results and next-round UI; fix double dealer rotation, duplicate Kout scoring, 187 forged attributes and false cheat verdicts. Final target/Bawan scoring covered by tests.
