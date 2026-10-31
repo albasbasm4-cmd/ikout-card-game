@@ -1,3 +1,4 @@
+import { formatHotspotQrString } from "@/network/multiplayerHub";
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, Bot, User } from "lucide-react";
@@ -295,7 +296,10 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
             <div id="mdin" onClick={(e) => e.stopPropagation()}>
               <h2>رمز QR للغرفة</h2>
               <div className="qbox">
-                <QRCodeSVG value={`uno-room:${code}`} size={190} />
+                <QRCodeSVG
+                  value={formatHotspotQrString("uno", "192.168.43.1", 8080, code)}
+                  size={190}
+                />
               </div>
               <p>امسح الرمز من جهاز آخر أو شارك رمز الغرفة للانضمام.</p>
               <button className="kb kr2" onClick={() => setQrOpen(false)}>

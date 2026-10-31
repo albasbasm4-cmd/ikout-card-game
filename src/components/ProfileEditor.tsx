@@ -1,3 +1,5 @@
+import { adManager } from "../ads/AdManager";
+import { Video } from "lucide-react";
 /** @license SPDX-License-Identifier: Apache-2.0 */
 import React, { useState } from "react";
 import {
@@ -86,31 +88,78 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
       <h2>{TABS.find((t) => t.id === tab)?.label}</h2>
       {tab === "character" && (
         <div className="pc-grid">
-          {CHARACTER_IDS.map((id) => (
-            <div key={id} className="pc-character">
-              <Button
-                variant="ghost"
-                className={`pc-item ${profile.characterId === id ? "pc-selected" : ""}`}
-                aria-label={`شخصية ${id}`}
-                aria-pressed={profile.characterId === id}
-                onClick={() => choose({ characterId: id })}
-              >
-                <img src={characterFace(id)} alt="" loading="lazy" />
-              </Button>
-              {game !== "187" && (
+          {CHARACTER_IDS.map((id, index) => {
+            const isRewardLocked = index >= 6;
+            const adProgress = adManager.getCharacterAdProgress(id);
+            const isUnlocked = !isRewardLocked || adProgress.unlocked;
+
+            return (
+              <div key={id} className="pc-character" style={{ position: "relative" }}>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="pc-voice"
-                  aria-label={`استماع لشخصية ${id}`}
-                  title="استماع للصوت"
-                  onClick={() => playRandomCharacterClip(id as CharacterId, 0)}
+                  className={`pc-item ${profile.characterId === id ? "pc-selected" : ""}`}
+                  aria-label={`شخصية ${id}`}
+                  aria-pressed={profile.characterId === id}
+                  onClick={async () => {
+                    if (isUnlocked) {
+                      choose({ characterId: id });
+                    } else {
+                      try {
+                        const updated = await adManager.watchRewardedAdForCharacter(id);
+                        if (updated.unlocked) {
+                          choose({ characterId: id });
+                        }
+                      } catch {
+                        // handled inside adManager
+                      }
+                    }
+                  }}
                 >
-                  <Volume2 />
+                  <img
+                    src={characterFace(id)}
+                    alt=""
+                    loading="lazy"
+                    style={{
+                      filter: isUnlocked ? "none" : "grayscale(90%) opacity(0.65)",
+                    }}
+                  />
                 </Button>
-              )}
-            </div>
-          ))}
+                {!isUnlocked && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 4,
+                      right: 4,
+                      background: "rgba(0,0,0,0.85)",
+                      borderRadius: 10,
+                      padding: "2px 5px",
+                      fontSize: 10,
+                      color: "#ffeb3b",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 3,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <Video size={10} />
+                    <span>{adProgress.watchedCount}/5</span>
+                  </div>
+                )}
+                {game !== "187" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="pc-voice"
+                    aria-label={`استماع لشخصية ${id}`}
+                    title="استماع للصوت"
+                    onClick={() => playRandomCharacterClip(id as CharacterId, 0)}
+                  >
+                    <Volume2 />
+                  </Button>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
       {tab === "table" && (

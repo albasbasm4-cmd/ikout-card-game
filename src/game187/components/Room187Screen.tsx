@@ -1,3 +1,4 @@
+import { formatHotspotQrString } from "@/network/multiplayerHub";
 import { useSettings } from "../../store/useSettings";
 /**
  * @license
@@ -667,7 +668,10 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
                   marginBottom: 16,
                 }}
               >
-                <QRCodeSVG value={`ikout187:${roomCode}`} size={220} />
+                <QRCodeSVG
+                  value={formatHotspotQrString("187", "192.168.43.1", 8080, roomCode)}
+                  size={220}
+                />
               </div>
               <p style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
                 رمز الغرفة:{" "}

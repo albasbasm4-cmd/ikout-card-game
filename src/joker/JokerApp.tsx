@@ -1,3 +1,4 @@
+import { formatHotspotQrString } from "@/network/multiplayerHub";
 import { NetworkLatencyBadge } from "@/components/NetworkLatencyBadge";
 import { useEffect, useRef, useState } from "react";
 import { useAppBack } from "@/utils/appBackNav";
@@ -527,7 +528,11 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                     margin: "16px auto",
                   }}
                 >
-                  <QRCodeSVG value={`joker-room:${roomCode}`} size={220} level="M" />
+                  <QRCodeSVG
+                    value={formatHotspotQrString("joker", "192.168.43.1", 8080, roomCode)}
+                    size={220}
+                    level="M"
+                  />
                 </div>
                 <p style={{ fontSize: 20, fontWeight: "bold", margin: "10px 0" }}>
                   رمز الغرفة: <span style={{ color: "#00e5ff" }}>{roomCode}</span>

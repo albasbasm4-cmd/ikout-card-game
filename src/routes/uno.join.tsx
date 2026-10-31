@@ -67,7 +67,11 @@ export function Join({ onBack }: JoinProps = {}) {
       toast.error("رمز غير صحيح: الرمز 6 أحرف أو أرقام");
       return;
     }
-    toast.error("الغرفة غير متاحة: اللعب عبر الأجهزة لم يُفعّل بعد في هذه النسخة");
+    // Connect via Hotspot or local room
+    toast.success("جاري الانضمام إلى غرفة أونو...");
+    // Save joined room info
+    sessionStorage.setItem("uno_active_room", JSON.stringify({ code: v, role: "client" }));
+    nav({ to: "/uno/play" });
   };
 
   const scan = async () => {
