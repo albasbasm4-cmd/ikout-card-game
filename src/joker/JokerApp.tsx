@@ -2,7 +2,20 @@ import { NetworkLatencyBadge } from "@/components/NetworkLatencyBadge";
 import { useEffect, useRef, useState } from "react";
 import { useAppBack } from "@/utils/appBackNav";
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Minus, Plus, Globe, Volume2, VolumeX, BookOpen, Home } from "lucide-react";
+import {
+  ArrowRight,
+  Minus,
+  Plus,
+  Globe,
+  Volume2,
+  VolumeX,
+  BookOpen,
+  Home,
+  QrCode,
+  Wifi,
+  Users,
+} from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { ProfileEditor } from "@/components/ProfileEditor";
 import { characterFace, CHARACTER_IDS, useProfile } from "@/utils/profile";
@@ -37,6 +50,10 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   useStageFit(stage, 1536, 691, settings.orientationPreference);
   const [screen, setScreen] = useState<"entry" | "room" | "game">("entry");
   const [count, setCount] = useState(4);
+  const [roomCode, setRoomCode] = useState(() =>
+    String(Math.floor(100000 + Math.random() * 900000)),
+  );
+  const [showQr, setShowQr] = useState(false);
   const [game, setGame] = useState<JokerGame | null>(null);
   const [holdingId, setHoldingId] = useState<string | null>(null);
   const [botPeekingId, setBotPeekingId] = useState<string | null>(null);
@@ -58,7 +75,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
     name: i === 0 ? profile.name : `لاعب ${i + 1}`,
     char: i === 0 ? profile.characterId : CHARACTER_IDS[(i * 5) % CHARACTER_IDS.length],
     score: 0,
-    bot: i !== 0,
+    bot: false,
   }));
   const start = () => {
     setGame(dealJoker(createJokerGame(players)));
@@ -164,10 +181,18 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                     <Globe size={210} />
                   </div>
                   <div className="kbt">
-                    <Button className="kb kr" onClick={() => setScreen("room")}>
-                      اللعب ضد البوتات
+                    <Button
+                      className="kb kr"
+                      onClick={() => {
+                        setRoomCode(String(Math.floor(100000 + Math.random() * 900000)));
+                        setScreen("room");
+                      }}
+                    >
+                      <Users className="w-5 h-5 ml-2" />
+                      إنشاء غرفة
                     </Button>
                     <Button className="kb kbl" onClick={() => setModal("network")}>
+                      <Wifi className="w-5 h-5 ml-2" />
                       الانضمام إلى غرفة
                     </Button>
                   </div>
@@ -177,7 +202,11 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
             {screen === "room" && (
               <div className="kpg" id="kp2" style={{ display: "block" }}>
                 <div id="kr" className="host">
-                  <div className="kh">اللعب ضد البوتات</div>
+                  <div className="kh flex items-center justify-center gap-3">
+                    <span>
+                      غرفة الجوكر · رمز الغرفة: <b style={{ color: "#00e5ff" }}>{roomCode}</b>
+                    </span>
+                  </div>
                   <div className="kd">
                     <div className="klp">
                       <div className="ksb kdk">
@@ -203,9 +232,20 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                           </Button>
                         </div>
                       </div>
-                      <Button id="go" className="kb kr ready" onClick={start}>
-                        ابدأ التوزيع
-                      </Button>
+                      <div style={{ display: "flex", gap: "12px", width: "100%" }}>
+                        <Button
+                          type="button"
+                          className="kb kbl"
+                          style={{ flex: 1 }}
+                          onClick={() => setShowQr(true)}
+                        >
+                          <QrCode className="w-5 h-5 ml-2" />
+                          رمز QR
+                        </Button>
+                        <Button id="go" className="kb kr ready" style={{ flex: 2 }} onClick={start}>
+                          ابدأ اللعبة
+                        </Button>
+                      </div>
                     </div>
                     <div
                       id="ksa"
@@ -225,7 +265,9 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                           </div>
                           <span className="ksn">{p.name}</span>
                           <div className="kbg">
-                            <b className={p.bot ? "bt" : "hu"}>{p.bot ? "بوت" : "أنت"}</b>
+                            <b className={i === 0 ? "hu" : "bt"}>
+                              {i === 0 ? "المضيف (أنت)" : "لاعب"}
+                            </b>
                           </div>
                         </div>
                       ))}
@@ -471,6 +513,35 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
         )}
         {screen !== "game" && <div className="joker-tool">{toolButtons}</div>}
         {profileOpen && <ProfileEditor onClose={() => setProfileOpen(false)} />}
+        {showQr && (
+          <div className="km" style={{ display: "flex", zIndex: 100 }}>
+            <div className="kmb">
+              <div className="kmc" style={{ textAlign: "center" }}>
+                <h2>امسح الرمز للانضمام للغرفة</h2>
+                <div
+                  style={{
+                    background: "#fff",
+                    padding: 16,
+                    borderRadius: 16,
+                    display: "inline-block",
+                    margin: "16px auto",
+                  }}
+                >
+                  <QRCodeSVG value={`joker-room:${roomCode}`} size={220} level="M" />
+                </div>
+                <p style={{ fontSize: 20, fontWeight: "bold", margin: "10px 0" }}>
+                  رمز الغرفة: <span style={{ color: "#00e5ff" }}>{roomCode}</span>
+                </p>
+                <p style={{ fontSize: 14, opacity: 0.8, marginBottom: 16 }}>
+                  تأكد أن اللاعبين متصلون بنفس نقطة الاتصال (Hotspot)
+                </p>
+                <Button className="kb kr" onClick={() => setShowQr(false)}>
+                  إغلاق
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         {modal && (
           <div id="md" className="on">
             <div id="mdin">
@@ -499,11 +570,44 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                 )}
                 {modal === "network" && (
                   <>
-                    <h2>الانضمام إلى غرفة</h2>
-                    <p>
-                      اللعب بين أجهزة مختلفة يحتاج تطبيق الجوال ووصلة Hotspot؛ ليس متاحاً في نسخة
-                      الويب.
+                    <h2>الانضمام إلى غرفة جوكر</h2>
+                    <p style={{ marginBottom: 16 }}>
+                      اتصل بنقطة اتصال المضيف (Hotspot) ثم أدخل رمز الغرفة أو امسح رمز الـ QR:
                     </p>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="أدخل رمز الغرفة (6 أرقام)"
+                      dir="ltr"
+                      style={{
+                        width: "100%",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        background: "rgba(0,0,0,0.4)",
+                        border: "1px solid rgba(255,255,255,0.2)",
+                        color: "#fff",
+                        textAlign: "center",
+                        fontSize: "20px",
+                        letterSpacing: "4px",
+                        marginBottom: "16px",
+                      }}
+                      id="joker-room-input"
+                    />
+                    <Button
+                      className="kb kr"
+                      onClick={() => {
+                        const val = (
+                          document.getElementById("joker-room-input") as HTMLInputElement
+                        )?.value;
+                        if (val && val.length >= 4) {
+                          setRoomCode(val);
+                          setModal(null);
+                          setScreen("room");
+                        }
+                      }}
+                    >
+                      دخول الغرفة
+                    </Button>
                   </>
                 )}
                 {modal === "pick" && (
