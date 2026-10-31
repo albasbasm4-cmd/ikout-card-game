@@ -20,6 +20,7 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      "@typescript-eslint/no-explicit-any": "warn",
       "no-restricted-imports": [
         "error",
         {
@@ -34,8 +35,6 @@ export default tseslint.config(
       ],
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
-      // كود الشبكة/الصوتيات القديم يستخدم any عمداً؛ يبقى التحذير ظاهراً دون إيقاف الفحص
-      "@typescript-eslint/no-explicit-any": "warn",
     },
   },
   eslintPluginPrettier,

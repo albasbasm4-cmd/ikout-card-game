@@ -492,7 +492,7 @@ export function useGame(options: UseGameOptions = {}) {
     cheatReportsThisRoundRef.current += 1;
 
     engineRef.current = new KoutGameEngine(
-      { variant, targetScore: state.targetScore, seed: 0, players: state.players },
+      { variant, targetScore: engine.state.targetScore, seed: 0, players: engine.state.players },
       result.nextState,
     );
     setState(result.nextState);

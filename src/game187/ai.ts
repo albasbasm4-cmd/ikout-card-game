@@ -217,6 +217,16 @@ export function chooseBotCardToPlay(state: GameState187, seat: number): Card187 
     return [...pool].sort(byPointsDesc)[0];
   }
 
+  // الخصم متصدر ولدينا أوراق رابحة: لا نستسلم، ننزل أقل ورقة رابحة كافية (بدون 2 كلفس)
+  if (!currentWinnerIsAlly && winningCards.length > 0) {
+    const safeWinners = winningCards.filter((c) => !isClubs2(c));
+    if (safeWinners.length > 0) {
+      return [...safeWinners].sort(
+        (a, b) => byWeakest(a, b) || getCardPoints(a) - getCardPoints(b),
+      )[0];
+    }
+  }
+
   // غير مضمونة: لا تحرق النقاط، ننزل ضعيفة ولا ننزل 2 كلفس أبداً
   let pool = legal.filter((c) => !isClubs2(c));
   if (pool.length === 0) pool = legal;

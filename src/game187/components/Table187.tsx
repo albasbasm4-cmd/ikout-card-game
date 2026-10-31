@@ -186,7 +186,7 @@ export const Table187: React.FC<Table187Props> = ({
     return map;
   }, [mySeat, profile.characterId, state.players]);
 
-  const myHand = state.hands[mySeat] || [];
+  const myHand = useMemo(() => state.hands[mySeat] || [], [state.hands, mySeat]);
   const isMyTurn = state.currentSeat === mySeat;
   const isHumanHakem = state.bidderSeat === mySeat;
   const trick = displayedTrick ?? state.currentTrick;
@@ -293,7 +293,8 @@ export const Table187: React.FC<Table187Props> = ({
     return null;
   };
 
-  const tool = "w-7 h-7 sm:w-8 sm:h-8 p-0 rounded-full bg-black/75 border border-amber-400/40 text-amber-300 shadow-lg backdrop-blur-md active:scale-95 cursor-pointer hover:bg-black/90 hover:border-amber-300 [&_svg]:size-3.5 sm:[&_svg]:size-4";
+  const tool =
+    "w-7 h-7 sm:w-8 sm:h-8 p-0 rounded-full bg-black/75 border border-amber-400/40 text-amber-300 shadow-lg backdrop-blur-md active:scale-95 cursor-pointer hover:bg-black/90 hover:border-amber-300 [&_svg]:size-3.5 sm:[&_svg]:size-4";
   const headerControls = (
     <div className="flex items-center gap-1.5 pointer-events-auto">
       <Button

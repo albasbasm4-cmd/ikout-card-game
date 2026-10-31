@@ -267,7 +267,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({
         <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
       </Button>
 
-
       {/* Quick Mute Toggle */}
       <Button
         type="button"

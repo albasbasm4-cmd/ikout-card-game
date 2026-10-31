@@ -135,7 +135,9 @@ export function koutTacticDecision(
     const lead = trick[0];
     if (lead.seat === state.bidderSeat && isTrumpClass(lead.card, trump)) {
       const redJoker = legal.find((c) => c.joker === "RED");
-      if (redJoker) return { forced: redJoker, candidates: legal };
+      const winnerNow = trickWinner(trick, trump);
+      const allyWinning = winnerNow.seat !== seat && winnerNow.seat % 2 === seat % 2;
+      if (redJoker && !allyWinning) return { forced: redJoker, candidates: legal };
     }
   }
 

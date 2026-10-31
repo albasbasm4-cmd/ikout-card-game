@@ -139,8 +139,7 @@ export function loadProfile(): PlayerProfile {
       table: LEGACY_TABLE[raw.table ?? ""] ?? DEFAULT_PROFILE.table,
       cards: LEGACY_CARDS[raw.cards ?? ""] ?? DEFAULT_PROFILE.cards,
       background:
-        typeof raw.background === "string" &&
-        BG_THEMES.some((b) => b.id === raw.background)
+        typeof raw.background === "string" && BG_THEMES.some((b) => b.id === raw.background)
           ? (raw.background as BgTheme)
           : DEFAULT_PROFILE.background,
       country:
