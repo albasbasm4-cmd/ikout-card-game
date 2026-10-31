@@ -1,3 +1,4 @@
+import { RoamingCreeper } from "./RoamingCreeper";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -209,6 +210,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {profileOpen && <ProfileEditor onClose={() => setProfileOpen(false)} />}
         {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+
+        {/* Roaming Creeper on right side */}
+        <RoamingCreeper />
       </div>
     </div>
   );
