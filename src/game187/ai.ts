@@ -5,6 +5,7 @@
 
 import { Card187, GameState187, Suit187 } from "./types";
 import {
+  RANKS_187,
   getCardPoints,
   getLegalCards187,
   getRankStrength,
@@ -108,7 +109,29 @@ export function planBotDiscardAndTrump(hand: Card187[]): { trump: Suit187; disca
   return { trump, discards: chooseBotDiscards(hand, trump) };
 }
 
-/** اختيار الورقة التي ينزلها البوت في دوره */
+/**
+ * هل استُنفدت كل أوراق الحكم من اللعب (المنزلة أو في يد هذا البوت)؟
+ * في 187 كل نوع فيه 10 أوراق، فإذا اكتمل العشرين من الحكم صارت القيادة بأقوى
+ * ورقة (2) مضمونة من الخطف.
+ */
+function trumpsExhausted187(state: GameState187, hand: Card187[]): boolean {
+  if (!state.trump) return false;
+  const played = [...state.trickHistory.flat(), ...state.currentTrick].map((p) => p.card);
+  const playedTrump = played.filter((c) => c.suit === state.trump).length;
+  const mineTrump = hand.filter((c) => c.suit === state.trump).length;
+  return playedTrump + mineTrump >= RANKS_187.length;
+}
+
+/**
+ * اختيار الورقة التي ينزلها البوت في دوره.
+ *
+ * هدف البوت: جمع أكبر عدد ممكن من النقاط من الأكلات المضمونة فقط.
+ * - الأكلة مضمونة: البوت آخر لاعب فيها وفريقه فائز حالياً أو يستطيع الفوز.
+ *   حينها ينزل أوراق النقاط (2 كلفس 25 نقطة ثم 10 ثم الآكة) ليصرفها في أكلة
+ *   مضمونة له بدل أن تُخطف.
+ * - غير مضمونة: ينزل ورقة ضعيفة (6 إلى 9) ثم الصور (شايب/بنت/ولد)، ولا ينزل
+ *   2 كلفس أبداً ولا يحرق 10 أو آكة أو 2 إذا كان لديه بديل.
+ */
 export function chooseBotCardToPlay(state: GameState187, seat: number): Card187 {
   const hand = state.hands[seat];
   const legal = getLegalCards187(
@@ -126,6 +149,12 @@ export function chooseBotCardToPlay(state: GameState187, seat: number): Card187 
 
   const isLeading = state.currentTrick.length === 0;
   const isHakem = seat === state.bidderSeat;
+  const seatCount = state.players.length || 5;
+  const isLast = state.currentTrick.length === seatCount - 1;
+  const isClubs2 = (c: Card187) => c.suit === "C" && c.rank === 2;
+  const byPointsDesc = (a: Card187, b: Card187) =>
+    getCardPoints(b) - getCardPoints(a) || getRankStrength(b.rank) - getRankStrength(a.rank);
+  const byWeakest = (a: Card187, b: Card187) => getRankStrength(a.rank) - getRankStrength(b.rank);
 
   if (isLeading) {
     if (isHakem) {
@@ -137,26 +166,40 @@ export function chooseBotCardToPlay(state: GameState187, seat: number): Card187 
       if (strongAce) return strongAce;
     }
 
-    // قيادة عادية: اختيار ورقة آمنة
-    return legal[0];
+    // قيادة غير الحاكم: ممنوع 2 كلفس إلا إذا استُنفد الحكم من اللعب
+    const allTrumpsGone = trumpsExhausted187(state, hand);
+    let pool = legal.filter((c) => !isClubs2(c) || allTrumpsGone);
+    if (pool.length === 0) pool = legal;
+
+    const suitCount = (c: Card187) => hand.filter((h) => h.suit === c.suit).length;
+    const pickBest = (cards: Card187[], byStrong: boolean) =>
+      [...cards].sort((a, b) =>
+        byStrong ? getRankStrength(b.rank) - getRankStrength(a.rank) : byWeakest(a, b),
+      )[0];
+
+    const aces = pool.filter((c) => c.rank === 14);
+    if (aces.length > 0) {
+      return [...aces].sort((a, b) => suitCount(b) - suitCount(a))[0];
+    }
+    const twos = pool.filter((c) => c.rank === 2);
+    if (twos.length > 0) return twos[0];
+    const kings = pool.filter((c) => c.rank === 13);
+    if (kings.length > 0) {
+      return [...kings].sort((a, b) => suitCount(b) - suitCount(a))[0];
+    }
+    const faces = pool.filter((c) => c.rank === 12 || c.rank === 11);
+    if (faces.length > 0) return pickBest(faces, true);
+    const lows = pool.filter((c) => c.rank >= 6 && c.rank <= 9);
+    if (lows.length > 0) return pickBest(lows, false);
+    return pickBest(pool, false);
   }
 
   // متابعة الأكلة
   const currentWinner = resolveTrickWinner187(state.currentTrick, state.trump);
-  const currentWinnerIsHakem = currentWinner.seat === state.bidderSeat;
-  const currentWinnerIsAlly = isHakem ? currentWinnerIsHakem : !currentWinnerIsHakem;
+  const currentWinnerIsAlly = isHakem
+    ? currentWinner.seat === state.bidderSeat
+    : currentWinner.seat !== state.bidderSeat;
 
-  if (currentWinnerIsAlly) {
-    // الحليف يفوز حالياً بالأكلة -> محاولة رمي ورقة ذات نقاط عالية (10 أو شايب) لدعمه
-    const pointCards = legal.filter((c) => getCardPoints(c) >= 10);
-    if (pointCards.length > 0) {
-      return pointCards[0];
-    }
-    // أو رمي أضعف ورقة
-    return legal[0];
-  }
-
-  // الخصم يفوز حالياً بالأكلة -> محاولة الفوز عليها إن أمكن
   const winningCards: Card187[] = [];
   for (const c of legal) {
     const trialTrick = [...state.currentTrick, { seat, card: c }];
@@ -166,19 +209,26 @@ export function chooseBotCardToPlay(state: GameState187, seat: number): Card187 
     }
   }
 
-  if (winningCards.length > 0) {
-    // اختيار أقل ورقة رابحة كافية للفوز
-    winningCards.sort((a, b) => getRankStrength(a.rank) - getRankStrength(b.rank));
-    return winningCards[0];
+  // أكلة مضمونة: البوت آخر لاعب وفريقه فائز (حالياً أو بأي ورقة رابحة عنده)
+  const guaranteed = isLast && (currentWinnerIsAlly || winningCards.length > 0);
+  if (guaranteed) {
+    const pool = currentWinnerIsAlly ? legal : winningCards;
+    // تصفير أوراق النقاط في أكلة مضمونة: 2 كلفس ثم الأعلى نقاطاً
+    return [...pool].sort(byPointsDesc)[0];
   }
 
-  // لا يمكن الفوز -> رمي أضعف ورقة لا تمنح نقاطاً للخصم
-  const zeroCards = legal.filter((c) => getCardPoints(c) === 0);
-  if (zeroCards.length > 0) {
-    return zeroCards[0];
-  }
+  // غير مضمونة: لا تحرق النقاط، ننزل ضعيفة ولا ننزل 2 كلفس أبداً
+  let pool = legal.filter((c) => !isClubs2(c));
+  if (pool.length === 0) pool = legal;
 
-  return legal[0];
+  const zeros = pool.filter((c) => getCardPoints(c) === 0);
+  if (zeros.length > 0) return [...zeros].sort(byWeakest)[0];
+
+  const faces = pool.filter((c) => c.rank === 13 || c.rank === 12 || c.rank === 11);
+  if (faces.length > 0) return [...faces].sort(byWeakest)[0];
+
+  // اضطرار: أقل نقاط أولاً
+  return [...pool].sort((a, b) => getCardPoints(a) - getCardPoints(b) || byWeakest(a, b))[0];
 }
 
 /** Alias retained for callers using the earlier AI function name. */
