@@ -1,22 +1,30 @@
 import fs from "node:fs";
+import path from "node:path";
 
 async function run() {
+  const targetDir = path.resolve("dist/client");
+  fs.mkdirSync(targetDir, { recursive: true });
+  const targetFile = path.join(targetDir, "index.html");
+
   try {
-    const ssrModule = await import("../node_modules/.nitro/vite/services/ssr/index.js");
-    const server = ssrModule.default;
-    const req = new Request("http://localhost/");
-    const res = await server.fetch(req, {}, {});
-    if (res.status === 200) {
-      const html = await res.text();
-      fs.writeFileSync("dist/client/index.html", html, "utf-8");
-      console.log("Successfully generated dist/client/index.html with pre-rendered SSR shell!");
-      return;
+    const ssrPath = path.resolve("node_modules/.nitro/vite/services/ssr/index.js");
+    if (fs.existsSync(ssrPath)) {
+      const ssrModule = await import(ssrPath);
+      const server = ssrModule.default;
+      const req = new Request("http://localhost/");
+      const res = await server.fetch(req, {}, {});
+      if (res.status === 200) {
+        const html = await res.text();
+        fs.writeFileSync(targetFile, html, "utf-8");
+        console.log("Successfully generated dist/client/index.html with pre-rendered SSR shell!");
+        return;
+      }
     }
   } catch (err) {
-    console.warn("Failed SSR pre-render:", err);
+    console.warn("Failed SSR pre-render fallback:", err);
   }
 
-  const assetsDir = "dist/client/assets";
+  const assetsDir = path.join(targetDir, "assets");
   let indexJs = "";
   let stylesCss = "";
   if (fs.existsSync(assetsDir)) {
@@ -38,7 +46,7 @@ async function run() {
   ${indexJs ? `<script type="module" src="/assets/${indexJs}"></script>` : ''}
 </body>
 </html>`;
-  fs.writeFileSync("dist/client/index.html", html, "utf-8");
+  fs.writeFileSync(targetFile, html, "utf-8");
   console.log("Generated fallback dist/client/index.html");
 }
 
