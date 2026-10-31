@@ -19,7 +19,7 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
     /* --- canvas layer --- */
     const cv = document.createElement('canvas');
     cv.style.cssText =
-      'position:absolute;inset:0;width:100%;height:100%;pointer-events:all;image-rendering:pixelated;z-index:4;cursor:default';
+      'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;image-rendering:pixelated;z-index:4;cursor:default';
     stage.appendChild(cv);
 
     /* tap target for accessibility / keyboard support */
@@ -28,7 +28,7 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
     tap.setAttribute('role', 'button');
     tap.setAttribute('aria-label', 'الكريبر الأخضر');
     tap.tabIndex = 0;
-    tap.style.cssText = 'position:absolute;z-index:30;cursor:pointer;touch-action:manipulation';
+    tap.style.cssText = 'position:absolute;z-index:30;cursor:pointer;touch-action:manipulation;pointer-events:none;';
     stage.appendChild(tap);
 
     /* screen-2 overlay */
@@ -170,10 +170,27 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
       sg.drawImage(T.front, 0, 0, 8, 8, OX - 4 * P, by - 8 * P, 8 * P, 8 * P);
       if (white) {
         sg.globalCompositeOperation = 'source-atop';
-        sg.fillStyle = 'rgba(255,255,255,.85)';
+        sg.fillStyle = 'rgba(255,255,255,.95)';
         sg.fillRect(0, 0, OW, OH);
         sg.globalCompositeOperation = 'source-over';
       }
+    }
+
+    function drawWalking(legP: number, br: number, facingDir: number) {
+      sg.clearRect(0, 0, OW, OH);
+      sg.imageSmoothingEnabled = false;
+      const legH = 6 * P;
+      const by = OY - legH - 12 * P + Math.round(br * P);
+      const swing = Math.sin(legP) * 2.2 * P;
+
+      // Legs swing
+      sg.drawImage(T.legF!, OX - 4 * P - swing, OY - legH, 4 * P, legH);
+      sg.drawImage(T.legF!, OX + swing, OY - legH, 4 * P, legH);
+      // Body
+      sg.drawImage(T.body, OX - 4 * P, by, 8 * P, 12 * P);
+      // Head
+      const headTex = facingDir < 0 ? T.side : T.front;
+      sg.drawImage(headTex, 0, 0, 8, 8, OX - 4 * P, by - 8 * P, 8 * P, 8 * P);
     }
 
     /* --- explosion particles --- */
@@ -276,13 +293,15 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
 
     /* --- state machine --- */
     const STAND_X = 1440;
+    const START_X = 1580; // starts outside right edge (SW=1536)
     const FOOT_Y = 612;
-    let cx = STAND_X,
-      dir = 1;
-    let state: 'look' | 'exploding' | 'screen2' = 'look';
+    let cx = START_X,
+      dir = -1;
+    let state: 'entering' | 'look' | 'exploding' | 'screen2' = 'entering';
+    let legPhase = 0;
     let fusingT = 0,
       fusePhase = 0;
-    const FUSE_DUR = 1.2;
+    const FUSE_DUR = 1.5; // turns white for 1.5s before exploding
     let exploded = false;
     let screen2Visible = false;
 
@@ -556,10 +575,14 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
       box.innerHTML = html;
     }
 
+    tap.addEventListener('pointerdown', (e) => {
+      e.stopPropagation();
+      if (state === 'look') startExplosion();
+    });
     tap.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        startExplosion();
+        if (state === 'look') startExplosion();
       }
     });
 
@@ -616,18 +639,35 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
       }
     }
 
-    function startExplosion() {
-      if (screen2Visible || state === 'exploding') return;
-      state = 'exploding';
-      fusingT = FUSE_DUR;
-      fusePhase = 0;
-      exploded = false;
-      parts = [];
-      tap.style.pointerEvents = 'none';
-      tap.tabIndex = -1;
+    function playFuseHiss() {
+      try {
+        const A = ((window as any).__bAC =
+          (window as any).__bAC ||
+          new (window.AudioContext || (window as any).webkitAudioContext)());
+        if (A.state === 'suspended') A.resume();
+        const n = A.currentTime;
+        const dur = 1.5;
+        const b = A.createBuffer(1, (A.sampleRate * dur) | 0, A.sampleRate);
+        const d = b.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.45;
+        const src = A.createBufferSource();
+        src.buffer = b;
+        const filter = A.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(3200, n);
+        filter.Q.setValueAtTime(2.2, n);
+        const gain = A.createGain();
+        gain.gain.setValueAtTime(0.08, n);
+        gain.gain.linearRampToValueAtTime(0.4, n + 1.2);
+        gain.gain.linearRampToValueAtTime(0.01, n + dur);
+        src.connect(filter);
+        filter.connect(gain);
+        gain.connect(A.destination);
+        src.start();
+      } catch (e) {}
+    }
 
-      showAbout();
-
+    function playBoomAudio() {
       try {
         const A = ((window as any).__bAC =
           (window as any).__bAC ||
@@ -666,6 +706,19 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
       aboutMusic.play().catch(() => {
         s2.dataset['audio'] = 'blocked';
       });
+    }
+
+    function startExplosion() {
+      if (screen2Visible || state === 'exploding' || state === 'entering') return;
+      state = 'exploding';
+      fusingT = 0;
+      fusePhase = 0;
+      exploded = false;
+      parts = [];
+      tap.style.pointerEvents = 'none';
+      tap.tabIndex = -1;
+
+      playFuseHiss();
     }
 
     function showAbout() {
@@ -757,18 +810,19 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
     }
 
     cv.addEventListener('pointermove', (e) => {
-      if (state === 'exploding' || screen2Visible) {
+      if (state === 'exploding' || state === 'entering' || screen2Visible) {
         cv.style.cursor = 'default';
         return;
       }
       cv.style.cursor = hitTest(e) ? 'pointer' : 'default';
     });
     cv.addEventListener('pointerdown', (e) => {
-      if (state === 'exploding' || screen2Visible) return;
+      if (state === 'exploding' || state === 'entering' || screen2Visible) return;
       if (hitTest(e)) startExplosion();
     });
 
     function hitTest(e: PointerEvent) {
+      if (state !== 'look') return false;
       const stageEl = document.getElementById('st');
       if (!stageEl) return false;
       const stRect = stageEl.getBoundingClientRect();
@@ -810,28 +864,31 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
 
       if (state === 'exploding') {
         fusingT += dt;
-        fusePhase += dt * (5 + 10 * (fusingT / FUSE_DUR));
-        const white = (fusePhase | 0) % 2 === 0;
-        const sc2 = 1 + 0.5 * (fusingT / FUSE_DUR) * (fusingT / FUSE_DUR);
+        const progress = Math.min(1, fusingT / FUSE_DUR);
+        fusePhase += dt * (6 + 18 * progress);
+        // Turns white for 1.5s as requested by user ("اجعله اولا يتحول الى اللون الأبيض لمدة 1 ونصف ثانية")
+        const isWhite = (fusePhase | 0) % 2 === 0 || progress > 0.65;
+        const sc2 = 1 + 0.35 * progress;
         if (fusingT < FUSE_DUR) {
-          drawStanding(white, 0);
+          drawStanding(isWhite, 0);
           ctx2.save();
-          ctx2.translate(Math.round(dir > 0 ? cx : SW - cx), FOOT_Y);
-          ctx2.scale(dir * sc2, sc2);
+          ctx2.translate(STAND_X, FOOT_Y);
+          ctx2.scale(sc2, sc2);
           ctx2.drawImage(spr, -OX, -OY);
           ctx2.restore();
         } else if (!exploded) {
           exploded = true;
-          spawnBoom(dir > 0 ? cx : SW - cx, FOOT_Y - OH / 2);
+          playBoomAudio();
+          spawnBoom(STAND_X, FOOT_Y - OH / 2);
           let sk = 0;
           const shk = setInterval(() => {
-            const a = 14 * (1 - sk / 8);
+            const a = 16 * (1 - sk / 10);
             const stEl = document.getElementById('st');
             if (stEl) {
               stEl.style.marginLeft = (Math.random() * 2 - 1) * a + 'px';
               stEl.style.marginTop = (Math.random() * 2 - 1) * a + 'px';
             }
-            if (++sk > 8) {
+            if (++sk > 10) {
               clearInterval(shk);
               const stEl2 = document.getElementById('st');
               if (stEl2) {
@@ -839,18 +896,45 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
                 stEl2.style.marginTop = '';
               }
             }
-          }, 55);
+          }, 45);
           const fl = document.createElement('div');
-          fl.style.cssText = 'position:absolute;inset:0;background:#fff;z-index:49;pointer-events:none';
+          fl.style.cssText =
+            'position:absolute;inset:0;background:#fff;z-index:49;pointer-events:none;transition:opacity .35s ease;opacity:1';
           stage?.appendChild(fl);
+          setTimeout(() => {
+            fl.style.opacity = '0';
+            setTimeout(() => fl.remove(), 350);
+          }, 80);
           showAbout();
-          fl.remove();
         }
         drawParts(ctx2, dt);
         return;
       }
 
       if (screen2Visible) return;
+
+      if (state === 'entering') {
+        legPhase += dt * 8.5;
+        cx -= 95 * dt;
+        const bob = Math.abs(Math.sin(legPhase)) * 0.25;
+        drawWalking(legPhase, bob, -1);
+        const dx0 = Math.round(cx);
+        updateHit(dx0 - OX, FOOT_Y - OY);
+        ctx2.save();
+        ctx2.translate(dx0, FOOT_Y);
+        ctx2.scale(-1, 1);
+        ctx2.drawImage(spr, -OX, -OY);
+        ctx2.restore();
+        if (cx <= STAND_X) {
+          cx = STAND_X;
+          dir = 1;
+          state = 'look';
+          tap.style.pointerEvents = 'auto';
+          tap.tabIndex = 0;
+        }
+        drawParts(ctx2, dt);
+        return;
+      }
 
       /* standing creeper facing player */
       cx = STAND_X;

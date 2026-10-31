@@ -102,12 +102,12 @@ export const MOCK_TABLE_STATE: GameState = {
 // خلايا الأوراق المنزلة: موضع ثابت لكل مقعد داخل صندوق سطح الطاولة (نسب مئوية قابلة للتعديل من مكان واحد)
 // 1 أعلى اليسار، 2 أعلى الوسط، 3 أعلى اليمين، 4 أسفل اليسار، 5 أسفل الوسط (أنا)، 6 أسفل اليمين
 export const TRICK_SLOTS: Record<number, { left: number; top: number }> = {
-  1: { left: 26.1, top: 18.3 },
+  1: { left: 26.1, top: 14.5 },
   2: { left: 43.1, top: 14 },
-  3: { left: 60, top: 18.3 },
-  4: { left: 26.1, top: 51.6 },
+  3: { left: 60, top: 14.5 },
+  4: { left: 26.1, top: 55.5 },
   5: { left: 43.1, top: 56 },
-  6: { left: 60, top: 51.6 },
+  6: { left: 60, top: 55.5 },
 };
 export const trickSlotFor = (relative: number, count: number): number => {
   if (relative === 0) return 5;

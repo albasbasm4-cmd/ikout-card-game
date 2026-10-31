@@ -319,7 +319,8 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                                 );
                                 const rowLeft =
                                   n > 1 ? 50 - ((n - 1) * stepPct) / 2 + stepPct * i : 50;
-                                const isHolding = holdingId === p.id;
+                                const isHuman = p.id === human;
+                                const isHolding = isHuman && holdingId === p.id;
                                 const playerCard = game.cards[p.id];
                                 const isRed = /[♥♦]/.test(playerCard ?? "");
                                 const isJk = playerCard === "JK";
@@ -329,7 +330,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                                 return (
                                   <div
                                     key={p.id}
-                                    className={`gs ${isDropped ? "o" : ""} ${p.id === human ? "me" : ""}`}
+                                    className={`gs ${isDropped ? "o" : ""} ${isHuman ? "me" : ""}`}
                                     style={{
                                       left: `${rowLeft}%`,
                                       top: `47%`,
@@ -338,28 +339,40 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                                     <img className="gav" src={characterFace(p.char)} alt="" />
                                     <span>{p.name}</span>
 
-                                    {/* ورقة اللاعب مقلوبة فوق الطاولة ولا تظهر إلا بالضغط المستمر */}
+                                    {/* ورقة اللاعب مقلوبة فوق الطاولة؛ الحساب البشري يرى ورقته هو فقط بالضغط المستمر */}
                                     <div
                                       className={`joker-table-card ${isHolding ? "revealed" : "face-down"} ${isHolding && isJk ? "jk" : ""} ${isHolding && isRed ? "r" : ""} ${isDropped ? "dropped" : ""} ${isPeeking ? "bot-peeking" : ""}`}
-                                      title={p.id === human ? "اضغط باستمرار" : "ورقة مقلوبة"}
+                                      title={isHuman ? "اضغط باستمرار لرؤية ورقتك" : "ورقة مقلوبة"}
                                       onPointerDown={(e) => {
+                                        if (!isHuman) return;
                                         e.preventDefault();
                                         setHoldingId(p.id);
                                         playCardSound();
                                       }}
-                                      onPointerUp={() => setHoldingId(null)}
-                                      onPointerLeave={() => setHoldingId(null)}
-                                      onPointerCancel={() => setHoldingId(null)}
+                                      onPointerUp={() => {
+                                        if (isHuman) setHoldingId(null);
+                                      }}
+                                      onPointerLeave={() => {
+                                        if (isHuman) setHoldingId(null);
+                                      }}
+                                      onPointerCancel={() => {
+                                        if (isHuman) setHoldingId(null);
+                                      }}
                                       onTouchStart={(e) => {
+                                        if (!isHuman) return;
                                         e.preventDefault();
                                         setHoldingId(p.id);
                                         playCardSound();
                                       }}
-                                      onTouchEnd={() => setHoldingId(null)}
-                                      onTouchCancel={() => setHoldingId(null)}
+                                      onTouchEnd={() => {
+                                        if (isHuman) setHoldingId(null);
+                                      }}
+                                      onTouchCancel={() => {
+                                        if (isHuman) setHoldingId(null);
+                                      }}
                                       onContextMenu={(e) => e.preventDefault()}
                                     >
-                                      {isHolding ? (isJk ? "🃏" : playerCard) : ""}
+                                      {isHolding && isHuman ? (isJk ? "🃏" : playerCard) : ""}
                                     </div>
                                   </div>
                                 );
