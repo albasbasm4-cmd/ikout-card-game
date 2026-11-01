@@ -1,3 +1,5 @@
+import { applyCheatCode } from "../utils/cheatCode";
+import { KeyRound } from "lucide-react";
 
 import {
   loadCustomAvatar,
@@ -10,7 +12,7 @@ import { Sparkles, Plus, Trash2, Camera, Upload } from "lucide-react";
 import { adManager } from "../ads/AdManager";
 import { Video } from "lucide-react";
 /** @license SPDX-License-Identifier: Apache-2.0 */
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   UserRound,
   Layers,
@@ -59,6 +61,16 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordTimer, setRecordTimer] = useState<number>(0);
+  const [cheatCodeInput, setCheatCodeInput] = useState("");
+  const [cheatFeedback, setCheatFeedback] = useState<{ text: string; isError: boolean } | null>(null);
+  const [charListVersion, setCharListVersion] = useState(0);
+
+  useEffect(() => {
+    const handleUnlocked = () => setCharListVersion((v) => v + 1);
+    window.addEventListener("ikout_characters_unlocked", handleUnlocked);
+    return () => window.removeEventListener("ikout_characters_unlocked", handleUnlocked);
+  }, []);
+
 
   const profile = useProfile();
   const [tab, setTab] = useState<Tab>("character");
@@ -105,7 +117,59 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
       </header>
       <h2>{TABS.find((t) => t.id === tab)?.label}</h2>
       {tab === "character" && (
-        <div className="pc-grid">
+        <div style={{ marginBottom: "12px", padding: "10px 14px", background: "rgba(15, 23, 42, 0.75)", border: "1px solid rgba(51, 65, 85, 0.8)", borderRadius: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+            <KeyRound size={15} color="#f59e0b" />
+            <span style={{ fontSize: "12px", fontWeight: "bold", color: "#f8fafc" }}>كود فتح الشخصيات السري:</span>
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              type="text"
+              value={cheatCodeInput}
+              onChange={(e) => setCheatCodeInput(e.target.value)}
+              placeholder="اكتب الكود السري هنا..."
+              style={{
+                flex: 1,
+                padding: "6px 10px",
+                fontSize: "12px",
+                borderRadius: "8px",
+                border: "1px solid #475569",
+                background: "#1e293b",
+                color: "#ffffff",
+                outline: "none"
+              }}
+            />
+            <Button
+              size="sm"
+              onClick={() => {
+                const res = applyCheatCode(cheatCodeInput);
+                setCheatFeedback({ text: res.message, isError: !res.success });
+                if (res.success) {
+                  setCheatCodeInput("");
+                  setCharListVersion((v) => v + 1);
+                }
+              }}
+              style={{
+                background: "#f59e0b",
+                color: "#0f172a",
+                fontWeight: "bold",
+                fontSize: "12px",
+                padding: "0 12px",
+                height: "32px"
+              }}
+            >
+              تفعيل
+            </Button>
+          </div>
+          {cheatFeedback && (
+            <div style={{ marginTop: "6px", fontSize: "11px", fontWeight: 600, color: cheatFeedback.isError ? "#f87171" : "#4ade80" }}>
+              {cheatFeedback.text}
+            </div>
+          )}
+        </div>
+      )}
+      {tab === "character" && (
+        <div className="pc-grid" key={charListVersion}>
 
           {/* أول خيار: إنشاء وتخصيص شخصية جديدة */}
           <div className="pc-character" style={{ position: "relative" }}>
