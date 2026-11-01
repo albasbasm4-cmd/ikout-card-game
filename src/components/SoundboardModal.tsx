@@ -27,11 +27,19 @@ export const SoundboardModal: React.FC<SoundboardModalProps> = ({
   // Verified clips only: every line here was transcribed from the character's
   // own restored audio, so the label always matches what is played.
   const set = voiceSet(activeCharId);
-  const diwaniyaPhrases = set.chat.map((clip) => ({
+  let diwaniyaPhrases = set.chat.map((clip) => ({
     id: clip.file,
     label: clip.text,
     audioUrl: voiceSource(activeCharId, clip),
   }));
+
+  if (activeCharId === "custom" && character.phrases && character.phrases.length > 0) {
+    diwaniyaPhrases = character.phrases.map((p) => ({
+      id: p.id,
+      label: p.label || p.text,
+      audioUrl: p.audioUrl,
+    }));
+  }
   const situations: Array<[string, VoiceClip | undefined]> = [
     ["نداء المزايدة", set.bid6],
     ["سبعة", set.bid7],
