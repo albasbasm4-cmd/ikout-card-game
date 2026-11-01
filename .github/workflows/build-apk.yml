@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/android-apk-asset-packaging]
   workflow_dispatch:
 
 jobs:
@@ -34,17 +34,22 @@ jobs:
           npm test
           npm run build
           node scripts/generate-static-html.mjs
+          node scripts/verify-assets.mjs
 
       - name: Setup Android Project & Sync
         run: |
           npx cap add android || true
           npx cap sync android
+          node scripts/verify-assets.mjs
 
       - name: Build Android APK (Debug)
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
+
+      - name: Verify APK Asset Integrity
+        run: node scripts/verify-apk.mjs
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4

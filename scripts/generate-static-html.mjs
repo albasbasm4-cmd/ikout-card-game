@@ -2,12 +2,24 @@ import fs from "node:fs";
 import path from "node:path";
 
 async function run() {
-  const targetDir = path.resolve("dist/client");
-  fs.mkdirSync(targetDir, { recursive: true });
-  const targetFile = path.join(targetDir, "index.html");
+  const rootDir = process.cwd();
+  const outputPublic = path.resolve(rootDir, ".output/public");
+  const distClient = path.resolve(rootDir, "dist/client");
+
+  // In non-sandbox production builds, Nitro places client assets in .output/public.
+  // Capacitor expects the complete web app in dist/client.
+  // Copy all assets, JS/CSS bundles, media, and fonts over to dist/client.
+  if (fs.existsSync(outputPublic)) {
+    console.log(`Copying full client production assets from ${outputPublic} to ${distClient}...`);
+    fs.mkdirSync(distClient, { recursive: true });
+    fs.cpSync(outputPublic, distClient, { recursive: true });
+  }
+
+  fs.mkdirSync(distClient, { recursive: true });
+  const targetFile = path.join(distClient, "index.html");
 
   try {
-    const ssrPath = path.resolve("node_modules/.nitro/vite/services/ssr/index.js");
+    const ssrPath = path.resolve(rootDir, "node_modules/.nitro/vite/services/ssr/index.js");
     if (fs.existsSync(ssrPath)) {
       const ssrModule = await import(ssrPath);
       const server = ssrModule.default;
@@ -24,7 +36,7 @@ async function run() {
     console.warn("Failed SSR pre-render fallback:", err);
   }
 
-  const assetsDir = path.join(targetDir, "assets");
+  const assetsDir = path.join(distClient, "assets");
   let indexJs = "";
   let stylesCss = "";
   if (fs.existsSync(assetsDir)) {
