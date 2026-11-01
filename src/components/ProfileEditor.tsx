@@ -1,3 +1,5 @@
+import { FrameRateTarget, loadTargetFps, saveTargetFps } from "../utils/frameRate";
+import { Gauge } from "lucide-react";
 import { applyCheatCode } from "../utils/cheatCode";
 import { KeyRound } from "lucide-react";
 
@@ -64,6 +66,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
   const [cheatCodeInput, setCheatCodeInput] = useState("");
   const [cheatFeedback, setCheatFeedback] = useState<{ text: string; isError: boolean } | null>(null);
   const [charListVersion, setCharListVersion] = useState(0);
+  const [targetFps, setTargetFps] = useState<FrameRateTarget>(loadTargetFps());
+
 
   useEffect(() => {
     const handleUnlocked = () => setCharListVersion((v) => v + 1);
@@ -372,6 +376,43 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
             maxLength={14}
             onChange={(e) => saveProfile({ name: e.target.value })}
           />
+
+          {/* قسم اختيار معدل الإطارات (FPS) */}
+          <div style={{ marginTop: "20px", width: "100%", padding: "14px", background: "rgba(15, 23, 42, 0.7)", border: "1px solid #334155", borderRadius: "14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", color: "#f8fafc" }}>
+              <Gauge size={18} color="#38bdf8" />
+              <span style={{ fontSize: "14px", fontWeight: "bold" }}>معدل الإطارات (FPS):</span>
+              <span style={{ fontSize: "12px", color: "#94a3b8" }}>(60 / 90 / 120 إطار)</span>
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              {([60, 90, 120] as FrameRateTarget[]).map((fps) => (
+                <button
+                  key={fps}
+                  type="button"
+                  onClick={() => {
+                    playTapSound();
+                    setTargetFps(fps);
+                    saveTargetFps(fps);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "8px 0",
+                    fontSize: "13px",
+                    fontWeight: targetFps === fps ? "bold" : "normal",
+                    borderRadius: "10px",
+                    border: targetFps === fps ? "2px solid #38bdf8" : "1px solid #475569",
+                    background: targetFps === fps ? "#0284c7" : "#1e293b",
+                    color: "#ffffff",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {fps} FPS
+                </button>
+              ))}
+            </div>
+          </div>
+
           <Button className="pc-name-done" onClick={onClose}>
             <Check />
             تم
