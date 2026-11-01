@@ -1,3 +1,4 @@
+import { adManager } from "../ads/AdManager";
 import { RoamingCreeper } from "./RoamingCreeper";
 /**
  * @license
@@ -41,6 +42,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const { level, inLevel, needed } = useXp();
   const { settings } = useSettings();
   const [profileOpen, setProfileOpen] = useState(false);
+  useEffect(() => { adManager.setCurrentScreen("home"); return () => { adManager.setCurrentScreen("other"); }; }, []);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const starRef = useRef<HTMLDivElement | null>(null);
