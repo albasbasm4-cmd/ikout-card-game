@@ -11,7 +11,7 @@ export function loadPlayerProfile(): PlayerProfile {
     if (
       value &&
       typeof value.nickname === "string" &&
-      /^a([1-9]|[12]\d|3[0-6])$/.test(value.characterId)
+      (value.characterId === "custom" || /^a([1-9]|[12]\d|3[0-6])$/.test(value.characterId))
     ) {
       return { nickname: value.nickname.slice(0, 20), characterId: value.characterId };
     }
@@ -47,6 +47,16 @@ export function savePlayerProfile(profile: PlayerProfile): void {
 export const CHARACTER_IDS = Array.from({ length: 36 }, (_, index) => `a${index + 1}`);
 
 export function characterPortrait(characterId: string): string {
+  if (characterId === "custom") {
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem("ikout_custom_avatar_data_v1") : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.avatarImage) return parsed.avatarImage;
+      }
+    } catch {}
+    return "/assets/ikout/characters/a1-face.png";
+  }
   return `/assets/ikout/characters/${characterId}-face.png`;
 }
 
