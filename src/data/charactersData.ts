@@ -3275,5 +3275,44 @@ export const CHARACTER_CATEGORIES: { id: CharacterCategory | "all"; label: strin
 ];
 
 export function getCharacterData(characterId: string): CharacterData {
+  if (characterId === "custom") {
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem("ikout_custom_avatar_data_v1") : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const clips = Array.isArray(parsed.clips) ? parsed.clips : [];
+        return {
+          id: "custom",
+          name: parsed.name || "شخصيتي",
+          title: "مخصص",
+          category: "modern",
+          voiceBundle: "Custom",
+          welcomeQuote: clips[0]?.name || "أهلاً بكم في لعبتنا!",
+          welcomeAudioUrl: clips[0]?.dataUrl || "",
+          faceAsset: parsed.avatarImage || "/assets/ikout/characters/a1-face.png",
+          clipsCount: clips.length,
+          phrases: clips.map((c: any, idx: number) => ({
+            id: c.id || `custom_${idx}`,
+            text: c.name,
+            label: c.name,
+            audioUrl: c.dataUrl,
+            category: "diwaniya" as const,
+          })),
+        };
+      }
+    } catch {}
+    return {
+      id: "custom",
+      name: "شخصيتي",
+      title: "مخصص",
+      category: "modern",
+      voiceBundle: "Custom",
+      welcomeQuote: "أهلاً بكم!",
+      welcomeAudioUrl: "",
+      faceAsset: "/assets/ikout/characters/a1-face.png",
+      clipsCount: 0,
+      phrases: [],
+    };
+  }
   return CHARACTERS_DATA[characterId] ?? CHARACTERS_DATA["a1"];
 }
