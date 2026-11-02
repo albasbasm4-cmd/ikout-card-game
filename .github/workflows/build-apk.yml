@@ -39,7 +39,9 @@ jobs:
       - name: Setup Android Project & Sync
         run: |
           npx cap add android || true
+          node scripts/patch-capacitor-android.mjs
           npx cap sync android
+          node scripts/patch-capacitor-android.mjs
           node scripts/verify-assets.mjs
 
       - name: Build Android APK (Debug)

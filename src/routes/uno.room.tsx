@@ -1,7 +1,7 @@
 import { formatHotspotQrString } from "@/network/multiplayerHub";
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowRight, Bot, User } from "lucide-react";
+import { ArrowRight, Bot, User, UserPlus } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { newGame, type Difficulty } from "@/lib/uno/engine";
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/uno/room")({
       { title: "iKout — أونو — إنشاء غرفة" },
       {
         name: "description",
-        content: "أنشئ غرفة أونو، حدد المقاعد من 1 إلى 10، واختر لاعباً حقيقياً أو بوتاً لكل مقعد.",
+        content: "أنشئ غرفة أونو، حدد المقاعد من 1 إلى 10، وانتظر اللاعبين أو أضف بوتاً.",
       },
       { property: "og:title", content: "أونو — إنشاء غرفة" },
       { property: "og:description", content: "غرفة أونو جماعية مع رمز QR." },
@@ -43,10 +43,6 @@ export interface RoomProps {
   onStartPlay?: () => void;
 }
 
-/**
- * شاشة إنشاء غرفة أونو — مسرح أفقي 1536×691 مطابق لهوية لوبي أونو
- * (نفس خلفية المدينة والسحب المتحركة وأزرار lobby.css مثل شاشة الغرفة في الجوكر).
- */
 export function Room({ onBack, onStartPlay }: RoomProps = {}) {
   const nav = useNavigate();
   const { settings } = useSettings();
@@ -54,7 +50,7 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
   const stage = useRef<HTMLDivElement>(null);
   useStageFit(stage, 1536, 691, settings.orientationPreference);
   const code = useMemo(() => Math.random().toString(36).slice(2, 8).toUpperCase(), []);
-  // Seat 0 is always the host.
+  // المقعد 0 هو المضيف دائماً، والمقاعد المضافة تبدأ فارغة بانتظار لاعبين حقيقيين
   const [seats, setSeats] = useState<Seat[]>([{ type: "human", occupied: true }]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
@@ -67,24 +63,50 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
             ...s,
             ...Array.from(
               { length: n - s.length },
-              () => ({ type: "bot", difficulty: "medium" }) as Seat,
+              () => ({ type: "human", occupied: false }) as Seat,
             ),
           ]
         : s.slice(0, n),
     );
   };
-  const waiting = seats.filter((s) => s.type === "human" && !s.occupied).length;
+
+  const addManualBot = () => {
+    playTapSound();
+    const emptyIndex = seats.findIndex((s, i) => i > 0 && s.type === "human" && !s.occupied);
+    if (emptyIndex !== -1) {
+      setSeats((s) =>
+        s.map((seat, idx) => (idx === emptyIndex ? { type: "bot", difficulty: "medium" } : seat)),
+      );
+      toast.success("تمت إضافة بوت للمقعد الفارغ");
+    } else if (seats.length < 10) {
+      setSeats((s) => [...s, { type: "bot", difficulty: "medium" }]);
+      toast.success("تمت إضافة مقعد بوت جديد");
+    } else {
+      toast.info("جميع المقاعد الـ 10 ممتلئة");
+    }
+  };
+
+  const waiting = seats.filter((s, i) => i > 0 && s.type === "human" && !s.occupied).length;
   const canStart = seats.length >= 2 && waiting === 0;
+
   const botName = (i: number) =>
     BOT_NAMES[seats.slice(1, i).filter((x) => x.type === "bot").length] ?? "بوت";
+
   const seatLabel = (i: number) =>
-    i === 0 ? "أنت (المستضيف)" : seats[i].type === "bot" ? botName(i) : "لاعب حقيقي";
+    i === 0
+      ? "أنت (المستضيف)"
+      : seats[i].type === "bot"
+        ? botName(i)
+        : seats[i].type === "human" && (seats[i] as { occupied: boolean }).occupied
+          ? `لاعب ${i + 1}`
+          : "مقعد فارغ (بانتظار لاعب)";
 
   const goLobby = () => {
     playTapSound();
     if (onBack) onBack();
     else nav({ to: "/uno" });
   };
+
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(code);
@@ -93,6 +115,7 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
       toast.error("تعذر النسخ — انسخ الرمز يدوياً");
     }
   };
+
   const start = () => {
     if (!canStart) return;
     playTapSound();
@@ -107,8 +130,8 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
               difficulty: "easy" as Difficulty,
             }
           : {
-              name: BOT_NAMES[b++] ?? "بوت",
-              isBot: true,
+              name: s.type === "bot" ? (BOT_NAMES[b++] ?? "بوت") : `لاعب ${i + 1}`,
+              isBot: s.type === "bot",
               difficulty: s.type === "bot" ? s.difficulty : "medium",
             },
       ),
@@ -181,6 +204,12 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
                     </button>
                   </div>
                 </div>
+
+                <button className="kb kbl" onClick={addManualBot}>
+                  <Bot className="inline-block ml-1 h-4 w-4" />
+                  <span>+ بوت يدوي</span>
+                </button>
+
                 <button
                   className="kb kbl"
                   onClick={() => {
@@ -202,7 +231,7 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
                   {seats.length < 2
                     ? "تحتاج مقعدين على الأقل لبدء المباراة"
                     : waiting > 0
-                      ? `بانتظار ${waiting} لاعب حقيقي — أكمل المقاعد أولاً`
+                      ? `بانتظار ${waiting} لاعب للانضمام — أو أضف بوتاً لإكمال المقعد`
                       : "الكل جاهز — ابدأ المباراة"}
                 </div>
               </div>
@@ -294,14 +323,16 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
         {qrOpen && (
           <div id="md" className="on" onClick={() => setQrOpen(false)}>
             <div id="mdin" onClick={(e) => e.stopPropagation()}>
-              <h2>رمز QR للغرفة</h2>
+              <h2>رمز QR للغرفة (نقطة اتصال)</h2>
               <div className="qbox">
                 <QRCodeSVG
                   value={formatHotspotQrString("uno", "192.168.43.1", 8080, code)}
                   size={190}
                 />
               </div>
-              <p>امسح الرمز من جهاز آخر أو شارك رمز الغرفة للانضمام.</p>
+              <p>
+                فعّل نقطة الاتصال المحمولة (Hotspot) على جهازك، ثم امسح الرمز من الأجهزة الأخرى.
+              </p>
               <button className="kb kr2" onClick={() => setQrOpen(false)}>
                 <span>إغلاق</span>
               </button>

@@ -31,7 +31,9 @@ class AdManager {
       if (!localStorage.getItem(STORAGE_KEY_FIRST_OPEN)) {
         localStorage.setItem(STORAGE_KEY_FIRST_OPEN, String(Date.now()));
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }
 
   public isOnline(): boolean {
@@ -128,7 +130,9 @@ class AdManager {
           return parsed[characterId];
         }
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
 
     return {
       characterId,
@@ -169,7 +173,9 @@ class AdManager {
       const all = saved ? JSON.parse(saved) : {};
       all[characterId] = updated;
       localStorage.setItem(STORAGE_KEY_CHAR_ADS, JSON.stringify(all));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
 
     return updated;
   }
@@ -177,7 +183,11 @@ class AdManager {
   /**
    * Rewarded Ads for Custom Avatar Sessions (5 ads required)
    */
-  public getCustomAvatarAdProgress(): { watchedCount: number; requiredCount: number; unlocked: boolean } {
+  public getCustomAvatarAdProgress(): {
+    watchedCount: number;
+    requiredCount: number;
+    unlocked: boolean;
+  } {
     try {
       const saved = localStorage.getItem("ikout_custom_avatar_ads");
       if (saved) {
@@ -188,11 +198,17 @@ class AdManager {
           unlocked: (Number(parsed.watchedCount) || 0) >= 5,
         };
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return { watchedCount: 0, requiredCount: 5, unlocked: false };
   }
 
-  public async watchRewardedAdForCustomAvatar(): Promise<{ watchedCount: number; requiredCount: number; unlocked: boolean }> {
+  public async watchRewardedAdForCustomAvatar(): Promise<{
+    watchedCount: number;
+    requiredCount: number;
+    unlocked: boolean;
+  }> {
     if (!this.isOnline()) {
       throw new Error("تحتاج إلى اتصال بالإنترنت لمشاهدة الإعلانات");
     }
@@ -220,7 +236,9 @@ class AdManager {
 
     try {
       localStorage.setItem("ikout_custom_avatar_ads", JSON.stringify(updated));
-    } catch {}
+    } catch {
+      /* ignore */
+    }
 
     return updated;
   }
@@ -228,7 +246,9 @@ class AdManager {
   public resetCustomAvatarAdProgress(): void {
     try {
       localStorage.removeItem("ikout_custom_avatar_ads");
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }
 }
 

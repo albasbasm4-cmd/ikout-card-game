@@ -3277,7 +3277,8 @@ export const CHARACTER_CATEGORIES: { id: CharacterCategory | "all"; label: strin
 export function getCharacterData(characterId: string): CharacterData {
   if (characterId === "custom") {
     try {
-      const saved = typeof window !== "undefined" ? localStorage.getItem("ikout_custom_avatar_data_v1") : null;
+      const saved =
+        typeof window !== "undefined" ? localStorage.getItem("ikout_custom_avatar_data_v1") : null;
       if (saved) {
         const parsed = JSON.parse(saved);
         const clips = Array.isArray(parsed.clips) ? parsed.clips : [];
@@ -3300,7 +3301,9 @@ export function getCharacterData(characterId: string): CharacterData {
           })),
         };
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return {
       id: "custom",
       name: "شخصيتي",

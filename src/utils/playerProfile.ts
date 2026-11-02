@@ -49,12 +49,15 @@ export const CHARACTER_IDS = Array.from({ length: 36 }, (_, index) => `a${index 
 export function characterPortrait(characterId: string): string {
   if (characterId === "custom") {
     try {
-      const saved = typeof window !== "undefined" ? localStorage.getItem("ikout_custom_avatar_data_v1") : null;
+      const saved =
+        typeof window !== "undefined" ? localStorage.getItem("ikout_custom_avatar_data_v1") : null;
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.avatarImage) return parsed.avatarImage;
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return "/assets/ikout/characters/a1-face.png";
   }
   return `/assets/ikout/characters/${characterId}-face.png`;

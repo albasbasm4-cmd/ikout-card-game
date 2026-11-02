@@ -31,8 +31,8 @@ function run() {
     process.exit(1);
   }
   const assetFiles = fs.readdirSync(assetsDir);
-  const jsBundles = assetFiles.filter(f => f.endsWith(".js"));
-  const cssBundles = assetFiles.filter(f => f.endsWith(".css"));
+  const jsBundles = assetFiles.filter((f) => f.endsWith(".js"));
+  const cssBundles = assetFiles.filter((f) => f.endsWith(".css"));
 
   console.log(`Found ${jsBundles.length} JS bundles and ${cssBundles.length} CSS stylesheets.`);
   if (jsBundles.length < 5) {
@@ -72,7 +72,21 @@ function run() {
   }
   console.log("PASS: 338 card assets verified.");
 
-  // 4. Check Audio Assets
+  // 4. Check Uno Card Assets (56 verified files)
+  const unoDir = path.join(targetDir, "assets/uno");
+  if (!fs.existsSync(unoDir)) {
+    console.error(`FAIL: Uno directory missing: ${unoDir}`);
+    process.exit(1);
+  }
+  const unoFiles = fs.readdirSync(unoDir).filter((f) => f.endsWith(".png"));
+  console.log(`Found ${unoFiles.length} Uno local images in ${unoDir}.`);
+  if (unoFiles.length < 56) {
+    console.error(`FAIL: Expected 56 Uno images, found only ${unoFiles.length}`);
+    process.exit(1);
+  }
+  console.log("PASS: 56 Uno card assets verified.");
+
+  // 5. Check Audio Assets
   const audioDir = path.join(targetDir, "assets/ikout/audio");
   if (!fs.existsSync(audioDir)) {
     console.error(`FAIL: Audio directory missing: ${audioDir}`);

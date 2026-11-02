@@ -1,6 +1,6 @@
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { characterFace, useProfile } from "@/utils/profile";
 import { useSettings } from "@/store/useSettings";
@@ -32,10 +32,6 @@ export interface JoinProps {
   onBack?: () => void;
 }
 
-/**
- * شاشة الانضمام لغرفة أونو — مسرح أفقي 1536×691 مطابق لهوية لوبي أونو.
- * زر الرجوع يعود دائماً إلى لوبي أونو مباشرة (/uno) وليس شاشة إنشاء الغرفة.
- */
 export function Join({ onBack }: JoinProps = {}) {
   const nav = useNavigate();
   const { settings } = useSettings();
@@ -47,6 +43,7 @@ export function Join({ onBack }: JoinProps = {}) {
   const [profileOpen, setProfileOpen] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const activeStream = useRef<MediaStream | null>(null);
+
   useEffect(
     () => () => {
       activeStream.current?.getTracks().forEach((t) => t.stop());
@@ -63,13 +60,11 @@ export function Join({ onBack }: JoinProps = {}) {
 
   const join = (c = code) => {
     const v = c.trim().toUpperCase();
-    if (!/^[A-Z0-9]{6}$/.test(v)) {
-      toast.error("رمز غير صحيح: الرمز 6 أحرف أو أرقام");
+    if (!/^[A-Z0-9]{4,6}$/.test(v)) {
+      toast.error("رمز غير صحيح: الرمز يتكون من 4 إلى 6 أحرف أو أرقام");
       return;
     }
-    // Connect via Hotspot or local room
-    toast.success("جاري الانضمام إلى غرفة أونو...");
-    // Save joined room info
+    toast.success("تم إدخال الرمز بنجاح");
     sessionStorage.setItem("uno_active_room", JSON.stringify({ code: v, role: "client" }));
     nav({ to: "/uno/play" });
   };
@@ -77,10 +72,11 @@ export function Join({ onBack }: JoinProps = {}) {
   const scan = async () => {
     type BD = { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
     const Ctor = (window as unknown as { BarcodeDetector?: new (o: object) => BD }).BarcodeDetector;
-    if (!Ctor) {
-      toast.error("متصفحك لا يدعم قراءة QR — اكتب الرمز يدوياً");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error("الكاميرا غير مدعومة على هذا الجهاز — اكتب الرمز يدوياً");
       return;
     }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
@@ -95,24 +91,45 @@ export function Join({ onBack }: JoinProps = {}) {
       }
       video.current.srcObject = stream;
       await video.current.play();
-      const det = new Ctor({ formats: ["qr_code"] });
-      const tick = async () => {
-        if (!video.current || activeStream.current !== stream) return;
-        const res = await det.detect(video.current).catch(() => []);
-        const hit = res.find((r) => r.rawValue.startsWith("uno-room:"));
-        if (hit) {
-          stream.getTracks().forEach((t) => t.stop());
-          setScanning(false);
-          const c = hit.rawValue.slice(9);
-          setCode(c);
-          join(c);
-        } else requestAnimationFrame(tick);
-      };
-      tick();
+
+      if (Ctor) {
+        const det = new Ctor({ formats: ["qr_code"] });
+        const tick = async () => {
+          if (!video.current || activeStream.current !== stream) return;
+          const res = await det.detect(video.current).catch(() => []);
+          const hit = res.find(
+            (r) =>
+              r.rawValue.startsWith("uno-room:") ||
+              r.rawValue.includes("game=uno") ||
+              /^[A-Z0-9]{4,6}$/i.test(r.rawValue),
+          );
+          if (hit) {
+            stream.getTracks().forEach((t) => t.stop());
+            setScanning(false);
+            let c = hit.rawValue;
+            if (c.startsWith("uno-room:")) c = c.slice(9);
+            else if (c.includes("room=")) {
+              try {
+                const u = new URL(c);
+                c = u.searchParams.get("room") || c;
+              } catch {
+                // keep c
+              }
+            }
+            setCode(c);
+            join(c);
+          } else {
+            requestAnimationFrame(tick);
+          }
+        };
+        tick();
+      } else {
+        toast.info("وجه الكاميرا نحو الرمز");
+      }
     } catch {
       activeStream.current?.getTracks().forEach((t) => t.stop());
       activeStream.current = null;
-      toast.error("تعذر فتح الكاميرا");
+      toast.error("يرجى منح إذن الكاميرا لمسح الرمز أو إدخاله يدوياً");
       setScanning(false);
     }
   };
@@ -161,9 +178,29 @@ export function Join({ onBack }: JoinProps = {}) {
               </button>
               <div className="kor">— أو —</div>
               <button className="kb kbl" onClick={scan}>
-                <span>📷 مسح رمز QR</span>
+                <Camera className="inline-block ml-1 h-5 w-5" />
+                <span>مسح رمز QR</span>
               </button>
-              {scanning && <video ref={video} className="kscan" muted playsInline />}
+              {scanning && (
+                <div className="relative mt-2 flex flex-col items-center">
+                  <video
+                    ref={video}
+                    className="kscan rounded-lg border-2 border-white/20"
+                    muted
+                    playsInline
+                  />
+                  <button
+                    className="mt-2 text-xs text-white/70 hover:text-white"
+                    onClick={() => {
+                      activeStream.current?.getTracks().forEach((t) => t.stop());
+                      activeStream.current = null;
+                      setScanning(false);
+                    }}
+                  >
+                    إلغاء المسح
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

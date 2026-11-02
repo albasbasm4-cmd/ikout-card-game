@@ -65,25 +65,11 @@ function load(src: string): Promise<AudioBuffer | null> {
 function clipUrl(characterId: string, file: string): string {
   return `${BUNDLE_BASE}/${characterId}/${file}`;
 }
-/** Decode every verified clip of the character ahead of time so lines start the instant their event happens. */
-export function preloadCharacterVoices(characterId: CharacterId = "a1") {
-  if (typeof window === "undefined") return;
-  const set = voiceSet(characterId);
-  const files = new Set<string>();
-  for (const value of Object.values(set)) {
-    if (Array.isArray(value)) value.forEach((clip) => files.add(clip.file));
-    else if (value) files.add((value as VoiceClip).file);
-  }
-  const start = () => {
-    files.forEach((file) => void load(clipUrl(characterId, file)));
-  };
-  start();
-  const unlock = () => {
-    context();
-    start();
-  };
-  window.addEventListener("pointerdown", unlock, { once: true });
+/** Keep entry lightweight; clips are decoded only when a voice is actually requested. */
+export function preloadCharacterVoices(_characterId: CharacterId = "a1") {
+  // Intentionally empty: eagerly decoding every voice caused startup stalls on phones.
 }
+
 export function stopCharacterVoice(token?: string) {
   if (!current) return;
   if (token !== undefined && current.token !== token) return;

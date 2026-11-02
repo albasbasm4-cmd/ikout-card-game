@@ -12,4 +12,6 @@ startTransition(() => {
   );
 });
 
-if (typeof window !== "undefined") { applyFrameRate(loadTargetFps()); }
+if (typeof window !== "undefined") {
+  applyFrameRate(loadTargetFps());
+}

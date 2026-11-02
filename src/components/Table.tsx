@@ -139,7 +139,12 @@ export const Table: React.FC<TableProps> = ({
   centerOverlay,
 }) => {
   const profile = useProfile();
-  useEffect(() => { adManager.setCurrentScreen("game"); return () => { adManager.setCurrentScreen("other"); }; }, []);
+  useEffect(() => {
+    adManager.setCurrentScreen("game");
+    return () => {
+      adManager.setCurrentScreen("other");
+    };
+  }, []);
   // Stable per-seat characters: the human's profile character, bots drawn from the restored 36.
   const seatCharacters = useMemo<Record<number, CharacterId>>(() => {
     const map: Record<number, CharacterId> = { [mySeat]: profile.characterId };

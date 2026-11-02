@@ -55,7 +55,6 @@ const TABS = [
   { id: "identity" as const, label: "الملف الشخصي", icon: IdCard },
 ];
 export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "kout" }) => {
-
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customData, setCustomData] = useState<CustomAvatarData>(loadCustomAvatar());
   const [customAdProgress, setCustomAdProgress] = useState(adManager.getCustomAvatarAdProgress());
@@ -64,17 +63,17 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordTimer, setRecordTimer] = useState<number>(0);
   const [cheatCodeInput, setCheatCodeInput] = useState("");
-  const [cheatFeedback, setCheatFeedback] = useState<{ text: string; isError: boolean } | null>(null);
+  const [cheatFeedback, setCheatFeedback] = useState<{ text: string; isError: boolean } | null>(
+    null,
+  );
   const [charListVersion, setCharListVersion] = useState(0);
   const [targetFps, setTargetFps] = useState<FrameRateTarget>(loadTargetFps());
-
 
   useEffect(() => {
     const handleUnlocked = () => setCharListVersion((v) => v + 1);
     window.addEventListener("ikout_characters_unlocked", handleUnlocked);
     return () => window.removeEventListener("ikout_characters_unlocked", handleUnlocked);
   }, []);
-
 
   const profile = useProfile();
   const [tab, setTab] = useState<Tab>("character");
@@ -121,10 +120,20 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
       </header>
       <h2>{TABS.find((t) => t.id === tab)?.label}</h2>
       {tab === "character" && (
-        <div style={{ marginBottom: "12px", padding: "10px 14px", background: "rgba(15, 23, 42, 0.75)", border: "1px solid rgba(51, 65, 85, 0.8)", borderRadius: "12px" }}>
+        <div
+          style={{
+            marginBottom: "12px",
+            padding: "10px 14px",
+            background: "rgba(15, 23, 42, 0.75)",
+            border: "1px solid rgba(51, 65, 85, 0.8)",
+            borderRadius: "12px",
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
             <KeyRound size={15} color="#f59e0b" />
-            <span style={{ fontSize: "12px", fontWeight: "bold", color: "#f8fafc" }}>كود فتح الشخصيات السري:</span>
+            <span style={{ fontSize: "12px", fontWeight: "bold", color: "#f8fafc" }}>
+              كود فتح الشخصيات السري:
+            </span>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <input
@@ -140,7 +149,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 border: "1px solid #475569",
                 background: "#1e293b",
                 color: "#ffffff",
-                outline: "none"
+                outline: "none",
               }}
             />
             <Button
@@ -159,14 +168,21 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 fontWeight: "bold",
                 fontSize: "12px",
                 padding: "0 12px",
-                height: "32px"
+                height: "32px",
               }}
             >
               تفعيل
             </Button>
           </div>
           {cheatFeedback && (
-            <div style={{ marginTop: "6px", fontSize: "11px", fontWeight: 600, color: cheatFeedback.isError ? "#f87171" : "#4ade80" }}>
+            <div
+              style={{
+                marginTop: "6px",
+                fontSize: "11px",
+                fontWeight: 600,
+                color: cheatFeedback.isError ? "#f87171" : "#4ade80",
+              }}
+            >
               {cheatFeedback.text}
             </div>
           )}
@@ -174,7 +190,6 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
       )}
       {tab === "character" && (
         <div className="pc-grid" key={charListVersion}>
-
           {/* أول خيار: إنشاء وتخصيص شخصية جديدة */}
           <div className="pc-character" style={{ position: "relative" }}>
             <Button
@@ -191,19 +206,38 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               }}
               style={{
                 border: "2px dashed #eab308",
-                background: profile.characterId === "custom" ? "rgba(234, 179, 8, 0.2)" : "rgba(255, 255, 255, 0.05)",
+                background:
+                  profile.characterId === "custom"
+                    ? "rgba(234, 179, 8, 0.2)"
+                    : "rgba(255, 255, 255, 0.05)",
               }}
             >
               {customData.avatarImage ? (
                 <img
                   src={customData.avatarImage}
                   alt={customData.name}
-                  style={{ objectFit: "cover", width: "100%", height: "100%", borderRadius: "inherit" }}
+                  style={{
+                    objectFit: "cover",
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: "inherit",
+                  }}
                 />
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "#eab308" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    color: "#eab308",
+                  }}
+                >
                   <Sparkles size={28} />
-                  <span style={{ fontSize: "11px", marginTop: "4px", fontWeight: "bold" }}>تخصيص</span>
+                  <span style={{ fontSize: "11px", marginTop: "4px", fontWeight: "bold" }}>
+                    تخصيص
+                  </span>
                 </div>
               )}
             </Button>
@@ -378,8 +412,25 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
           />
 
           {/* قسم اختيار معدل الإطارات (FPS) */}
-          <div style={{ marginTop: "20px", width: "100%", padding: "14px", background: "rgba(15, 23, 42, 0.7)", border: "1px solid #334155", borderRadius: "14px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px", color: "#f8fafc" }}>
+          <div
+            style={{
+              marginTop: "20px",
+              width: "100%",
+              padding: "14px",
+              background: "rgba(15, 23, 42, 0.7)",
+              border: "1px solid #334155",
+              borderRadius: "14px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "10px",
+                color: "#f8fafc",
+              }}
+            >
               <Gauge size={18} color="#38bdf8" />
               <span style={{ fontSize: "14px", fontWeight: "bold" }}>معدل الإطارات (FPS):</span>
               <span style={{ fontSize: "12px", color: "#94a3b8" }}>(60 / 90 / 120 إطار)</span>
@@ -419,7 +470,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
           </Button>
         </div>
       )}
-    
+
       {/* نافذة تخصيص الشخصية المخصصة */}
       {showCustomModal && (
         <div
@@ -450,15 +501,39 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               position: "relative",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #3f3f46", paddingBottom: "12px", marginBottom: "16px" }}>
-              <h3 style={{ fontSize: "18px", fontWeight: "bold", color: "#eab308", display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                borderBottom: "1px solid #3f3f46",
+                paddingBottom: "12px",
+                marginBottom: "16px",
+              }}
+            >
+              <h3
+                style={{
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  color: "#eab308",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  margin: 0,
+                }}
+              >
                 <Sparkles size={20} />
                 تخصيص شخصيتك
               </h3>
               <button
                 type="button"
                 onClick={() => setShowCustomModal(false)}
-                style={{ background: "transparent", border: "none", color: "#a1a1aa", cursor: "pointer" }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#a1a1aa",
+                  cursor: "pointer",
+                }}
               >
                 <X size={20} />
               </button>
@@ -466,9 +541,19 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
 
             {/* شرط الـ 5 إعلانات لكل جلسة تخصيص إذا لم تكتمل */}
             {!customAdProgress.unlocked && (
-              <div style={{ background: "rgba(234, 179, 8, 0.15)", border: "1px solid #eab308", borderRadius: "12px", padding: "12px", marginBottom: "16px", textAlign: "center" }}>
+              <div
+                style={{
+                  background: "rgba(234, 179, 8, 0.15)",
+                  border: "1px solid #eab308",
+                  borderRadius: "12px",
+                  padding: "12px",
+                  marginBottom: "16px",
+                  textAlign: "center",
+                }}
+              >
                 <p style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#fef08a" }}>
-                  يلزم مشاهدة 5 إعلانات لفتح جلسة التخصيص وحفظ التغييرات: ({customAdProgress.watchedCount}/5)
+                  يلزم مشاهدة 5 إعلانات لفتح جلسة التخصيص وحفظ التغييرات: (
+                  {customAdProgress.watchedCount}/5)
                 </p>
                 <Button
                   onClick={async () => {
@@ -488,7 +573,14 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
             )}
 
             {/* قسم صورة الشخصية */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "20px" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                marginBottom: "20px",
+              }}
+            >
               <div
                 style={{
                   width: "100px",
@@ -505,7 +597,11 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 }}
               >
                 {customData.avatarImage ? (
-                  <img src={customData.avatarImage} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img
+                    src={customData.avatarImage}
+                    alt="Avatar"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
                 ) : (
                   <Camera size={36} color="#71717a" />
                 )}
@@ -548,7 +644,16 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
 
             {/* اسم الشخصية */}
             <div style={{ marginBottom: "16px" }}>
-              <label style={{ display: "block", fontSize: "13px", color: "#a1a1aa", marginBottom: "6px" }}>اسم الشخصية</label>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: "13px",
+                  color: "#a1a1aa",
+                  marginBottom: "6px",
+                }}
+              >
+                اسم الشخصية
+              </label>
               <input
                 type="text"
                 value={customData.name}
@@ -569,8 +674,17 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
 
             {/* قائمة المقاطع الصوتية (أقصى حد 5 مقاطع، 3 ثوانٍ لكل مقطع) */}
             <div style={{ marginBottom: "20px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                <label style={{ fontSize: "13px", color: "#a1a1aa" }}>الأصوات والعبارات للشات ({customData.clips.length}/5)</label>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "8px",
+                }}
+              >
+                <label style={{ fontSize: "13px", color: "#a1a1aa" }}>
+                  الأصوات والعبارات للشات ({customData.clips.length}/5)
+                </label>
                 <span style={{ fontSize: "11px", color: "#71717a" }}>أقصى مدة 3 ثوانٍ لكل صوت</span>
               </div>
 
@@ -620,7 +734,15 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
 
               {/* إضافة صوت جديد إن لم يتجاوز 5 */}
               {customData.clips.length < 5 && (
-                <div style={{ background: "#202024", border: "1px dashed #52525b", borderRadius: "8px", padding: "10px", marginTop: "10px" }}>
+                <div
+                  style={{
+                    background: "#202024",
+                    border: "1px dashed #52525b",
+                    borderRadius: "8px",
+                    padding: "10px",
+                    marginTop: "10px",
+                  }}
+                >
                   <input
                     type="text"
                     placeholder="اكتب عبارة الصوت للشات (مثال: كفو يا شريكي)"
@@ -734,7 +856,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
           </div>
         </div>
       )}
-</section>
+    </section>
   );
 };
 export default ProfileEditor;

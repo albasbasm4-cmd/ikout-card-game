@@ -7,12 +7,15 @@ export const CHARACTER_IDS = Array.from({ length: 36 }, (_, i) => `a${i + 1}`);
 export function characterFace(characterId: string): string {
   if (characterId === "custom") {
     try {
-      const saved = typeof window !== "undefined" ? localStorage.getItem("ikout_custom_avatar_data_v1") : null;
+      const saved =
+        typeof window !== "undefined" ? localStorage.getItem("ikout_custom_avatar_data_v1") : null;
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.avatarImage) return parsed.avatarImage;
       }
-    } catch {}
+    } catch {
+      /* ignore */
+    }
     return "/assets/ikout/characters/a1-portrait.png";
   }
   return `/assets/ikout/characters/${characterId}-portrait.png`;
@@ -138,7 +141,8 @@ export function loadProfile(): PlayerProfile {
     raw = raw ?? {};
     // Migrate the pre-restoration profile (portrait index + old theme ids).
     const characterId =
-      typeof raw.characterId === "string" && (raw.characterId === "custom" || CHARACTER_IDS.includes(raw.characterId))
+      typeof raw.characterId === "string" &&
+      (raw.characterId === "custom" || CHARACTER_IDS.includes(raw.characterId))
         ? raw.characterId
         : typeof raw.portrait === "number" && raw.portrait >= 0 && raw.portrait <= 3
           ? `a${raw.portrait + 1}`
