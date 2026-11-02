@@ -1,6 +1,6 @@
-import { formatHotspotQrString } from "@/network/multiplayerHub";
+import { startUnoHost, stopUnoHost, onUnoHostSeats, setUnoHostSeatNames, unoHostNewGame } from "@/lib/uno/unoNet";
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, Bot, User, UserPlus } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
@@ -52,8 +52,20 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
   const code = useMemo(() => Math.random().toString(36).slice(2, 8).toUpperCase(), []);
   // المقعد 0 هو المضيف دائماً، والمقاعد المضافة تبدأ فارغة بانتظار لاعبين حقيقيين
   const [seats, setSeats] = useState<Seat[]>([{ type: "human", occupied: true }]);
+  /** أسماء اللاعبين البعيدين الذين انضموا فعلياً عبر الشبكة (فهرس = رقم المقعد). */
+  const [remoteNames, setRemoteNames] = useState<(string | null)[]>([]);
   const [profileOpen, setProfileOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+
+  // المضيف: تشغيل خادم الغرفة فور فتح الشاشة وتتبّع انضمام اللاعبين
+  useEffect(() => {
+    void startUnoHost(code);
+    const off = onUnoHostSeats((names) => setRemoteNames(names));
+    return () => {
+      off();
+      stopUnoHost();
+    };
+  }, [code]);
 
   const setCount = (n: number) => {
     n = Math.max(1, Math.min(10, n));
@@ -86,20 +98,29 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
     }
   };
 
-  const waiting = seats.filter((s, i) => i > 0 && s.type === "human" && !s.occupied).length;
+  const seatTaken = (i: number) =>
+    i > 0 &&
+    ((seats[i]?.type === "human" && (seats[i] as { occupied: boolean }).occupied) ||
+      !!remoteNames[i] ||
+      seats[i]?.type === "bot");
+  const waiting = seats.filter(
+    (s, i) => i > 0 && s.type === "human" && !(s as { occupied: boolean }).occupied && !remoteNames[i],
+  ).length;
   const canStart = seats.length >= 2 && waiting === 0;
 
   const botName = (i: number) =>
     BOT_NAMES[seats.slice(1, i).filter((x) => x.type === "bot").length] ?? "بوت";
 
-  const seatLabel = (i: number) =>
-    i === 0
-      ? "أنت (المستضيف)"
-      : seats[i].type === "bot"
-        ? botName(i)
-        : seats[i].type === "human" && (seats[i] as { occupied: boolean }).occupied
-          ? `لاعب ${i + 1}`
-          : "مقعد فارغ (بانتظار لاعب)";
+  const seatLabel = (i: number) => {
+    if (i === 0) return "أنت (المستضيف)";
+    if (remoteNames[i]) return remoteNames[i] as string;
+    if (!seats[i]) return "مقعد فارغ";
+    return seats[i].type === "bot"
+      ? botName(i)
+      : seats[i].type === "human" && (seats[i] as { occupied: boolean }).occupied
+        ? `لاعب ${i + 1}`
+        : "مقعد فارغ (بانتظار لاعب)";
+  };
 
   const goLobby = () => {
     playTapSound();
@@ -121,22 +142,24 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
     playTapSound();
     clearGame();
     let b = 0;
-    const g = newGame(
-      seats.map((s, i) =>
-        i === 0
-          ? {
-              name: profile.name || "أنت (المستضيف)",
-              isBot: false,
-              difficulty: "easy" as Difficulty,
-            }
-          : {
-              name: s.type === "bot" ? (BOT_NAMES[b++] ?? "بوت") : `لاعب ${i + 1}`,
-              isBot: s.type === "bot",
-              difficulty: s.type === "bot" ? s.difficulty : "medium",
-            },
-      ),
-      "room",
-    );
+    const setup = seats.map((s, i) => {
+      if (i === 0)
+        return {
+          name: profile.name || "أنت (المستضيف)",
+          isBot: false,
+          difficulty: "easy" as Difficulty,
+        };
+      if (remoteNames[i])
+        return { name: remoteNames[i] as string, isBot: false, difficulty: "medium" as Difficulty };
+      return {
+        name: s.type === "bot" ? (BOT_NAMES[b++] ?? "بوت") : `لاعب ${i + 1}`,
+        isBot: s.type === "bot",
+        difficulty: s.type === "bot" ? s.difficulty : ("medium" as Difficulty),
+      };
+    });
+    setUnoHostSeatNames(setup.map((p) => p.isBot ? null : p.name));
+    const g = newGame(setup, "room");
+    unoHostNewGame(g);
     saveGame(g);
     if (onStartPlay) onStartPlay();
     else nav({ to: "/uno/play" });
@@ -326,7 +349,7 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
               <h2>رمز QR للغرفة (نقطة اتصال)</h2>
               <div className="qbox">
                 <QRCodeSVG
-                  value={formatHotspotQrString("uno", "192.168.43.1", 8080, code)}
+                  value={`uno-room:${code}`}
                   size={190}
                 />
               </div>

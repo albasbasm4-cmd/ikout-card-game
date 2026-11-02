@@ -24,10 +24,18 @@ export interface HostSessionOptions {
   seed?: number;
   /** When set, joins must present this exact room code. */
   roomCode?: string;
+  /** مقعد المضيف: لا يُسند أبداً لعميل منضم (0 افتراضياً). */
+  hostSeat?: number;
+  /** يُستدعى بعد كل تحديث على الحالة (يُستخدم لمزامنة واجهة المضيف). */
+  onStateChange?: (state: GameState) => void;
+  /** يُستدعى عند انضمام/تحديث مقعد عميل (لوبي المضيف). */
+  onSeatUpdate?: (seatIndex: number, player: PlayerSlot, players: PlayerSlot[]) => void;
 }
 
 export class HostSession {
   private engine: KoutGameEngine;
+  private hostSeat: number;
+  private optionsRef: HostSessionOptions;
   private transport: IHostTransport;
   private tokenToSeat = new Map<string, number>();
   private seatToToken = new Map<number, string>();
@@ -38,9 +46,13 @@ export class HostSession {
   private cheatReportsThisRound = 0;
   private cheatReportRound = -1;
   private lastCheatReportAt = 0;
+  private stateListeners = new Set<(state: GameState) => void>();
 
   constructor(transport: IHostTransport, options: HostSessionOptions = {}) {
     this.transport = transport;
+    this.optionsRef = options;
+    // بدون تحديد، لا يوجد مقعد محجوز (اختبارات المحاكي تُسند المقعد 0 لعميل)
+    this.hostSeat = options.hostSeat ?? -1;
     this.roomCode = options.roomCode?.trim().toUpperCase() || undefined;
 
     if (options.engine) {
@@ -63,6 +75,37 @@ export class HostSession {
 
   public getEngine(): KoutGameEngine {
     return this.engine;
+  }
+
+  /**
+   * يستبدل المحرك (يُستخدم عند بدء المباراة بتشكيلة الغرفة النهائية،
+   * أو بعد حكم بلاغ الغش على المضيف).
+   */
+  public replaceEngine(engine: KoutGameEngine): void {
+    this.engine = engine;
+    this.broadcastState();
+  }
+
+  /** يشترك في تحديثات الحالة (واجهة المضيف). */
+  public onStateChange(cb: (state: GameState) => void): () => void {
+    this.stateListeners.add(cb);
+    return () => {
+      this.stateListeners.delete(cb);
+    };
+  }
+
+  private seatListeners = new Set<
+    (seatIndex: number, player: PlayerSlot, players: PlayerSlot[]) => void
+  >();
+
+  /** يشترك في انضمام/تحديث مقعد (واجهة لوبي المضيف). */
+  public onSeatUpdate(
+    cb: (seatIndex: number, player: PlayerSlot, players: PlayerSlot[]) => void,
+  ): () => void {
+    this.seatListeners.add(cb);
+    return () => {
+      this.seatListeners.delete(cb);
+    };
   }
 
   public startRound(seed?: number): void {
@@ -144,17 +187,18 @@ export class HostSession {
     let assignedSeat = this.tokenToSeat.get(playerToken);
 
     if (assignedSeat === undefined) {
-      // Find open seat
+      // Find open seat (مقعد المضيف محجوز دائماً)
       if (
         preferred !== undefined &&
         preferred >= 0 &&
         preferred < numSeats &&
+        preferred !== this.hostSeat &&
         !this.seatToToken.has(preferred)
       ) {
         assignedSeat = preferred;
       } else {
         for (let s = 0; s < numSeats; s++) {
-          if (!this.seatToToken.has(s)) {
+          if (s !== this.hostSeat && !this.seatToToken.has(s)) {
             assignedSeat = s;
             break;
           }
@@ -195,6 +239,8 @@ export class HostSession {
 
     // Send individual filtered state snapshot
     this.sendFilteredStateToSeat(assignedSeat);
+    this.optionsRef.onSeatUpdate?.(assignedSeat, updatedSlot, currentPlayers);
+    for (const l of this.seatListeners) l(assignedSeat, updatedSlot, currentPlayers);
   }
 
   private handleBidRequest(
@@ -430,6 +476,8 @@ export class HostSession {
     for (const [seatIndex, token] of this.seatToToken.entries()) {
       this.sendFilteredStateToSeat(seatIndex, token);
     }
+    this.optionsRef.onStateChange?.(this.engine.state);
+    for (const l of this.stateListeners) l(this.engine.state);
   }
 
   public sendFilteredStateToSeat(seatIndex: number, playerToken?: string): void {

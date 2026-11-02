@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 import { parseRoomPayload } from "../network/localIp";
 import { LocalClientSocket, ClientSocketStatus } from "../network/LocalClientSocket";
+import { getJoinCandidateIps } from "../network/wssBridge";
+import { setActiveKoutClient } from "../network/koutNet";
+import jsQR from "jsqr";
 
 /**
  * Pluggable Barcode / QR Scanner interface so native hardware scanners can be plugged in later
@@ -104,14 +107,44 @@ export class WebBarcodeScanner implements IBarcodeScanner {
       });
     }
 
-    // Fallback if BarcodeDetector API is not present:
-    // Prompt user for scanned payload
-    return new Promise<string>((resolve) => {
-      const manualInput = window.prompt(
-        "تعذر تشغيل قارئ الباركود التلقائي. يرجى إدخال رابط أو رمز الغرفة:",
-      );
-      this.stopScan();
-      resolve(manualInput || "ws://192.168.1.105:8080");
+    // لا يوجد BarcodeDetector في WebView الأندرويد: نحلل الإطارات محلياً بـ jsQR
+    if (!videoElement) {
+      throw new Error("لا يوجد عنصر فيديو لعرض الكاميرا");
+    }
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) throw new Error("تعذر تجهيز محلل الصور");
+
+    return new Promise<string>((resolve, reject) => {
+      let raf = 0;
+      let tries = 0;
+      const tick = () => {
+        if (!this.scanning) {
+          reject(new Error("تم إيقاف المسح"));
+          return;
+        }
+        if (videoElement.readyState >= 2 && videoElement.videoWidth > 0) {
+          canvas.width = videoElement.videoWidth;
+          canvas.height = videoElement.videoHeight;
+          ctx.drawImage(videoElement, 0, 0);
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+          if (code && code.data) {
+            this.stopScan();
+            resolve(code.data);
+            return;
+          }
+        }
+        if (++tries > 600) {
+          // 600 إطار × 66ms ≈ 40 ثانية بلا نتيجة
+          this.stopScan();
+          reject(new Error("لم يُعثر على رمز QR — أقرب الرمز أكثر أو أدخله يدوياً"));
+          return;
+        }
+        setTimeout(tick, 66);
+      };
+      raf = window.setTimeout(tick, 120);
+      void raf;
     });
   }
 
@@ -187,7 +220,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
     connectToHost(ip, port, parsedRoom);
   };
 
-  const connectToHost = (ip: string, port = 8080, code?: string) => {
+  const connectToHost = (ip: string, port = 8080, code?: string, candidates?: string[]) => {
     setStatus("CONNECTING");
     setErrorMessage(null);
 
@@ -201,24 +234,39 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
         playerName: playerName.trim() || "لاعب زائر",
         maxReconnectAttempts: 4,
         initialBackoffMs: 600,
+        channel: "kout",
+        roomCode: code,
       });
 
       socketRef.current = socket;
 
-      const connectionTimeout = setTimeout(() => {
-        if (socket.getStatus() !== "CONNECTED") {
-          socket.disconnect();
-          setStatus("ERROR");
-          setErrorMessage(
-            "فشل الاتصال بمضيف الغرفة (انتهت المهلة). تأكد من اتصال كلا الجهازين بنفس شبكة الـ Wi-Fi وأن المضيف قام ببدء السيرفر.",
-          );
+      const failOrFallback = () => {
+        socket.disconnect();
+        const rest = (candidates ?? []).filter((c) => c !== ip);
+        if (rest.length > 0) {
+          connectToHost(rest[0], port, code, rest);
+          return;
         }
-      }, 5000);
+        setStatus("ERROR");
+        setErrorMessage(
+          "فشل الاتصال بمضيف الغرفة (انتهت المهلة). تأكد من أن المضيف فتح غرفة اللعب الجماعي، وأن الجهازين متصلان بنفس نقطة الاتصال/الشبكة.",
+        );
+      };
+
+      const connectionTimeout = setTimeout(() => {
+        if (socket.getStatus() !== "CONNECTED") failOrFallback();
+      }, 4000);
 
       socket.onStatusChange((sockStatus: ClientSocketStatus) => {
         if (sockStatus === "CONNECTED") {
           clearTimeout(connectionTimeout);
           setStatus("SUCCESS");
+          setActiveKoutClient({
+            socket,
+            mySeat: 0,
+            playerToken: token,
+            roomCode: code,
+          });
           if (onConnected) {
             onConnected(socket, { ip, port, roomCode: code });
           }
@@ -237,12 +285,27 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hostIp.trim()) {
-      setErrorMessage("يرجى إدخال عنوان IP الخاص بالمضيف.");
+    const typedIp = hostIp.trim();
+    if (!typedIp && !roomCode.trim()) {
+      setErrorMessage("يرجى إدخال عنوان IP الخاص بالمضيف أو رمز الغرفة.");
       return;
     }
-    const { ip, port } = parseRoomPayload(hostIp);
-    connectToHost(ip, port, roomCode.trim() || undefined);
+
+    const tryConnect = async () => {
+      const candidates: string[] = [];
+      if (typedIp) {
+        const { ip, port } = parseRoomPayload(typedIp);
+        candidates.push(ip);
+        connectToHost(ip, port, roomCode.trim() || undefined, candidates);
+        return;
+      }
+      // رمز فقط بدون IP: نجرّب بوابة الشبكة (Hotspot) تلقائياً
+      setStatus("CONNECTING");
+      setErrorMessage(null);
+      const auto = await getJoinCandidateIps();
+      connectToHost(auto[0], 8080, roomCode.trim() || undefined, auto);
+    };
+    void tryConnect();
   };
 
   return (

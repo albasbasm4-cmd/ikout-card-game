@@ -18,6 +18,9 @@ export interface LocalClientSocketOptions {
   initialBackoffMs?: number; // default 500ms
   maxBackoffMs?: number; // default 6000ms
   transportOverride?: ITransport;
+  /** قناة gameHub: تُغلف الحزم داخل { ch, packet } ويفكها المضيف. */
+  channel?: string;
+  roomCode?: string;
 }
 
 export class LocalClientSocket implements ITransport {
@@ -41,6 +44,8 @@ export class LocalClientSocket implements ITransport {
   private seqCounter = 0;
   private manualDisconnect = false;
   private transportOverride: ITransport | null = null;
+  private channel?: string;
+  private roomCode?: string;
 
   constructor(options: LocalClientSocketOptions) {
     this.url = options.url ?? "ws://localhost:8080";
@@ -50,6 +55,9 @@ export class LocalClientSocket implements ITransport {
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 5;
     this.initialBackoffMs = options.initialBackoffMs ?? 500;
     this.maxBackoffMs = options.maxBackoffMs ?? 6000;
+
+    this.channel = options.channel;
+    this.roomCode = options.roomCode;
 
     if (options.transportOverride) {
       this.transportOverride = options.transportOverride;
@@ -110,7 +118,13 @@ export class LocalClientSocket implements ITransport {
 
       this.ws.onmessage = (event) => {
         try {
-          const packet: HostPacket = JSON.parse(event.data.toString());
+          const parsed = JSON.parse(event.data.toString());
+          // دعم تغليف قناة gameHub: { ch, packet } أو { ch, ...payload }
+          const packet: HostPacket =
+            this.channel && parsed && typeof parsed === "object" && parsed.ch === this.channel
+              ? (parsed.packet ?? parsed)
+              : parsed;
+          if (this.channel && (!parsed || parsed.ch !== this.channel)) return;
           for (const handler of this.messageHandlers) {
             handler(packet);
           }
@@ -167,6 +181,7 @@ export class LocalClientSocket implements ITransport {
       payload: {
         playerName: this.playerName,
         preferredSeat: this.preferredSeat,
+        roomCode: this.roomCode,
       },
     });
   }
@@ -192,7 +207,9 @@ export class LocalClientSocket implements ITransport {
     }
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(packet));
+      this.ws.send(
+        this.channel ? JSON.stringify({ ch: this.channel, packet }) : JSON.stringify(packet),
+      );
     }
   }
 

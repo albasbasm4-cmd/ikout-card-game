@@ -17,6 +17,7 @@ import { loadSavedGameState } from "../utils/persist";
 import { useKeepAwake } from "../store/useSettings";
 import { setAppBackHandler, getAppBackHandler } from "../utils/appBackNav";
 import type { GameState } from "../types/kout";
+import { getActiveKoutHost, getActiveKoutClient, clearKoutNet } from "../network/koutNet";
 import { Room187Screen } from "../game187/components/Room187Screen";
 import { Game187Screen } from "../game187/components/Game187Screen";
 import type { GameState187, Player187 } from "../game187/types";
@@ -98,8 +99,8 @@ export default function App() {
     }
   }, [view, players187]);
 
-  const handleStartGame = (config: RoomConfig) => {
-    setRoomConfig(config);
+  const handleStartGame = (config?: RoomConfig) => {
+    setRoomConfig(config ?? null);
     setResumedState(null);
     setView("game");
   };
@@ -110,7 +111,7 @@ export default function App() {
   };
 
   const handleHostRoom = (config: RoomConfig) => {
-    setRoomConfig(config);
+    setRoomConfig(config ?? null);
     setResumedState(null);
     setView("lobby");
   };
@@ -164,7 +165,25 @@ export default function App() {
               initialState={
                 resumedState ?? (roomConfig ? undefined : (loadSavedGameState() ?? undefined))
               }
-              onGoHome={() => setView("home")}
+              onGoHome={() => {
+                clearKoutNet();
+                setView("home");
+              }}
+              netHost={
+                getActiveKoutHost()
+                  ? { session: getActiveKoutHost()!.session, engine: getActiveKoutHost()!.session.getEngine() }
+                  : null
+              }
+              netClient={
+                getActiveKoutClient()
+                  ? {
+                      socket: getActiveKoutClient()!.socket,
+                      mySeat: getActiveKoutClient()!.mySeat,
+                      playerToken: getActiveKoutClient()!.playerToken,
+                      initialState: getActiveKoutClient()!.initialState,
+                    }
+                  : null
+              }
             />
           )}
 

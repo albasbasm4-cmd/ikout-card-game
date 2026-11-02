@@ -14,6 +14,7 @@ import { useStageFit } from "../../hooks/use-stage-fit";
 import { playTapSound } from "../../utils/audio";
 import { ProfileEditor } from "../../components/ProfileEditor";
 import { QRCodeSVG } from "qrcode.react";
+import jsQR from "jsqr";
 import {
   Room187Channel,
   Client187Packet,
@@ -57,6 +58,85 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
   const [qrOpen, setQrOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const scanVideoRef = useRef<HTMLVideoElement | null>(null);
+  const scanStreamRef = useRef<MediaStream | null>(null);
+
+  // مسح رمز الغرفة بالكاميرا: نحلل إطارات الفيديو محلياً بـ jsQR
+  // (BarcodeDetector غير متوفر في WebView الأندرويد غالباً)
+  useEffect(() => {
+    if (!scanOpen) return;
+    let cancelled = false;
+    let tries = 0;
+
+    const tick = async () => {
+      if (cancelled) return;
+      const video = scanVideoRef.current;
+      if (!video || video.readyState < 2 || video.videoWidth === 0) {
+        window.setTimeout(tick, 100);
+        return;
+      }
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) {
+        showToast("تعذر تشغيل محلل الرمز — اكتب الرمز يدوياً");
+        setScanOpen(false);
+        return;
+      }
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const found = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+      if (found?.data) {
+        let code = found.data;
+        if (code.startsWith("g187-room:")) code = code.slice(10);
+        streamStop();
+        setScanOpen(false);
+        handleJoinByCode(code);
+        return;
+      }
+      if (++tries > 600) {
+        streamStop();
+        setScanOpen(false);
+        showToast("لم يُعثر على رمز QR — أقرب الرمز أكثر أو أدخله يدوياً");
+        return;
+      }
+      window.setTimeout(tick, 66);
+    };
+
+    const streamStop = () => {
+      scanStreamRef.current?.getTracks().forEach((t) => t.stop());
+      scanStreamRef.current = null;
+    };
+
+    const start = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        scanStreamRef.current = stream;
+        if (scanVideoRef.current) {
+          scanVideoRef.current.srcObject = stream;
+          await scanVideoRef.current.play().catch(() => {});
+        }
+        void tick();
+      } catch {
+        showToast("يرجى منح إذن الكاميرا لمسح الرمز أو إدخاله يدوياً");
+        setScanOpen(false);
+      }
+    };
+    void start();
+
+    return () => {
+      cancelled = true;
+      streamStop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanOpen]);
 
   const channelRef = useRef<Room187Channel | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -91,11 +171,11 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     if (!roomCode) return;
 
     channelRef.current?.close();
-    const ch = new Room187Channel(roomCode);
+    const ch = new Room187Channel(roomCode, roomMode === "host" ? "host" : "client");
     channelRef.current = ch;
 
     if (roomMode === "host") {
-      ch.onMessage((msg: Client187Packet) => {
+      ch.onMessage((msg) => {
         if (msg.type !== "JOIN") return;
         // منضم معاد (إعادة إرسال بعد إعادة تركيب القناة): أعد إرسال المقاعد فقط.
         const existingIdx = seatsRef.current.findIndex(
@@ -124,7 +204,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         });
       });
     } else {
-      ch.onMessage((msg: Host187Packet) => {
+      ch.onMessage((msg) => {
         if (msg.type === "ROOM_SEATS_UPDATE") {
           setSeats(msg.seats);
         } else if (msg.type === "GAME_START") {
@@ -669,7 +749,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
                 }}
               >
                 <QRCodeSVG
-                  value={formatHotspotQrString("187", "192.168.43.1", 8080, roomCode)}
+                  value={`g187-room:${roomCode}`}
                   size={220}
                 />
               </div>
@@ -703,6 +783,20 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
             <div className="r187-mc" onClick={(e) => e.stopPropagation()}>
               <h2 style={{ fontSize: 28, fontWeight: 900, marginBottom: 16 }}>مسح رمز QR</h2>
               <p style={{ fontSize: 18, marginBottom: 20 }}>وجّه الكاميرا نحو رمز الغرفة</p>
+              <video
+                ref={scanVideoRef}
+                playsInline
+                muted
+                style={{
+                  width: "100%",
+                  maxWidth: 420,
+                  aspectRatio: "3 / 4",
+                  borderRadius: 16,
+                  background: "#000",
+                  objectFit: "cover",
+                  marginBottom: 20,
+                }}
+              />
               <button
                 type="button"
                 className="r187-btn r187-red"

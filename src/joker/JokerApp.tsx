@@ -1,4 +1,17 @@
-import { formatHotspotQrString } from "@/network/multiplayerHub";
+import {
+  connectJokerClient,
+  disconnectJokerClient,
+  getJokerNetClient,
+  isJokerHostActive,
+  jokerClientSendAct,
+  jokerHostNewGame,
+  jokerHostPublish,
+  onJokerClientState,
+  onJokerHostSeats,
+  onJokerHostState,
+  startJokerHost,
+  stopJokerHost,
+} from "./jokerNet";
 import { NetworkLatencyBadge } from "@/components/NetworkLatencyBadge";
 import { useEffect, useRef, useState } from "react";
 import { useAppBack } from "@/utils/appBackNav";
@@ -69,25 +82,92 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   const [modal, setModal] = useState<"rules" | "pick" | "confirm" | "network" | null>(null);
   const [target, setTarget] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  /** دور هذا الجهاز: محلي، مستضيف عبر الشبكة، أو منضم لمضيف بعيد. */
+  const [netRole, setNetRole] = useState<"local" | "host" | "client">("local");
+  /** أسماء اللاعبين البعيدين الذين انضموا فعلياً (مفتاح = معرّف اللاعب). */
+  const [remoteNames, setRemoteNames] = useState<Record<string, string>>({});
   const awarded = useRef<number>(0);
-  const human = "p0";
-  const players = Array.from({ length: count }, (_, i) => ({
-    id: `p${i}`,
-    name: i === 0 ? profile.name : `لاعب ${i + 1}`,
-    char: i === 0 ? profile.characterId : CHARACTER_IDS[(i * 5) % CHARACTER_IDS.length],
-    score: 0,
-    bot: false,
-  }));
+  const netClient = getJokerNetClient();
+  const netHostActive = isJokerHostActive();
+  const human = netClient ? netClient.myPid : "p0";
+  const players = Array.from({ length: count }, (_, i) => {
+    if (i === 0)
+      return {
+        id: "p0",
+        name: profile.name || "أنت",
+        char: profile.characterId,
+        score: 0,
+        bot: false,
+      };
+    const remoteName = netRole === "local" ? undefined : remoteNames[`p${i}`];
+    if (remoteName)
+      return {
+        id: `p${i}`,
+        name: remoteName,
+        char: CHARACTER_IDS[(i * 5) % CHARACTER_IDS.length],
+        score: 0,
+        bot: false,
+      };
+    // المقاعد غير الممتلئة في اللعب المحلي تقع على البوتات كي تكتمل الجولة دائماً
+    return {
+      id: `p${i}`,
+      name: `لاعب ${i + 1}`,
+      char: CHARACTER_IDS[(i * 5) % CHARACTER_IDS.length],
+      score: 0,
+      bot: true,
+    };
+  });
   const start = () => {
-    setGame(dealJoker(createJokerGame(players)));
+    const g = dealJoker(createJokerGame(players));
+    setGame(g);
     setHoldingId(null);
+    if (netHostActive) jokerHostNewGame(g);
     setScreen("game");
   };
   const act = (id: string, to?: string) => {
-    setGame((prev) => (prev ? actJoker(prev, id, to) : prev));
     playCardSound();
+    if (netClient) {
+      // المنضم: يرسل أمره إلى المضيف والحالة تعود عبر الشبكة
+      jokerClientSendAct(id, to);
+      return;
+    }
+    setGame((prev) => {
+      const next = prev ? actJoker(prev, id, to) : prev;
+      if (next && netHostActive && next !== prev) jokerHostPublish(next);
+      return next;
+    });
   };
+  // المنضم: يستقبل الحالة من المضيف ويبدأ اللعب تلقائياً عند وصولها
   useEffect(() => {
+    if (!netClient) return;
+    const off = onJokerClientState((st) => {
+      setGame(st);
+      setHoldingId(null);
+      setModal(null);
+      setScreen("game");
+    });
+    return off;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [netClient]);
+
+  // المضيف: يتبع حالة اللاعبين البعيدين (تتحرك عند أعمالهم على أجهزتهم)
+  useEffect(() => {
+    if (!netHostActive) return;
+    return onJokerHostState((st) => setGame(st));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [netHostActive]);
+
+  // المضيف: أسماء المنضمين لعرضها في لوبي الغرفة
+  useEffect(() => {
+    if (screen !== "room" || netRole === "client" || netRole === "local") return;
+    const off = onJokerHostSeats((names) => setRemoteNames(names));
+    return off;
+  }, [screen, netRole]);
+
+  useEffect(() => {
+    if (netClient) return; // حركات البوتات تجري على جهاز المضيف فقط
     if (!game || game.phase !== "play") return;
     const bot = game.players.find(
       (p) => p.bot && ["joker", "pick", "final"].includes(jokerMode(game, p.id)),
@@ -95,15 +175,17 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
     if (!bot) return;
     const timer = setTimeout(
       () => {
-        setGame((prev) =>
-          prev
+        setGame((prev) => {
+          const next = prev
             ? actJoker(
                 prev,
                 bot.id,
                 jokerMode(prev, bot.id) === "joker" ? undefined : chooseJokerBot(prev, bot.id),
               )
-            : prev,
-        );
+            : prev;
+          if (next && netHostActive && next !== prev) jokerHostPublish(next);
+          return next;
+        });
         playCardSound();
       },
       settings.botSpeed === "FAST" ? 650 : settings.botSpeed === "SLOW" ? 2200 : 1400,
@@ -137,6 +219,10 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   const back = () => {
     setGame(null);
     setModal(null);
+    if (netClient) disconnectJokerClient();
+    if (netHostActive) void stopJokerHost();
+    setNetRole("local");
+    setRemoteNames({});
     if (screen === "room") setScreen("entry");
     else goHome();
   };
@@ -185,7 +271,11 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                     <Button
                       className="kb kr"
                       onClick={() => {
-                        setRoomCode(String(Math.floor(100000 + Math.random() * 900000)));
+                        const c = String(Math.floor(100000 + Math.random() * 900000));
+                        setRoomCode(c);
+                        setNetRole("host");
+                        setRemoteNames({});
+                        void startJokerHost(c);
                         setScreen("room");
                       }}
                     >
@@ -200,7 +290,26 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                 </div>
               </div>
             )}
-            {screen === "room" && (
+            {screen === "room" && netRole === "client" && (
+              <div className="kpg" id="kp2" style={{ display: "block" }}>
+                <div id="kr" className="host">
+                  <div className="kh flex items-center justify-center gap-3">
+                    <span>
+                      غرفة الجوكر · رمز الغرفة: <b style={{ color: "#00e5ff" }}>{roomCode}</b>
+                    </span>
+                  </div>
+                  <div className="kd">
+                    <div className="ksb kdk" style={{ marginBottom: 16 }}>
+                      تم الاتصال بالمضيف — بانتظار بدء المباراة…
+                    </div>
+                    <Button className="kb kbl" onClick={back}>
+                      رجوع
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            {screen === "room" && netRole !== "client" && (
               <div className="kpg" id="kp2" style={{ display: "block" }}>
                 <div id="kr" className="host">
                   <div className="kh flex items-center justify-center gap-3">
@@ -445,11 +554,14 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                             <Button
                               className="kb kr"
                               onClick={() => {
-                                setGame(dealJoker(game));
+                                if (netClient) return; // المضيف يبدأ الجولة التالية
+                                const g2 = dealJoker(game);
+                                setGame(g2);
                                 setHoldingId(null);
+                                if (netHostActive) jokerHostPublish(g2);
                               }}
                             >
-                              إعادة اللعب
+                              {netClient ? "بانتظار المضيف…" : "إعادة اللعب"}
                             </Button>
                             <Button className="kb kbl" onClick={back}>
                               رجوع
@@ -529,7 +641,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                   }}
                 >
                   <QRCodeSVG
-                    value={formatHotspotQrString("joker", "192.168.43.1", 8080, roomCode)}
+                    value={`joker-room:${roomCode}`}
                     size={220}
                     level="M"
                   />
@@ -604,15 +716,34 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                         const val = (
                           document.getElementById("joker-room-input") as HTMLInputElement
                         )?.value;
-                        if (val && val.length >= 4) {
-                          setRoomCode(val);
+                        const v = (val || "").trim();
+                        if (!/^[0-9]{4,6}$/.test(v)) return;
+                        void (async () => {
+                          setJoining(true);
+                          const ok = await connectJokerClient({
+                            code: v,
+                            name: profile.name || "لاعب",
+                          });
+                          setJoining(false);
+                          if (!ok) {
+                            setJoinError(
+                              "تعذر الاتصال بالمضيف — تأكد أن المضيف فتح غرفة وأن الجهازين على نفس الشبكة",
+                            );
+                            return;
+                          }
+                          setJoinError(null);
+                          setRoomCode(v);
+                          setNetRole("client");
                           setModal(null);
                           setScreen("room");
-                        }
+                        })();
                       }}
                     >
-                      دخول الغرفة
+                      {joining ? "جارِ الاتصال…" : "دخول الغرفة"}
                     </Button>
+                    {joinError && (
+                      <p style={{ color: "#ff6b6b", fontWeight: 700 }}>{joinError}</p>
+                    )}
                   </>
                 )}
                 {modal === "pick" && (

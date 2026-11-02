@@ -198,7 +198,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
   // شبكة الغرفة المتزامنة
   useEffect(() => {
     if (mode === "room" && roomCode) {
-      const ch = new Room187Channel(roomCode);
+      const ch = new Room187Channel(roomCode, isHost ? "host" : "client");
       channelRef.current = ch;
 
       ch.onMessage((msg: Client187Packet | Host187Packet) => {

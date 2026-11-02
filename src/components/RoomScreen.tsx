@@ -19,12 +19,22 @@ import { ProfileEditor } from "./ProfileEditor";
 import { QrModal } from "./QrModal";
 import { JoinScreen } from "./JoinScreen";
 import { generateRoomCode } from "../network/localIp";
+import {
+  startKoutHost,
+  koutHostStartMatch,
+  koutClientSetInitialState,
+  getActiveKoutHost,
+  getActiveKoutClient,
+  clearKoutNet,
+  setActiveKoutClient,
+} from "../network/koutNet";
+import type { PlayerSlot } from "../types/kout";
 
 export interface RoomScreenProps {
   /** host = إنشاء غرفة، join = الانضمام إلى غرفة */
   mode?: "host" | "join";
   initialConfig?: Partial<RoomConfig>;
-  onStartGame: (config: RoomConfig) => void;
+  onStartGame: (config?: RoomConfig) => void;
   onBack: () => void;
   className?: string;
 }
@@ -87,6 +97,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     setBotDifficulty,
     players,
     setSeatKind,
+    setSeatConnected,
     setPlayerName,
     swapSeats,
     getConfig,
@@ -105,6 +116,10 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
   const [showScanner, setShowScanner] = useState<null | { code?: string; manual?: boolean }>(null);
   /** join: 'code' = إدخال الرمز، 'room' = داخل الغرفة بانتظار المضيف */
   const [joined, setJoined] = useState(false);
+  /** لوبي المضيف كما يرصده المنضم (من حزم SEAT_UPDATE) */
+  const [lobbyPlayers, setLobbyPlayers] = useState<PlayerSlot[] | null>(null);
+  const [mySeat, setMySeat] = useState(1);
+  const lobbyStartedRef = useRef(false);
   const [joinCode, setJoinCode] = useState("");
   const [roomCode] = useState<string>(() => generateRoomCode());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -114,6 +129,77 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     const n = loadProfile().name;
     if (n) setPlayerName(0, n);
   }, []);
+
+  // المضيف: تشغيل سيرفر الغرفة فور فتح الشاشة، مع تحديث المقاعد عند انضمام لاعب
+  useEffect(() => {
+    if (!isHost) return;
+    const handle = startKoutHost(roomCode, {
+      variant: initialConfig?.variant ?? "BO6",
+      targetScore: initialConfig?.targetScore ?? 51,
+    });
+    const session = handle.session;
+    const off = session.onSeatUpdate((seat, player) => {
+      setSeatKind(seat, "HUMAN_REMOTE", player.name);
+      setSeatConnected(seat, true);
+    });
+    return () => {
+      off();
+      clearKoutNet();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // المنضم: مراقبة حزم المضيف — تحديث اللوبي واكتشاف بدء المباراة
+  useEffect(() => {
+    if (isHost) return;
+    const client = getActiveKoutClient();
+    if (!client) return;
+    return client.socket.onMessage((packet) => {
+      switch (packet.type) {
+        case "SEAT_UPDATE": {
+          const pl = packet.payload;
+          if (Array.isArray(pl.players)) {
+            setLobbyPlayers(pl.players as PlayerSlot[]);
+          }
+          if (typeof pl.seatIndex === "number" && pl.seatIndex >= 0) {
+            setMySeat(pl.seatIndex);
+            setActiveKoutClient({
+              socket: client.socket,
+              mySeat: pl.seatIndex,
+              playerToken: client.playerToken,
+            });
+          }
+          break;
+        }
+        case "CLIENT_STATE_UPDATE": {
+          const st = packet.payload.state;
+          if (!st) break;
+          koutClientSetInitialState(st);
+          if (st.phase && st.phase !== "LOBBY" && !lobbyStartedRef.current) {
+            lobbyStartedRef.current = true;
+            onStartGame();
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost]);
+
+  // تنظيف الاتصال عند الخروج من شاشة الغرفة (المنضم)
+  useEffect(
+    () => () => {
+      if (isHost) return;
+      const client = getActiveKoutClient();
+      if (client && !lobbyStartedRef.current) {
+        client.socket.disconnect();
+        clearKoutNet();
+      }
+    },
+    [isHost],
+  );
   useEffect(
     () => () => {
       if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -163,6 +249,11 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
       toast("أكمل جميع المقاعد أولاً");
       return;
     }
+    if (getActiveKoutHost()) {
+      // اللعب الجماعي عبر الأجهزة: بنّئ تشكيلة المباراة وابدأها على جلسة الشبكة
+      const roomPlayers = players.map((p) => ({ ...p, connected: true }));
+      koutHostStartMatch(roomPlayers);
+    }
     onStartGame(getConfig());
   };
 
@@ -192,9 +283,25 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
 
   /* ===== داخل الغرفة (المنضم): المضيف + أنت، والمقاعد الباقية فارغة ===== */
   const joinerSeats = Array.from({ length: count }, (_, i) => {
-    if (i === 0) return { name: "المضيف", host: true, me: false, bot: false, empty: false };
-    if (i === 1)
-      return { name: profile.name || "أنت", host: false, me: true, bot: false, empty: false };
+    const slot = lobbyPlayers?.[i];
+    if (i === 0)
+      return {
+        name: slot?.name || "المضيف",
+        host: true,
+        me: false,
+        bot: slot?.kind === "AI_BOT",
+        empty: false,
+      };
+    if (i === mySeat)
+      return {
+        name: profile.name || "أنت",
+        host: false,
+        me: true,
+        bot: false,
+        empty: false,
+      };
+    if (slot && slot.connected)
+      return { name: slot.name, host: false, me: false, bot: slot.kind === "AI_BOT", empty: false };
     return { name: "مقعد فارغ", host: false, me: false, bot: false, empty: true };
   });
 

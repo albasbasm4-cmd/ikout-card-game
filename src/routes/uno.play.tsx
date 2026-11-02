@@ -40,6 +40,17 @@ import {
 } from "@/lib/uno/engine";
 import { botAwareness, chooseMove } from "@/lib/uno/bot";
 import { clearGame, loadGame, saveGame } from "@/lib/uno/storage";
+import {
+  getUnoNetClient,
+  isUnoHostActive,
+  onUnoClientState,
+  onUnoHostState,
+  unoHostGetState,
+  unoHostPublish,
+  unoClientSendIntent,
+  disconnectUnoClient,
+  type UnoIntent,
+} from "@/lib/uno/unoNet";
 import { DIFF_LABEL } from "@/lib/uno/names";
 import { cn } from "@/lib/utils";
 import { characterFace, CHARACTER_IDS, tableImage, useProfile } from "@/utils/profile";
@@ -72,7 +83,6 @@ interface FlyingUnoCard {
   rotateStart: number;
 }
 
-const ME = 0;
 const STAGE_H = 660;
 const COLOR_BG: Record<Color, string> = {
   red: "bg-uno-red",
@@ -96,6 +106,10 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
   const nav = useNavigate();
   const profile = useProfile();
   const reduced = useReducedMotion();
+  // اللعب الجماعي عبر الأجهزة: المنضم يستقبل الحالة، والمضيف يبقي المحرك المرجعي
+  const netClient = getUnoNetClient();
+  const netHost = isUnoHostActive();
+  const ME = netClient ? netClient.mySeat : 0;
   const [s, setS] = useState<GameState | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [wildFor, setWildFor] = useState<string | null>(null);
@@ -141,8 +155,21 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
   };
 
   useEffect(() => {
+    if (netClient) {
+      // المنضم: الحالة تصل من المضيف عبر الشبكة
+      setLoaded(true);
+      return onUnoClientState((st) => setS(st));
+    }
+    if (netHost) {
+      const hostState = unoHostGetState();
+      setS(hostState ?? loadGame());
+      setLoaded(true);
+      return onUnoHostState((nst) => setS(nst));
+    }
     setS(loadGame());
     setLoaded(true);
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const apply = useCallback((r: Result, silent = false) => {
@@ -151,8 +178,10 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       return false;
     }
     setS(r.state);
-    saveGame(r.state);
+    if (!netClient) saveGame(r.state);
+    if (netHost) unoHostPublish(r.state);
     return true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const playWithAnimation = useCallback(
@@ -208,7 +237,8 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       const flightDurationMs = reduced ? 80 : 540;
       setTimeout(() => {
         setS(r.state);
-        saveGame(r.state);
+        if (!netClient) saveGame(r.state);
+        if (netHost) unoHostPublish(r.state);
         setFlyingCard(null);
         setHiddenHandCardId(null);
         busy.current = false;
@@ -217,8 +247,27 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
     [s, reduced],
   );
 
+  // إرسال هدف من المنضم إلى المضيف (اللعب الجماعي)
+  const clientAction = useCallback(
+    (intent: UnoIntent, animate?: import("@/lib/uno/engine").Card) => {
+      unoClientSendIntent(intent);
+      playCardSound();
+      if (animate) {
+        setFlyingCard({ card: animate, fromSeat: ME, fromX: 50, fromY: 88, rotateStart: 0 });
+        setHiddenHandCardId(animate.id);
+        setTimeout(() => {
+          setFlyingCard(null);
+          setHiddenHandCardId(null);
+          busy.current = false;
+        }, reduced ? 80 : 540);
+      }
+    },
+    [ME, reduced],
+  );
+
   // Bot turns مع أنيميشن انطلاق الورقة من مقعد البوت إلى الطاولة
   useEffect(() => {
+    if (netClient) return; // المنضم: حركات البوتات تجري على جهاز المضيف
     if (!s || s.status !== "playing" || flyingCard !== null) return;
     const p = s.players[s.current];
     if (!p.isBot) return;
@@ -273,7 +322,11 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
   if (!s)
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <p>لا توجد مباراة محفوظة.</p>
+        {netClient ? (
+          <p>بانتظار المضيف يبدأ المباراة…</p>
+        ) : (
+          <p>لا توجد مباراة محفوظة.</p>
+        )}
         <Button
           onClick={() => {
             if (onBack) onBack();
@@ -307,6 +360,20 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
     if (busy.current || flyingCard !== null) return;
     const card = me.hand.find((c) => c.id === id);
     if (!card) return;
+    if (netClient) {
+      // المنضم: يتحقق محلياً ثم يرسل الأمر للمضيف (التحقق النهائي هناك)
+      if (!canPlay(s, card)) {
+        toast.error("حركة غير مسموحة");
+        return;
+      }
+      if (card.kind === "wild" || card.kind === "wild4") {
+        setWildFor(id);
+        return;
+      }
+      busy.current = true;
+      clientAction({ type: "PLAY", cardId: id }, card);
+      return;
+    }
     if (!canPlay(s, card)) {
       guard(() => apply(playCard(s, ME, id, undefined, s.version)));
       return;
@@ -320,7 +387,13 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
   const onColor = (c: Color) => {
     const card = wildFor ? me.hand.find((item) => item.id === wildFor) : undefined;
     setWildFor(null);
-    if (card) playWithAnimation(ME, card, c);
+    if (!card) return;
+    if (netClient) {
+      busy.current = true;
+      clientAction({ type: "PLAY", cardId: card.id, color: c }, card);
+      return;
+    }
+    playWithAnimation(ME, card, c);
   };
 
   const opponents = s.players.map((p, i) => ({ p, i })).filter((x) => x.i !== ME);
@@ -464,7 +537,11 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                     // معطّل أثناء طيران البطاقة: الضغط في تلك النافذة يُحسب على حالة قديمة
                     // ثم تُمسحه نهاية الأنيميشن فوقه (فقدان الكشف)، فيُمنع الضغط حتى تستقر الحالة.
                     disabled={flyingCard !== null}
-                    onClick={() => guard(() => apply(catchUno(s, ME)))}
+                    onClick={() =>
+                      netClient
+                        ? guard(() => clientAction({ type: "CATCH" }))
+                        : guard(() => apply(catchUno(s, ME)))
+                    }
                   >
                     <Hand className="h-4 w-4" /> كشف
                   </Button>
@@ -479,7 +556,11 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
           >
             <Button
               variant="ghost"
-              onClick={() => guard(() => apply(drawCard(s, ME, s.version)))}
+              onClick={() =>
+                netClient
+                  ? guard(() => clientAction({ type: "DRAW" }))
+                  : guard(() => apply(drawCard(s, ME, s.version)))
+              }
               disabled={!myTurn || !!s.drawnCardId}
               className="uno-draw relative h-auto p-0"
               aria-label="اسحب"
@@ -567,7 +648,11 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                 // معطّل أثناء طيران البطاقة: نداء أونو في تلك النافذة يُحسب على حالة قديمة
                 // ويضيع عندما تستبدل نهاية الأنيميشن الحالة، فيُمنع حتى تستقر الحالة.
                 disabled={flyingCard !== null}
-                onClick={() => guard(() => apply(sayUno(s, ME)))}
+                onClick={() =>
+                  netClient
+                    ? guard(() => clientAction({ type: "SAY_UNO" }))
+                    : guard(() => apply(sayUno(s, ME)))
+                }
               >
                 <Megaphone /> أونو
               </Button>
@@ -576,7 +661,11 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                   size="sm"
                   variant="outline"
                   style={{ height: 44, fontSize: 18 }}
-                  onClick={() => guard(() => apply(passTurn(s, ME, s.version)))}
+                  onClick={() =>
+                    netClient
+                      ? guard(() => clientAction({ type: "PASS" }))
+                      : guard(() => apply(passTurn(s, ME, s.version)))
+                  }
                 >
                   تمرير
                 </Button>
@@ -689,9 +778,11 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
             {s.status === "roundOver" ? (
               <Button
                 onClick={() => {
+                  if (netClient) return; // المضيف يبدأ الجولة التالية
                   const n2 = dealRound(s);
                   setS(n2);
                   saveGame(n2);
+                  if (netHost) unoHostPublish(n2);
                 }}
               >
                 الجولة التالية
@@ -699,7 +790,8 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
             ) : (
               <Button
                 onClick={() => {
-                  clearGame();
+                  if (netClient) disconnectUnoClient();
+                  else clearGame();
                   if (onBack) onBack();
                   else nav({ to: "/uno" });
                 }}

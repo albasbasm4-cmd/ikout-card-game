@@ -19,6 +19,9 @@ import {
   playLoseSound,
 } from "../utils/audio";
 import { saveGameState } from "../utils/persist";
+import type { HostSession } from "../network/HostSession";
+import type { ITransport } from "../network/ITransport";
+import type { ClientGameState } from "../network/protocol";
 import { useHaptics } from "./useSettings";
 
 export interface UseGameOptions {
@@ -29,6 +32,15 @@ export interface UseGameOptions {
   initialState?: GameState;
   /** تشكيلة الغرفة (من اللوبي): تحدد المقاعد البشرية مقابل البوتات. */
   players?: PlayerSlot[];
+  /** وضع المضيف في اللعب الجماعي: المحرك مشترك مع جلسة الشبكة. */
+  netHost?: { session: HostSession; engine: KoutGameEngine } | null;
+  /** وضع المنضم في اللعب الجماعي: الأوامر تُرسل للمضيف والحالة تُستقبل منه. */
+  netClient?: {
+    socket: ITransport;
+    mySeat: number;
+    playerToken: string;
+    initialState?: ClientGameState;
+  } | null;
 }
 
 export interface CheatVerdict {
@@ -58,21 +70,50 @@ export function useGame(options: UseGameOptions = {}) {
   const engineRef = useRef<KoutGameEngine | null>(null);
 
   if (!engineRef.current) {
-    engineRef.current = new KoutGameEngine(
-      {
-        variant,
-        targetScore,
-        initialDealer: 0,
-        seed: Math.floor(Math.random() * 1000000),
-      },
-      options.initialState,
-    );
-    if (!options.initialState && options.autoStart !== false) {
-      engineRef.current.startRound();
+    if (options.netHost) {
+      // المضيف: نفس محرك الجلسة (مصدر الحقيقة للأجهزة الأخرى)
+      engineRef.current = options.netHost.engine;
+    } else if (!options.netClient) {
+      engineRef.current = new KoutGameEngine(
+        {
+          variant,
+          targetScore,
+          initialDealer: 0,
+          seed: Math.floor(Math.random() * 1000000),
+        },
+        options.initialState,
+      );
+      if (!options.initialState && options.autoStart !== false) {
+        engineRef.current.startRound();
+      }
     }
   }
 
-  const [state, setState] = useState<GameState>(engineRef.current.state);
+  const [state, setState] = useState<GameState>(
+    options.netClient
+      ? ((options.netClient.initialState as unknown as GameState) ??
+          (engineRef.current?.state as unknown as GameState))
+      : engineRef.current!.state,
+  );
+
+  // مرجع الحالة لتفادي التحديثات المكررة عبر الشبكة (مطابقة رقم الإصدار)
+  const stateRef = useRef<GameState>(state);
+  stateRef.current = state;
+  const clientSeqRef = useRef(0);
+
+  // إرسال أمر من المنضم إلى المضيف
+  const sendClientPacket = useCallback((type: string, payload: Record<string, unknown>) => {
+    const client = options.netClient;
+    if (!client) return;
+    client.socket.send({
+      v: 1,
+      seq: ++clientSeqRef.current,
+      playerToken: client.playerToken,
+      type,
+      payload,
+    } as never);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [isBotThinking, setIsBotThinking] = useState<boolean>(false);
   const [cheatVerdict, setCheatVerdict] = useState<CheatVerdict | null>(null);
@@ -98,6 +139,17 @@ export function useGame(options: UseGameOptions = {}) {
   const freePlayRef = useRef(freePlay);
   freePlayRef.current = freePlay;
 
+  // المقاعد الفعلية على هذا الجهاز: في اللعب الجماعي عبر الأجهزة، مقعد واحد فقط
+  // لكل جهاز (المضيف مقعد 0، والمنضم مقعده المُسند)؛ في وضع الجهاز الواحد كل البشر.
+  const localSeats = useMemo<number[]>(() => {
+    if (options.netClient) return [options.netClient.mySeat];
+    if (options.netHost) return [0];
+    return humanSeats;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const localSeatsRef = useRef(localSeats);
+  localSeatsRef.current = localSeats;
+
   // Smooth Trick Completion & Visual Pacing
   const [displayedTrick, setDisplayedTrick] = useState<TrickPlay[]>(state.currentTrick);
   const [winningTrickPlay, setWinningTrickPlay] = useState<TrickPlay | null>(null);
@@ -120,22 +172,22 @@ export function useGame(options: UseGameOptions = {}) {
   const activeHumanSeat = useMemo<number | null>(() => {
     if (isResolvingTrickRef.current) return null;
     if (state.phase === "BID") {
-      return state.currentSeat !== null && humanSeats.includes(state.currentSeat)
+      return state.currentSeat !== null && localSeats.includes(state.currentSeat)
         ? state.currentSeat
         : null;
     }
     if (state.phase === "TRUMP") {
-      return state.bidderSeat !== null && humanSeats.includes(state.bidderSeat)
+      return state.bidderSeat !== null && localSeats.includes(state.bidderSeat)
         ? state.bidderSeat
         : null;
     }
     if (state.phase === "PLAY") {
-      return state.currentSeat !== null && humanSeats.includes(state.currentSeat)
+      return state.currentSeat !== null && localSeats.includes(state.currentSeat)
         ? state.currentSeat
         : null;
     }
     return null;
-  }, [state, humanSeats]);
+  }, [state, localSeats]);
 
   const activeHumanSeatRef = useRef<number | null>(activeHumanSeat);
   activeHumanSeatRef.current = activeHumanSeat;
@@ -175,6 +227,63 @@ export function useGame(options: UseGameOptions = {}) {
     return () => clearTimeout(timer);
   }, [cheatVerdict]);
 
+  // ---- مزامنة الشبكة ----
+  // المضيف: يستقبل حالات جديدة عندما يعدّل جهاز آخر (طلب عميل/بلاغ) عبر الجلسة
+  useEffect(() => {
+    const host = options.netHost;
+    if (!host) return;
+    return host.session.onStateChange((s) => {
+      if (s.version === stateRef.current.version) return;
+      setState({ ...s });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // المنضم: يستقبل حالات المضيف وأحكام البلاغات
+  useEffect(() => {
+    const client = options.netClient;
+    if (!client) return;
+    return client.socket.onMessage((packet) => {
+      switch (packet.type) {
+        case "CLIENT_STATE_UPDATE": {
+          const s = packet.payload.state;
+          if (s.version === stateRef.current.version) return;
+          setState({ ...s } as unknown as GameState);
+          break;
+        }
+        case "CHEAT_VERDICT": {
+          const p = packet.payload;
+          setCheatVerdict({
+            confirmed: p.confirmed,
+            accusedSeat: p.accusedSeat,
+            cardType: p.cardType as ReportedCardType,
+            reporterSeat: p.reporterSeat,
+            roundNo: p.roundNo,
+            announcement: p.announcement,
+            pointsAdded: p.pointsAdded,
+            winningTeam: p.winningTeam,
+          });
+          break;
+        }
+        default:
+          break;
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // تثبيت حالة جديدة: تُحفظ محلياً وتُبث للأجهزة الأخرى عند استضافة الغرفة
+  const commit = useCallback(
+    (next: GameState) => {
+      setState({ ...next });
+      if (!options.netClient) saveGameState(next);
+      if (options.netHost) options.netHost.session.broadcastState();
+    },
+    // options تُقرأ مرة واحدة كإعداد أولي
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
   // Plays a card with smooth trick completion delay
   const executePlayCardWithPacing = useCallback(
     (seat: number, card: Card, playOptions?: { allowAnyCard?: boolean }) => {
@@ -209,8 +318,7 @@ export function useGame(options: UseGameOptions = {}) {
           pendingTrickRef.current = null;
           try {
             const nextState = engine.playCard(seat, card, playOptions);
-            setState({ ...nextState });
-            saveGameState(nextState);
+            commit(nextState);
 
             if (nextState.phase === "ROUND_END" || nextState.phase === "GAME_END") {
               if (nextState.scores[0] >= nextState.scores[1]) {
@@ -231,8 +339,7 @@ export function useGame(options: UseGameOptions = {}) {
       } else {
         // Non-final card play: instant update
         const nextState = engine.playCard(seat, card, playOptions);
-        setState({ ...nextState });
-        saveGameState(nextState);
+        commit(nextState);
       }
     },
     [triggerHaptic],
@@ -243,7 +350,17 @@ export function useGame(options: UseGameOptions = {}) {
     (card: Card) => {
       const engine = engineRef.current;
       const seat = activeHumanSeatRef.current;
-      if (!engine || isResolvingTrickRef.current) return;
+      if (isResolvingTrickRef.current) return;
+      if (options.netClient) {
+        // المنضم: يرسل الأمر للمضيف ويتحكم بالتحقق السلطوي
+        const st = stateRef.current;
+        if (st.phase !== "PLAY" || seat === null || st.currentSeat !== seat) return;
+        playCardSound();
+        triggerHaptic("light");
+        sendClientPacket("PLAY_CARD_REQUEST", { cardId: card.id });
+        return;
+      }
+      if (!engine) return;
       if (engine.state.phase !== "PLAY" || seat === null || engine.state.currentSeat !== seat)
         return;
 
@@ -254,47 +371,67 @@ export function useGame(options: UseGameOptions = {}) {
         console.error("Human playCard error:", err);
       }
     },
-    [executePlayCardWithPacing],
+    [executePlayCardWithPacing, options.netClient, sendClientPacket, triggerHaptic],
   );
 
-  const humanBid = useCallback((bid: Bid) => {
-    const engine = engineRef.current;
-    const seat = activeHumanSeatRef.current;
-    if (!engine) return;
-    if (engine.state.phase !== "BID" || seat === null || engine.state.currentSeat !== seat) return;
+  const humanBid = useCallback(
+    (bid: Bid) => {
+      const engine = engineRef.current;
+      const seat = activeHumanSeatRef.current;
+      if (options.netClient) {
+        const st = stateRef.current;
+        if (st.phase !== "BID" || seat === null || st.currentSeat !== seat) return;
+        setSpeechBubbles((prev) => ({ ...prev, [seat]: bid === 0 ? "pass" : `bid:${bid}` }));
+        sendClientPacket("BID_REQUEST", { bid });
+        return;
+      }
+      if (!engine) return;
+      if (engine.state.phase !== "BID" || seat === null || engine.state.currentSeat !== seat) return;
 
-    try {
-      const bubble = bid === 0 ? "pass" : `bid:${bid}`;
-      setSpeechBubbles((prev) => ({ ...prev, [seat]: bubble }));
+      try {
+        const bubble = bid === 0 ? "pass" : `bid:${bid}`;
+        setSpeechBubbles((prev) => ({ ...prev, [seat]: bubble }));
 
-      const nextState = engine.placeBid(seat, bid);
-      setState({ ...nextState });
-      saveGameState(nextState);
-    } catch (err) {
-      console.error("Human placeBid error:", err);
-    }
-  }, []);
+        const nextState = engine.placeBid(seat, bid);
+        commit(nextState);
+      } catch (err) {
+        console.error("Human placeBid error:", err);
+      }
+    },
+    [commit, options.netClient, sendClientPacket],
+  );
 
-  const humanDeclareTrump = useCallback((suit: Suit) => {
-    const engine = engineRef.current;
-    const seat = activeHumanSeatRef.current;
-    if (!engine) return;
-    if (engine.state.phase !== "TRUMP" || seat === null || engine.state.bidderSeat !== seat) return;
+  const humanDeclareTrump = useCallback(
+    (suit: Suit) => {
+      const engine = engineRef.current;
+      const seat = activeHumanSeatRef.current;
+      if (options.netClient) {
+        const st = stateRef.current;
+        if (st.phase !== "TRUMP" || seat === null || st.bidderSeat !== seat) return;
+        playTrumpSound();
+        setSpeechBubbles((prev) => ({ ...prev, [seat]: `trump:${suit}` }));
+        sendClientPacket("TRUMP_REQUEST", { suit });
+        return;
+      }
+      if (!engine) return;
+      if (engine.state.phase !== "TRUMP" || seat === null || engine.state.bidderSeat !== seat)
+        return;
 
-    try {
-      playTrumpSound();
-      setSpeechBubbles((prev) => ({
-        ...prev,
-        [seat]: `trump:${suit}`,
-      }));
+      try {
+        playTrumpSound();
+        setSpeechBubbles((prev) => ({
+          ...prev,
+          [seat]: `trump:${suit}`,
+        }));
 
-      const nextState = engine.declareTrump(seat, suit);
-      setState({ ...nextState });
-      saveGameState(nextState);
-    } catch (err) {
-      console.error("Human declareTrump error:", err);
-    }
-  }, []);
+        const nextState = engine.declareTrump(seat, suit);
+        commit(nextState);
+      } catch (err) {
+        console.error("Human declareTrump error:", err);
+      }
+    },
+    [commit, options.netClient, sendClientPacket],
+  );
 
   const sendSpeechBubble = useCallback((message: string, seat: number = 0) => {
     setSpeechBubbles((prev) => ({ ...prev, [seat]: message }));
@@ -308,13 +445,15 @@ export function useGame(options: UseGameOptions = {}) {
   }, []);
 
   const startNextRound = useCallback(() => {
+    // في اللعب الجماعي يبدأ المضيف الجولة فقط (المنضم يستقبل الحالة)
+    if (options.netClient) return;
     const engine = engineRef.current;
     if (!engine) return;
     setSpeechBubbles({});
     const nextState = engine.startRound();
-    setState({ ...nextState });
-    saveGameState(nextState);
-  }, []);
+    commit(nextState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commit]);
 
   const startNewGame = useCallback(
     (newVariant?: "BO6" | "BO4", newTarget?: number, newDiff?: Difficulty) => {
@@ -336,10 +475,11 @@ export function useGame(options: UseGameOptions = {}) {
       });
       engineRef.current = newEngine;
       const firstState = newEngine.startRound();
-      setState({ ...firstState });
-      saveGameState(firstState);
+      if (options.netHost) options.netHost.session.replaceEngine(newEngine);
+      commit(firstState);
     },
-    [variant, targetScore, difficulty],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [variant, targetScore, difficulty, commit],
   );
 
   // Human turn timeout handler (auto-plays legal move)
@@ -378,6 +518,11 @@ export function useGame(options: UseGameOptions = {}) {
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
+    if (options.netClient) {
+      // المنضم: البوتات تتحرك على جهاز المضيف
+      setIsBotThinking(false);
+      return;
+    }
 
     let isMounted = true;
     const current = state;
@@ -421,8 +566,7 @@ export function useGame(options: UseGameOptions = {}) {
           setSpeechBubbles((prev) => ({ ...prev, [activeSeat]: bubble }));
 
           const next = engine.placeBid(activeSeat, decision.bid);
-          setState({ ...next });
-          saveGameState(next);
+          commit(next);
         } else if (decision.type === "TRUMP" && currentEngineState.phase === "TRUMP") {
           playTrumpSound();
           setSpeechBubbles((prev) => ({
@@ -431,8 +575,7 @@ export function useGame(options: UseGameOptions = {}) {
           }));
 
           const next = engine.declareTrump(activeSeat, decision.suit);
-          setState({ ...next });
-          saveGameState(next);
+          commit(next);
         } else if (decision.type === "PLAY" && currentEngineState.phase === "PLAY") {
           executePlayCardWithPacing(activeSeat, decision.card);
         }
@@ -461,6 +604,11 @@ export function useGame(options: UseGameOptions = {}) {
     cheatReportsThisRoundRef.current < MAX_CHEAT_REPORTS_PER_ROUND;
 
   const reportCheat = useCallback((accusedSeat: number, cardType: ReportedCardType): boolean => {
+    if (options.netClient) {
+      // المنضم: يبلّغ المضيف والحكم يصل عبر CHEAT_VERDICT
+      sendClientPacket("CHEAT_REPORT", { accusedSeat, cardType });
+      return true;
+    }
     // إذا ضُغط البلاغ أثناء نافذة عرض الأكلة (1500ms) نُكمل الأكلة المعلقة فوراً
     // قبل الحكم، وإلا فالمؤقت القديم سيلعب الورقة لاحقاً على محركٍ قديم ويستبدل حكم البلاغ.
     if (isResolvingTrickRef.current && pendingTrickRef.current) {
@@ -491,10 +639,12 @@ export function useGame(options: UseGameOptions = {}) {
     lastCheatReportAtRef.current = now;
     cheatReportsThisRoundRef.current += 1;
 
-    engineRef.current = new KoutGameEngine(
+    const nextEngine = new KoutGameEngine(
       { variant, targetScore: engine.state.targetScore, seed: 0, players: engine.state.players },
       result.nextState,
     );
+    engineRef.current = nextEngine;
+    if (options.netHost) options.netHost.session.replaceEngine(nextEngine);
     setState(result.nextState);
 
     setCheatVerdict({
@@ -539,6 +689,7 @@ export function useGame(options: UseGameOptions = {}) {
     handleHumanTimeout,
     // اللعب الحر ضد البشر + نظام البلاغ
     humanSeats,
+    localSeats,
     freePlay,
     activeHumanSeat,
     canReportCheat,

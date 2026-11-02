@@ -55,6 +55,10 @@ export interface GameScreenProps {
   initialState?: GameState;
   /** تشكيلة اللاعبين من اللوبي: تحدد البشر مقابل البوتات (اللعب الحر والبلاغ). */
   initialPlayers?: PlayerSlot[];
+  /** وضع المضيف في اللعب الجماعي عبر الأجهزة (هوت سبوت). */
+  netHost?: { session: unknown; engine: unknown } | null;
+  /** وضع المنضم في اللعب الجماعي عبر الأجهزة (هوت سبوت). */
+  netClient?: { socket: unknown; mySeat: number; playerToken: string; initialState?: unknown } | null;
 }
 
 export const GameScreen: React.FC<GameScreenProps> = ({
@@ -64,6 +68,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   onGoHome,
   className = "",
   initialPlayers,
+  netHost,
+  netClient,
 }) => {
   const {
     state,
@@ -95,7 +101,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     autoStart: true,
     initialState,
     players: initialPlayers,
+    netHost: netHost as never,
+    netClient: netClient as never,
   });
+
+  /** مقعدي على الطاولة في هذا الجهاز: 0 محلياً، ومقعد الشبكة في اللعب الجماعي. */
+  const myNetSeat = netClient ? netClient.mySeat : 0;
 
   const { settings, updateSettings, toggleSound, setBotSpeed, toggleOrientationPreference } =
     useSettings();
@@ -129,7 +140,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({
   const lastHumanSeatRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (freePlay && activeHumanSeat !== null && lastHumanSeatRef.current !== activeHumanSeat) {
+    // التسليم بين الأجهزة لا ينطبق على اللعب الجماعي عبر الشبكة: لكل جهاز مقعده
+    if (
+      freePlay &&
+      !netHost &&
+      !netClient &&
+      activeHumanSeat !== null &&
+      lastHumanSeatRef.current !== activeHumanSeat
+    ) {
       lastHumanSeatRef.current = activeHumanSeat;
       setHandoffSeat(activeHumanSeat);
     }
@@ -359,8 +377,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({
           {/* Main Interactive Table Component with Integrated Header Controls */}
           <Table
             state={state}
-            mySeat={0}
-            localHandSeat={handoffSeat !== null ? -1 : (activeHumanSeat ?? 0)}
+            mySeat={myNetSeat}
+            localHandSeat={
+              netHost || netClient
+                ? (activeHumanSeat ?? myNetSeat)
+                : handoffSeat !== null
+                  ? -1
+                  : (activeHumanSeat ?? 0)
+            }
             onPlayCard={humanPlayCard}
             displayedTrick={displayedTrick}
             winningTrickPlay={winningTrickPlay}
@@ -504,18 +528,25 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   </div>
                 </div>
 
-                {/* Next Round Button */}
-                <Button
-                  type="button"
-                  onClick={() => {
-                    playTapSound();
-                    startNextRound();
-                  }}
-                  className="w-full py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-black text-xs sm:text-sm border border-emerald-300/40 shadow-xl active:scale-98 cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <Sparkles className="w-4 h-4 fill-current" />
-                  <span>الجولة التالية ({state.roundNo + 1})</span>
-                </Button>
+                {/* Next Round Button — المضيف يبدأ الجولة في اللعب الجماعي */}
+                {!netClient && (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      playTapSound();
+                      startNextRound();
+                    }}
+                    className="w-full py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-black text-xs sm:text-sm border border-emerald-300/40 shadow-xl active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4 fill-current" />
+                    <span>الجولة التالية ({state.roundNo + 1})</span>
+                  </Button>
+                )}
+                {netClient && (
+                  <div className="w-full py-2.5 rounded-2xl bg-black/60 border border-emerald-400/30 text-emerald-200 text-xs font-bold text-center">
+                    بانتظار المضيف لبدء الجولة التالية…
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -562,7 +593,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   </div>
                 </div>
 
-                {/* New Game Button */}
+                {/* New Game Button — المضيف يبدأ المباراة في اللعب الجماعي */}
+                {!netClient && (
                 <Button
                   type="button"
                   onClick={() => {
@@ -574,6 +606,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   <RotateCcw className="w-4 h-4" />
                   <span>لعبة جديدة</span>
                 </Button>
+                )}
+                {netClient && (
+                  <div className="w-full py-2.5 rounded-2xl bg-black/60 border border-amber-400/30 text-amber-200 text-xs font-bold text-center">
+                    بانتظار المضيف لبدء مباراة جديدة…
+                  </div>
+                )}
               </div>
             </div>
           )}
