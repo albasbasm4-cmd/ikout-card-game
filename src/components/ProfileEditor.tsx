@@ -685,7 +685,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 }}
               >
                 <label style={{ fontSize: "13px", color: "#a1a1aa" }}>
-                  الأصوات والعبارات للشات ({customData.clips.length}/5)
+                  الأصوات والعبارات للشات ({customData.clips.length}/{customData.maxClips})
                 </label>
                 <span style={{ fontSize: "11px", color: "#71717a" }}>أقصى مدة 3 ثوانٍ لكل صوت</span>
               </div>
@@ -735,7 +735,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               ))}
 
               {/* إضافة صوت جديد إن لم يتجاوز 5 */}
-              {customData.clips.length < 5 && (
+              {customData.clips.length < customData.maxClips && (
                 <div
                   style={{
                     background: "#202024",
@@ -803,7 +803,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                               };
                               setCustomData((prev) => ({
                                 ...prev,
-                                clips: [...prev.clips, newClip].slice(0, 5),
+                                clips: [...prev.clips, newClip].slice(0, prev.maxClips),
                               }));
                               setNewClipName("");
                             }
