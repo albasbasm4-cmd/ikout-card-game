@@ -38,7 +38,6 @@ import { useStageFit } from "@/hooks/use-stage-fit";
 import { playCardSound, playWinSound, playLoseSound } from "@/utils/audio";
 import {
   actJoker,
-  chooseJokerBot,
   createJokerGame,
   dealJoker,
   jokerMode,
@@ -70,15 +69,6 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   const [showQr, setShowQr] = useState(false);
   const [game, setGame] = useState<JokerGame | null>(null);
   const [holdingId, setHoldingId] = useState<string | null>(null);
-  const [botPeekingId, setBotPeekingId] = useState<string | null>(null);
-  const peekClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
   const [modal, setModal] = useState<"rules" | "pick" | "confirm" | "network" | null>(null);
   const [target, setTarget] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -92,34 +82,31 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   const netClient = getJokerNetClient();
   const netHostActive = isJokerHostActive();
   const human = netClient ? netClient.myPid : "p0";
-  const players = Array.from({ length: count }, (_, i) => {
-    if (i === 0)
-      return {
-        id: "p0",
-        name: profile.name || "أنت",
-        char: profile.characterId,
-        score: 0,
-        bot: false,
-      };
+  // لاعبون حقيقيون فقط: المضيف + من انضم فعلياً عبر الشبكة — لا بوتات إطلاقاً
+  const players = [
+    {
+      id: "p0",
+      name: profile.name || "أنت",
+      char: profile.characterId,
+      score: 0,
+      bot: false,
+    },
+  ];
+  for (let i = 1; i < count; i++) {
     const remoteName = netRole === "local" ? undefined : remoteNames[`p${i}`];
     if (remoteName)
-      return {
+      players.push({
         id: `p${i}`,
         name: remoteName,
         char: CHARACTER_IDS[(i * 5) % CHARACTER_IDS.length],
         score: 0,
         bot: false,
-      };
-    // المقاعد غير الممتلئة في اللعب المحلي تقع على البوتات كي تكتمل الجولة دائماً
-    return {
-      id: `p${i}`,
-      name: `لاعب ${i + 1}`,
-      char: CHARACTER_IDS[(i * 5) % CHARACTER_IDS.length],
-      score: 0,
-      bot: true,
-    };
-  });
+      });
+  }
+  // لا بداية إلا بأربعة لاعبين حقيقيين على الأقل
+  const canStart = players.length >= 4 && players.length <= 9;
   const start = () => {
+    if (!canStart) return;
     const g = dealJoker(createJokerGame(players));
     setGame(g);
     setHoldingId(null);
@@ -166,43 +153,6 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
     return off;
   }, [screen, netRole]);
 
-  useEffect(() => {
-    if (netClient) return; // حركات البوتات تجري على جهاز المضيف فقط
-    if (!game || game.phase !== "play") return;
-    const bot = game.players.find(
-      (p) => p.bot && ["joker", "pick", "final"].includes(jokerMode(game, p.id)),
-    );
-    if (!bot) return;
-    const timer = setTimeout(
-      () => {
-        setGame((prev) => {
-          const next = prev
-            ? actJoker(
-                prev,
-                bot.id,
-                jokerMode(prev, bot.id) === "joker" ? undefined : chooseJokerBot(prev, bot.id),
-              )
-            : prev;
-          if (next && netHostActive && next !== prev) jokerHostPublish(next);
-          return next;
-        });
-        playCardSound();
-      },
-      settings.botSpeed === "FAST" ? 650 : settings.botSpeed === "SLOW" ? 2200 : 1400,
-    );
-    const peekTimer = setTimeout(() => {
-      if (peekClearRef.current) clearTimeout(peekClearRef.current);
-      setBotPeekingId(bot.id);
-      peekClearRef.current = setTimeout(() => {
-        if (mountedRef.current) setBotPeekingId(null);
-      }, 600);
-    }, 150);
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(peekTimer);
-      // مؤقت الإخفاء الداخلي يعيش بعد التنظيف ليخفي التلميح دائماً
-    };
-  }, [game, settings.botSpeed]);
   useEffect(() => {
     if (game?.phase !== "results" || awarded.current === game.round) return;
     awarded.current = game.round;
@@ -352,9 +302,22 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                           <QrCode className="w-5 h-5 ml-2" />
                           رمز QR
                         </Button>
-                        <Button id="go" className="kb kr ready" style={{ flex: 2 }} onClick={start}>
+                        <Button
+                          id="go"
+                          className="kb kr ready"
+                          style={
+                            canStart ? { flex: 2 } : { flex: 2, filter: "grayscale(.5)", opacity: 0.6 }
+                          }
+                          disabled={!canStart}
+                          onClick={start}
+                        >
                           ابدأ اللعبة
                         </Button>
+                      </div>
+                      <div className="kst kdk">
+                        {canStart
+                          ? "الكل جاهز — ابدأ المباراة"
+                          : `تحتاج ${4 - players.length} لاعبين إضافيين على الأقل لبدء المباراة`}
                       </div>
                     </div>
                     <div
@@ -477,8 +440,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                                 const isRed = /[♥♦]/.test(playerCard ?? "");
                                 const isJk = playerCard === "JK";
                                 const isDropped = Boolean(game.out[p.id]);
-                                const isPeeking = botPeekingId === p.id;
-
+                            
                                 return (
                                   <div
                                     key={p.id}
@@ -493,7 +455,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
 
                                     {/* ورقة اللاعب مقلوبة فوق الطاولة؛ الحساب البشري يرى ورقته هو فقط بالضغط المستمر */}
                                     <div
-                                      className={`joker-table-card ${isHolding ? "revealed" : "face-down"} ${isHolding && isJk ? "jk" : ""} ${isHolding && isRed ? "r" : ""} ${isDropped ? "dropped" : ""} ${isPeeking ? "bot-peeking" : ""}`}
+                                      className={`joker-table-card ${isHolding ? "revealed" : "face-down"} ${isHolding && isJk ? "jk" : ""} ${isHolding && isRed ? "r" : ""} ${isDropped ? "dropped" : ""}`}
                                       title={isHuman ? "اضغط باستمرار لرؤية ورقتك" : "ورقة مقلوبة"}
                                       onPointerDown={(e) => {
                                         if (!isHuman) return;
