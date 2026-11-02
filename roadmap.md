@@ -35,11 +35,11 @@
 
 ## Rooms / profile request (Nov 2026)
 - [ ] Unify create/join room UI across Kout, 187, UNO, Joker (keep each game's team/seat rules: Kout 2v2/3v3, 187 five solo, UNO up to 10 solo, Joker up to 15)
-- [ ] QR join modal + custom-character modal upright (not rotated), text inside boxes, ~75% of screen
-- [ ] About-us scroll direction fix
+- [x] QR join modal + custom-character modal upright (not rotated), text inside boxes, ~75% of screen
+- [x] About-us scroll direction fix
 - [ ] Custom characters: +1 character per 5 ads; voices 5→10 via 5 more ads; each voice paired with text shown in chat bubble
 - [ ] Kout: losing team chooses continue or stop (like 187)
-- [ ] Kout: trump cards placed leftmost in local hand
-- [ ] VIP code field in profile (under frames): IKOUT_2026_VIP, then "IKOUT_2026_VIP 1".."45", each unlocks one chosen character
+- [x] Kout: trump cards placed leftmost in local hand
+- [x] VIP code field in profile (under frames): IKOUT_2026_VIP, then "IKOUT_2026_VIP 1".."45", each unlocks one chosen character
 - [ ] Screenshots: create room, join room, UNO table
 - [ ] GitHub: syncs automatically via Lovable Git sync (no manual push)
