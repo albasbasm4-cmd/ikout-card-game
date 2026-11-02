@@ -856,7 +856,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </section>
   );
