@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { createPortal } from "react-dom";
 import { X, Copy, Check, QrCode as QrIcon, Wifi, Sparkles, Edit2, CheckCircle } from "lucide-react";
 import { encodeRoomPayload, getLocalIpAddress } from "../network/localIp";
 
@@ -58,7 +59,7 @@ export const QrModal: React.FC<QrModalProps> = ({
       .catch((err) => console.error("Failed to generate QR code:", err));
   }, [ip, port, roomCode, isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   const connectionUrl = `ws://${ip}:${port}`;
 
@@ -81,12 +82,12 @@ export const QrModal: React.FC<QrModalProps> = ({
     setIsEditingIp(false);
   };
 
-  return (
+  return createPortal(
     <div
       dir="rtl"
-      className={`fixed inset-0 p-safe z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 text-amber-50 select-none animate-in fade-in duration-200 ${className}`}
+      className={`fixed inset-0 p-safe z-[1000] overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-4 text-amber-50 select-none animate-in fade-in duration-200 ${className}`}
     >
-      <div className="relative w-full max-w-sm bg-neutral-900 border border-amber-500/40 rounded-3xl p-5 shadow-2xl flex flex-col items-center text-center">
+      <div className="relative w-[min(75vw,560px)] min-w-[280px] max-h-[90dvh] overflow-y-auto break-words bg-neutral-900 border border-amber-500/40 rounded-3xl p-5 shadow-2xl flex flex-col items-center text-center">
         {/* Close Button */}
         <button
           type="button"
@@ -219,7 +220,8 @@ export const QrModal: React.FC<QrModalProps> = ({
           تم
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
 
