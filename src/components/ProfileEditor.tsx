@@ -1,6 +1,7 @@
 import { FrameRateTarget, loadTargetFps, saveTargetFps } from "../utils/frameRate";
 import { Gauge } from "lucide-react";
-import { applyCheatCode } from "../utils/cheatCode";
+import { checkVipCode, loadVipIndex, redeemVipForCharacter } from "../utils/cheatCode";
+import { createPortal } from "react-dom";
 import { KeyRound } from "lucide-react";
 
 import {
@@ -67,6 +68,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
     null,
   );
   const [charListVersion, setCharListVersion] = useState(0);
+  const [vipPick, setVipPick] = useState(false);
+  const [vipChoice, setVipChoice] = useState<string | null>(null);
   const [targetFps, setTargetFps] = useState<FrameRateTarget>(loadTargetFps());
 
   useEffect(() => {
@@ -119,73 +122,26 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
         </Button>
       </header>
       <h2>{TABS.find((t) => t.id === tab)?.label}</h2>
-      {tab === "character" && (
-        <div
-          style={{
-            marginBottom: "12px",
-            padding: "10px 14px",
-            background: "rgba(15, 23, 42, 0.75)",
-            border: "1px solid rgba(51, 65, 85, 0.8)",
-            borderRadius: "12px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
-            <KeyRound size={15} color="#f59e0b" />
-            <span style={{ fontSize: "12px", fontWeight: "bold", color: "#f8fafc" }}>
-              كود فتح الشخصيات السري:
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <input
-              type="text"
-              value={cheatCodeInput}
-              onChange={(e) => setCheatCodeInput(e.target.value)}
-              placeholder="اكتب الكود السري هنا..."
-              style={{
-                flex: 1,
-                padding: "6px 10px",
-                fontSize: "12px",
-                borderRadius: "8px",
-                border: "1px solid #475569",
-                background: "#1e293b",
-                color: "#ffffff",
-                outline: "none",
-              }}
-            />
-            <Button
-              size="sm"
-              onClick={() => {
-                const res = applyCheatCode(cheatCodeInput);
-                setCheatFeedback({ text: res.message, isError: !res.success });
-                if (res.success) {
-                  setCheatCodeInput("");
-                  setCharListVersion((v) => v + 1);
-                }
-              }}
-              style={{
-                background: "#f59e0b",
-                color: "#0f172a",
-                fontWeight: "bold",
-                fontSize: "12px",
-                padding: "0 12px",
-                height: "32px",
-              }}
-            >
-              تفعيل
-            </Button>
-          </div>
-          {cheatFeedback && (
-            <div
-              style={{
-                marginTop: "6px",
-                fontSize: "11px",
-                fontWeight: 600,
-                color: cheatFeedback.isError ? "#f87171" : "#4ade80",
-              }}
-            >
-              {cheatFeedback.text}
-            </div>
-          )}
+      {tab === "character" && vipPick && (
+        <div className="pc-vip-pick" role="status">
+          <span>{cheatFeedback?.text ?? "اختر شخصية واحدة مقفلة لفتحها بالكود"}</span>
+          <Button
+            disabled={!vipChoice}
+            onClick={() => {
+              if (!vipChoice) return;
+              const r = redeemVipForCharacter(vipChoice);
+              setCheatFeedback({ text: r.message, isError: !r.success });
+              setVipPick(false);
+              setVipChoice(null);
+              if (r.success) choose({ characterId: vipChoice as never });
+              setCharListVersion((v) => v + 1);
+            }}
+          >
+            <Check /> تأكيد
+          </Button>
+          <Button variant="ghost" onClick={() => { setVipPick(false); setVipChoice(null); }}>
+            إلغاء
+          </Button>
         </div>
       )}
       {tab === "character" && (
@@ -262,10 +218,14 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               <div key={id} className="pc-character" style={{ position: "relative" }}>
                 <Button
                   variant="ghost"
-                  className={`pc-item ${profile.characterId === id ? "pc-selected" : ""}`}
+                  className={`pc-item ${(vipPick ? vipChoice === id : profile.characterId === id) ? "pc-selected" : ""}`}
                   aria-label={`شخصية ${id}`}
                   aria-pressed={profile.characterId === id}
                   onClick={async () => {
+                    if (vipPick) {
+                      if (!isUnlocked) setVipChoice(id);
+                      return;
+                    }
                     if (isUnlocked) {
                       choose({ characterId: id });
                     } else {
@@ -464,6 +424,45 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
             </div>
           </div>
 
+          <div className="pc-vip-box">
+            <label htmlFor="pc-vip">
+              <KeyRound size={16} /> كود فتح الشخصيات
+            </label>
+            <div className="pc-vip-row">
+              <input
+                id="pc-vip"
+                dir="ltr"
+                value={cheatCodeInput}
+                onChange={(e) => setCheatCodeInput(e.target.value)}
+                placeholder="IKOUT_2026_VIP"
+              />
+              <Button
+                onClick={() => {
+                  const anyLocked = CHARACTER_IDS.some(
+                    (cid, i) => i >= 3 && !adManager.getCharacterAdProgress(cid).unlocked,
+                  );
+                  if (!anyLocked) {
+                    setCheatFeedback({ text: "جميع الشخصيات مفتوحة بالفعل.", isError: true });
+                    return;
+                  }
+                  const res = checkVipCode(cheatCodeInput, loadVipIndex());
+                  setCheatFeedback({ text: res.message, isError: !res.success });
+                  if (res.success) {
+                    setCheatCodeInput("");
+                    setVipPick(true);
+                    setVipChoice(null);
+                    setTab("character");
+                  }
+                }}
+              >
+                تفعيل
+              </Button>
+            </div>
+            {cheatFeedback && (
+              <p className={cheatFeedback.isError ? "pc-vip-err" : "pc-vip-ok"}>{cheatFeedback.text}</p>
+            )}
+          </div>
+
           <Button className="pc-name-done" onClick={onClose}>
             <Check />
             تم
@@ -472,9 +471,10 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
       )}
 
       {/* نافذة تخصيص الشخصية المخصصة */}
-      {showCustomModal && (
+      {showCustomModal && typeof document !== "undefined" && createPortal(
         <div
           dir="rtl"
+          className="pc-custom-overlay"
           style={{
             position: "fixed",
             inset: 0,
@@ -493,9 +493,11 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               border: "2px solid #eab308",
               borderRadius: "20px",
               padding: "20px",
-              width: "100%",
-              maxWidth: "480px",
-              maxHeight: "90vh",
+              width: "min(75vw, 720px)",
+              minWidth: "min(92vw, 320px)",
+              maxHeight: "88dvh",
+              fontFamily: "inherit",
+              overflowWrap: "anywhere",
               overflowY: "auto",
               color: "#fff",
               position: "relative",
@@ -683,7 +685,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 }}
               >
                 <label style={{ fontSize: "13px", color: "#a1a1aa" }}>
-                  الأصوات والعبارات للشات ({customData.clips.length}/5)
+                  الأصوات والعبارات للشات ({customData.clips.length}/{customData.maxClips})
                 </label>
                 <span style={{ fontSize: "11px", color: "#71717a" }}>أقصى مدة 3 ثوانٍ لكل صوت</span>
               </div>
@@ -733,7 +735,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               ))}
 
               {/* إضافة صوت جديد إن لم يتجاوز 5 */}
-              {customData.clips.length < 5 && (
+              {customData.clips.length < customData.maxClips && (
                 <div
                   style={{
                     background: "#202024",
@@ -801,7 +803,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                               };
                               setCustomData((prev) => ({
                                 ...prev,
-                                clips: [...prev.clips, newClip].slice(0, 5),
+                                clips: [...prev.clips, newClip].slice(0, prev.maxClips),
                               }));
                               setNewClipName("");
                             }
@@ -854,7 +856,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </section>
   );

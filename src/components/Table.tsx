@@ -1,3 +1,4 @@
+import { randomCustomClip, playCustomClip } from "../utils/customAvatar";
 import { adManager } from "../ads/AdManager";
 import { NetworkLatencyBadge } from "./NetworkLatencyBadge";
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
@@ -187,11 +188,13 @@ export const Table: React.FC<TableProps> = ({
     token: string | null = null,
     valid: () => boolean = () => true,
   ) => {
-    const message = characterPhrase(characterFor(seat), key);
+    const custom = characterFor(seat) === ("custom" as CharacterId) ? randomCustomClip() : null;
+    const message = custom ? custom.name : characterPhrase(characterFor(seat), key);
     setReactions((current) => ({ ...current, [seat]: message }));
     if (token) reactionCause.current[seat] = token;
     else delete reactionCause.current[seat];
-    playCharacterVoice(characterFor(seat), key, seat, token, valid);
+    if (custom) playCustomClip(custom);
+    else playCharacterVoice(characterFor(seat), key, seat, token, valid);
     const timer = setTimeout(() => {
       setReactions((current) => {
         if (current[seat] !== message) return current;

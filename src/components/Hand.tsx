@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import { sortTrumpLeft } from "../engine/sortTrumpLeft";
 import { useReducedMotion } from "motion/react";
 import { Card as CardType, Suit } from "../types/kout";
 import { Card } from "./Card";
@@ -39,7 +40,7 @@ interface DragState {
 
 export const Hand: React.FC<HandProps> = ({
   cards,
-  trump: _trump,
+  trump,
   legalCardIds,
   selectedCardId: controlledSelectedId,
   onPlayCard,
@@ -90,9 +91,9 @@ export const Hand: React.FC<HandProps> = ({
 
   // Display order like the reference: spades, hearts, clubs, diamonds (rank descending), jokers last
   const displayCards = useMemo(() => {
-    if (autoSort === false) return cards;
+    if (autoSort === false) return sortTrumpLeft(cards, trump);
     const suitOrder: Record<string, number> = { S: 0, H: 1, C: 2, D: 3 };
-    return [...cards].sort((a, b) => {
+    const sorted = [...cards].sort((a, b) => {
       if (a.joker && !b.joker) return 1;
       if (!a.joker && b.joker) return -1;
       if (a.joker && b.joker) return a.joker === "RED" ? -1 : 1;
@@ -101,7 +102,8 @@ export const Hand: React.FC<HandProps> = ({
       if (sa !== sb) return sa - sb;
       return (b.rank ?? 0) - (a.rank ?? 0);
     });
-  }, [cards, autoSort]);
+    return sortTrumpLeft(sorted, trump);
+  }, [cards, autoSort, trump]);
 
   const selectedId = controlledSelectedId !== undefined ? controlledSelectedId : internalSelectedId;
 
