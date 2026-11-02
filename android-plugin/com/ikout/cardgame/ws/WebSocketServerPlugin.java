@@ -14,6 +14,7 @@ import org.json.JSONException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Map;
@@ -83,7 +84,7 @@ public class WebSocketServerPlugin extends Plugin {
         }
 
         @Override
-        protected void onClose(NanoWSD.CloseCode code, String reason, boolean initiatedByRemote) {
+        protected void onClose(NanoWSD.WebSocketFrame.CloseCode code, String reason, boolean initiatedByRemote) {
             pingTask.cancel(false);
             handleSocketClosed(id);
         }
@@ -151,7 +152,7 @@ public class WebSocketServerPlugin extends Plugin {
         }
         for (WsSocket socket : clients.values()) {
             try {
-                socket.close(NanoWSD.CloseCode.NormalClosure, "server stopping", false);
+                socket.close(NanoWSD.WebSocketFrame.CloseCode.NormalClosure, "server stopping", false);
             } catch (IOException ignored) {
             }
         }
@@ -196,7 +197,7 @@ public class WebSocketServerPlugin extends Plugin {
         WsSocket socket = clientId != null ? clients.remove(clientId) : null;
         if (socket != null) {
             try {
-                socket.close(NanoWSD.CloseCode.NormalClosure, "closed by server", false);
+                socket.close(NanoWSD.WebSocketFrame.CloseCode.NormalClosure, "closed by server", false);
             } catch (IOException ignored) {
             }
         }
