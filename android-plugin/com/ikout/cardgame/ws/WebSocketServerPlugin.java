@@ -207,10 +207,7 @@ public class WebSocketServerPlugin extends Plugin {
     @PluginMethod
     public void getIpAddress(PluginCall call) {
         JSObject res = new JSObject();
-        try {
-            res.put("ip", detectHostIp());
-        } catch (JSONException ignored) {
-        }
+        res.put("ip", detectHostIp());
         call.resolve(res);
     }
 
@@ -229,10 +226,7 @@ public class WebSocketServerPlugin extends Plugin {
         } catch (Exception ignored) {
         }
         JSObject res = new JSObject();
-        try {
-            res.put("ip", ip);
-        } catch (JSONException ignored) {
-        }
+        res.put("ip", ip);
         call.resolve(res);
     }
 
@@ -240,12 +234,9 @@ public class WebSocketServerPlugin extends Plugin {
 
     private void notifyEvent(String type, String clientId, Object data) {
         JSObject payload = new JSObject();
-        try {
-            payload.put("type", type);
-            payload.put("clientId", clientId);
-            if (data != null) payload.put("data", data);
-        } catch (JSONException ignored) {
-        }
+        payload.put("type", type);
+        payload.put("clientId", clientId);
+        if (data != null) payload.put("data", data);
         notifyListeners(EVENT_NAME, payload);
     }
 
