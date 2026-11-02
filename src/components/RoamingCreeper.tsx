@@ -438,7 +438,9 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
       const isRotated = s2.dataset["orientation"] === "rotated-landscape";
       const dy = lastTouchY - curY;
       const dx = lastTouchX - curX;
-      const delta = isRotated ? (Math.abs(dy) >= Math.abs(dx) ? dy : dx) : dy;
+      // Overlay is rotated 90° clockwise in portrait: the text's "up" points to
+      // the screen's right, so a rightward swipe must scroll the text forward.
+      const delta = isRotated ? (Math.abs(dy) > Math.abs(dx) ? dy : -dx) : dy;
 
       if (Math.abs(delta) > 0.5) {
         aboutText.scrollTop += delta;
