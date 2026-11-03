@@ -121,6 +121,15 @@ export class HostSession {
     );
   }
 
+  private continueListeners = new Set<(seat: number, continuePlay: boolean) => void>();
+  /** Continue/stop decision sent by a joined player after GAME_END. */
+  public onContinueDecision(cb: (seat: number, continuePlay: boolean) => void): () => void {
+    this.continueListeners.add(cb);
+    return () => {
+      this.continueListeners.delete(cb);
+    };
+  }
+
   public destroy(): void {
     if (this.unsubscribeMessages) {
       this.unsubscribeMessages();
@@ -148,6 +157,12 @@ export class HostSession {
       }
       case "CHEAT_REPORT": {
         this.handleCheatReport(playerToken, packet);
+        break;
+      }
+      case "CONTINUE_DECISION": {
+        const seat = this.tokenToSeat.get(playerToken);
+        if (seat === undefined) break;
+        for (const l of this.continueListeners) l(seat, !!packet.payload?.continuePlay);
         break;
       }
       case "PING": {
