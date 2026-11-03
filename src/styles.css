@@ -5521,6 +5521,18 @@
     url("/assets/ikout/backgrounds/spotlight.png");
 }
 
+/* Identity tab extras — same identity as the rest of the app */
+.pc-fps{margin-top:20px;width:100%;padding:14px;border-radius:14px;background:#161d23;border:1px solid #2c363c;box-sizing:border-box}
+.pc-fps-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--reference-text)}
+.pc-fps-sub{font-size:12px;color:#a7b6bf}
+.pc-fps-row{display:flex;gap:10px}
+.pc-fps-btn{flex:1;padding:8px 0;font-size:13px;border-radius:10px;border:1px solid #2c363c;background:#1b2328;color:#fff;cursor:pointer;transition:all .15s ease;font-family:inherit}
+.pc-fps-btn[aria-pressed="true"]{font-weight:800;border:2px solid #eab308;background:#eab308;color:#000}
+.pc-name-done{background:#eab308 !important;color:#000 !important;font-weight:800}
+.pc-name-done:hover{background:#f1c40f !important}
+.pc-vip-row button{background:#eab308 !important;color:#000 !important;font-weight:800}
+.pc-vip-row button:hover{background:#f1c40f !important}
+
 /* VIP code + pick mode in profile */
 .pc-vip-box{margin-top:16px;width:100%;padding:14px;border-radius:14px;background:color-mix(in oklab,var(--card) 80%,transparent);border:1px solid var(--border)}
 .pc-vip-box label{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:8px}
@@ -5533,14 +5545,14 @@
 
 /* Custom characters editor (multi-character + voice/text pairing) */
 .pc-cust-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-.pc-cust-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 12rem; padding: 6px 10px; border-radius: 999px; border: 1px solid #52525b; background: #27272a; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+.pc-cust-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 12rem; padding: 6px 10px; border-radius: 999px; border: 1px solid #2c363c; background: #1b2328; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
 .pc-cust-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pc-cust-chip img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex: none; }
 .pc-cust-chip.pc-selected { border-color: #eab308; color: #eab308; box-shadow: 0 0 0 1px #eab308 inset; }
 .pc-cust-upgrade, .pc-cust-file, .pc-cust-addbtn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 12px; border-radius: 10px; font-size: 12px; font-weight: 800; cursor: pointer; text-align: center; line-height: 1.35; box-sizing: border-box; }
 .pc-cust-upgrade { margin-bottom: 10px; background: rgba(234,179,8,.15); border: 1px solid #eab308; color: #fef08a; }
-.pc-cust-add { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 10px; border-radius: 10px; border: 1px dashed #52525b; background: #202024; }
-.pc-cust-file { background: #3f3f46; border: 1px solid #52525b; color: #fff; }
-.pc-cust-cliptext { width: 100%; min-width: 0; box-sizing: border-box; background: #27272a; border: 1px solid #3f3f46; border-radius: 8px; padding: 8px 10px; color: #fff; font-size: 13px; font-weight: 700; font-family: inherit; }
+.pc-cust-add { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 10px; border-radius: 10px; border: 1px dashed #3a4750; background: #161d23; }
+.pc-cust-file { background: #2c363c; border: 1px solid #44525a; color: #fff; }
+.pc-cust-cliptext { width: 100%; min-width: 0; box-sizing: border-box; background: #1b2328; border: 1px solid #2c363c; border-radius: 8px; padding: 8px 10px; color: #fff; font-size: 13px; font-weight: 700; font-family: inherit; }
 .pc-cust-addbtn { background: #eab308; border: none; color: #000; }
 .pc-cust-addbtn:disabled { opacity: .45; cursor: not-allowed; }

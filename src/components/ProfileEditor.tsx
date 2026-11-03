@@ -379,51 +379,24 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
           />
 
           {/* قسم اختيار معدل الإطارات (FPS) */}
-          <div
-            style={{
-              marginTop: "20px",
-              width: "100%",
-              padding: "14px",
-              background: "rgba(15, 23, 42, 0.7)",
-              border: "1px solid #334155",
-              borderRadius: "14px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                marginBottom: "10px",
-                color: "#f8fafc",
-              }}
-            >
-              <Gauge size={18} color="#38bdf8" />
+          <div className="pc-fps">
+            <div className="pc-fps-head">
+              <Gauge size={18} color="#eab308" />
               <span style={{ fontSize: "14px", fontWeight: "bold" }}>معدل الإطارات (FPS):</span>
-              <span style={{ fontSize: "12px", color: "#94a3b8" }}>(60 / 90 / 120 إطار)</span>
+              <span className="pc-fps-sub">(60 / 90 / 120 إطار)</span>
             </div>
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div className="pc-fps-row">
               {([60, 90, 120] as FrameRateTarget[]).map((fps) => (
                 <button
                   key={fps}
                   type="button"
+                  aria-pressed={targetFps === fps}
                   onClick={() => {
                     playTapSound();
                     setTargetFps(fps);
                     saveTargetFps(fps);
                   }}
-                  style={{
-                    flex: 1,
-                    padding: "8px 0",
-                    fontSize: "13px",
-                    fontWeight: targetFps === fps ? "bold" : "normal",
-                    borderRadius: "10px",
-                    border: targetFps === fps ? "2px solid #38bdf8" : "1px solid #475569",
-                    background: targetFps === fps ? "#0284c7" : "#1e293b",
-                    color: "#ffffff",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                  }}
+                  className="pc-fps-btn"
                 >
                   {fps} FPS
                 </button>
@@ -496,7 +469,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
         >
           <div
             style={{
-              background: "linear-gradient(180deg, #101e2e 0%, #0a141f 100%)",
+              background: "linear-gradient(180deg, #222a30 0%, #1a2128 100%)",
               border: "2px solid #eab308",
               boxShadow: "0 20px 50px rgba(0,0,0,0.85), inset 0 0 30px rgba(234, 179, 8, 0.12)",
               borderRadius: "24px",
@@ -516,7 +489,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                borderBottom: "1px solid #3f3f46",
+                borderBottom: "1px solid #2c363c",
                 paddingBottom: "12px",
                 marginBottom: "16px",
               }}
@@ -541,7 +514,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 style={{
                   background: "transparent",
                   border: "none",
-                  color: "#a1a1aa",
+                  color: "#a7b6bf",
                   cursor: "pointer",
                 }}
               >
@@ -621,7 +594,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                   borderRadius: "50%",
                   border: "3px solid #eab308",
                   overflow: "hidden",
-                  background: "#27272a",
+                  background: "#1b2328",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -636,13 +609,13 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 ) : (
-                  <Camera size={36} color="#71717a" />
+                  <Camera size={36} color="#8fa1ac" />
                 )}
               </div>
               <label
                 style={{
-                  background: "#27272a",
-                  border: "1px solid #52525b",
+                  background: "#1b2328",
+                  border: "1px solid #44525a",
                   padding: "6px 14px",
                   borderRadius: "8px",
                   fontSize: "12px",
@@ -681,7 +654,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 style={{
                   display: "block",
                   fontSize: "13px",
-                  color: "#a1a1aa",
+                  color: "#a7b6bf",
                   marginBottom: "6px",
                 }}
               >
@@ -694,8 +667,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 onChange={(e) => setCustomData((prev) => ({ ...prev, name: e.target.value }))}
                 style={{
                   width: "100%",
-                  background: "#27272a",
-                  border: "1px solid #3f3f46",
+                  background: "#1b2328",
+                  border: "1px solid #2c363c",
                   borderRadius: "8px",
                   padding: "8px 12px",
                   color: "#fff",
@@ -715,10 +688,10 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                   marginBottom: "8px",
                 }}
               >
-                <label style={{ fontSize: "13px", color: "#a1a1aa" }}>
+                <label style={{ fontSize: "13px", color: "#a7b6bf" }}>
                   الأصوات والعبارات للشات ({customData.clips.length}/{customData.maxClips})
                 </label>
-                <span style={{ fontSize: "11px", color: "#71717a" }}>أقصى مدة 3 ثوانٍ لكل صوت</span>
+                <span style={{ fontSize: "11px", color: "#8fa1ac" }}>أقصى مدة 3 ثوانٍ لكل صوت</span>
               </div>
 
               {customData.maxClips < UPGRADED_CLIP_SLOTS && (
@@ -746,8 +719,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    background: "#27272a",
-                    border: "1px solid #3f3f46",
+                    background: "#1b2328",
+                    border: "1px solid #2c363c",
                     borderRadius: "8px",
                     padding: "8px 12px",
                     marginBottom: "8px",
@@ -859,7 +832,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               <Button
                 variant="ghost"
                 onClick={() => setShowCustomModal(false)}
-                style={{ color: "#a1a1aa" }}
+                style={{ color: "#a7b6bf" }}
               >
                 إلغاء
               </Button>
