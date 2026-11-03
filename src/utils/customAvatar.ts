@@ -118,6 +118,17 @@ export function saveCustomAvatar(data: CustomAvatarData): CustomAvatarData {
   return next;
 }
 
+/** One watched voice-upgrade ad; after ADS_PER_UNLOCK the character gets 10 voice slots. */
+export function applyVoiceAd(data: CustomAvatarData): CustomAvatarData {
+  if (data.maxClips >= UPGRADED_CLIP_SLOTS) return data;
+  const watched = Math.min(data.voiceAdsWatched + 1, ADS_PER_UNLOCK);
+  return { ...data, voiceAdsWatched: watched, maxClips: watched >= ADS_PER_UNLOCK ? UPGRADED_CLIP_SLOTS : BASE_CLIP_SLOTS };
+}
+
+export function isSavedCustomAvatar(id: string): boolean {
+  return readStore().avatars.some((a) => a.id === id);
+}
+
 export function hasCustomAvatar(): boolean {
   return Boolean(loadCustomAvatar().avatarImage);
 }
