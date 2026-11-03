@@ -10,6 +10,12 @@ import {
   hasCustomAvatar,
   CustomAvatarData,
   CustomVoiceClip,
+  listCustomAvatars,
+  newCustomAvatar,
+  applyVoiceAd,
+  isSavedCustomAvatar,
+  ADS_PER_UNLOCK,
+  UPGRADED_CLIP_SLOTS,
 } from "../utils/customAvatar";
 import { Sparkles, Plus, Trash2, Camera, Upload } from "lucide-react";
 import { adManager } from "../ads/AdManager";
@@ -60,6 +66,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
   const [customData, setCustomData] = useState<CustomAvatarData>(loadCustomAvatar());
   const [customAdProgress, setCustomAdProgress] = useState(adManager.getCustomAvatarAdProgress());
   const [newClipName, setNewClipName] = useState("");
+  const [pendingClipUrl, setPendingClipUrl] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordTimer, setRecordTimer] = useState<number>(0);
@@ -541,8 +548,31 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               </button>
             </div>
 
-            {/* شرط الـ 5 إعلانات لكل جلسة تخصيص إذا لم تكتمل */}
-            {!customAdProgress.unlocked && (
+            {/* قائمة الشخصيات المخصصة: كل شخصية جديدة تحتاج 5 إعلانات */}
+            <div className="pc-cust-list">
+              {listCustomAvatars().map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`pc-cust-chip ${a.id === customData.id ? "pc-selected" : ""}`}
+                  onClick={() => setCustomData(a)}
+                >
+                  {a.avatarImage ? <img src={a.avatarImage} alt="" /> : <Camera size={14} />}
+                  <span>{a.name}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                className={`pc-cust-chip pc-cust-new ${!isSavedCustomAvatar(customData.id) ? "pc-selected" : ""}`}
+                onClick={() => setCustomData(newCustomAvatar())}
+              >
+                <Plus size={14} />
+                <span>شخصية جديدة</span>
+              </button>
+            </div>
+
+            {/* شرط الـ 5 إعلانات لكل شخصية جديدة */}
+            {!customAdProgress.unlocked && !isSavedCustomAvatar(customData.id) && (
               <div
                 style={{
                   background: "rgba(234, 179, 8, 0.15)",
@@ -554,7 +584,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 }}
               >
                 <p style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#fef08a" }}>
-                  يلزم مشاهدة 5 إعلانات لفتح جلسة التخصيص وحفظ التغييرات: (
+                  يلزم مشاهدة 5 إعلانات لإنشاء شخصية جديدة: (
                   {customAdProgress.watchedCount}/5)
                 </p>
                 <Button
@@ -690,6 +720,24 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 <span style={{ fontSize: "11px", color: "#71717a" }}>أقصى مدة 3 ثوانٍ لكل صوت</span>
               </div>
 
+              {customData.maxClips < UPGRADED_CLIP_SLOTS && (
+                <button
+                  type="button"
+                  className="pc-cust-upgrade"
+                  onClick={async () => {
+                    try {
+                      await adManager.showRewardedAd();
+                      setCustomData((prev) => applyVoiceAd(prev));
+                    } catch (e: any) {
+                      alert(e?.message || "تعذر تحميل الإعلان");
+                    }
+                  }}
+                >
+                  <Video size={14} />
+                  <span>ترقية إلى 10 أصوات — شاهد إعلان ({customData.voiceAdsWatched}/{ADS_PER_UNLOCK})</span>
+                </button>
+              )}
+
               {customData.clips.map((clip, idx) => (
                 <div
                   key={clip.id}
@@ -704,7 +752,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                     marginBottom: "8px",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -716,7 +764,20 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                     >
                       <Volume2 size={16} />
                     </Button>
-                    <span style={{ fontSize: "13px", fontWeight: "bold" }}>{clip.name}</span>
+                    <input
+                      type="text"
+                      className="pc-cust-cliptext"
+                      value={clip.name}
+                      maxLength={30}
+                      aria-label={`عبارة الصوت ${idx + 1}`}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCustomData((prev) => ({
+                          ...prev,
+                          clips: prev.clips.map((c) => (c.id === clip.id ? { ...c, name: v } : c)),
+                        }));
+                      }}
+                    />
                   </div>
                   <Button
                     variant="ghost"
@@ -734,85 +795,60 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 </div>
               ))}
 
-              {/* إضافة صوت جديد إن لم يتجاوز 5 */}
+              {/* إضافة صوت جديد: الملف الصوتي أولاً ثم خانة عبارته مباشرة تحته */}
               {customData.clips.length < customData.maxClips && (
-                <div
-                  style={{
-                    background: "#202024",
-                    border: "1px dashed #52525b",
-                    borderRadius: "8px",
-                    padding: "10px",
-                    marginTop: "10px",
-                  }}
-                >
+                <div className="pc-cust-add">
+                  <label className="pc-cust-file">
+                    <Upload size={14} />
+                    <span>{pendingClipUrl ? "تم اختيار الملف الصوتي ✓ (تغيير)" : "رفع ملف صوتي (أقصاه 3 ثوانٍ)"}</span>
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          const dataUrl = ev.target?.result as string;
+                          if (dataUrl) setPendingClipUrl(dataUrl);
+                        };
+                        reader.readAsDataURL(file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
                   <input
                     type="text"
-                    placeholder="اكتب عبارة الصوت للشات (مثال: كفو يا شريكي)"
+                    className="pc-cust-cliptext"
+                    placeholder="معنى الصوت المكتوب للشات (مثال: كفو يا شريكي)"
                     value={newClipName}
                     maxLength={30}
                     onChange={(e) => setNewClipName(e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: "#27272a",
-                      border: "1px solid #3f3f46",
-                      borderRadius: "6px",
-                      padding: "6px 10px",
-                      color: "#fff",
-                      fontSize: "12px",
-                      marginBottom: "8px",
-                      boxSizing: "border-box",
-                    }}
                   />
-                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                    <label
-                      style={{
-                        background: "#3f3f46",
-                        border: "1px solid #52525b",
-                        padding: "6px 10px",
-                        borderRadius: "6px",
-                        fontSize: "11px",
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        color: "#fff",
-                      }}
-                    >
-                      <Upload size={12} />
-                      رفع ملف صوتي (أقصاه 3 ثوانٍ)
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        style={{ display: "none" }}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (!newClipName.trim()) {
-                            alert("يرجى كتابة نص العبارة أولاً");
-                            return;
-                          }
-                          const reader = new FileReader();
-                          reader.onload = (ev) => {
-                            const dataUrl = ev.target?.result as string;
-                            if (dataUrl) {
-                              const newClip: CustomVoiceClip = {
-                                id: `clip_${Date.now()}`,
-                                name: newClipName.trim(),
-                                dataUrl,
-                                durationSeconds: 3,
-                              };
-                              setCustomData((prev) => ({
-                                ...prev,
-                                clips: [...prev.clips, newClip].slice(0, prev.maxClips),
-                              }));
-                              setNewClipName("");
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                        }}
-                      />
-                    </label>
-                  </div>
+                  <button
+                    type="button"
+                    className="pc-cust-addbtn"
+                    disabled={!pendingClipUrl || !newClipName.trim()}
+                    onClick={() => {
+                      if (!pendingClipUrl || !newClipName.trim()) return;
+                      const newClip: CustomVoiceClip = {
+                        id: `clip_${Date.now()}`,
+                        name: newClipName.trim(),
+                        dataUrl: pendingClipUrl,
+                        durationSeconds: 3,
+                      };
+                      setCustomData((prev) => ({
+                        ...prev,
+                        clips: [...prev.clips, newClip].slice(0, prev.maxClips),
+                      }));
+                      setNewClipName("");
+                      setPendingClipUrl(null);
+                    }}
+                  >
+                    <Plus size={14} />
+                    <span>إضافة الصوت مع عبارته</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -828,8 +864,9 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               </Button>
               <Button
                 onClick={() => {
-                  if (!customAdProgress.unlocked) {
-                    alert("يرجى إكمال مشاهدة الـ 5 إعلانات لحفظ الشخصية المخصصة");
+                  const isNew = !isSavedCustomAvatar(customData.id);
+                  if (isNew && !customAdProgress.unlocked) {
+                    alert("يرجى إكمال مشاهدة الـ 5 إعلانات لإنشاء شخصية جديدة");
                     return;
                   }
                   if (!customData.avatarImage) {
@@ -842,8 +879,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                     enabled: true,
                   });
                   setCustomData(saved);
-                  // إعادة تعيين تقدم الإعلانات للتخصيص القادم
-                  adManager.resetCustomAvatarAdProgress();
+                  // الشخصية التالية تحتاج 5 إعلانات جديدة
+                  if (isNew) adManager.resetCustomAvatarAdProgress();
                   setCustomAdProgress(adManager.getCustomAvatarAdProgress());
                   // اختيار الشخصية كشخصية رئيسية
                   choose({ characterId: "custom" });

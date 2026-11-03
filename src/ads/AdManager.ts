@@ -204,11 +204,8 @@ class AdManager {
     return { watchedCount: 0, requiredCount: 5, unlocked: false };
   }
 
-  public async watchRewardedAdForCustomAvatar(): Promise<{
-    watchedCount: number;
-    requiredCount: number;
-    unlocked: boolean;
-  }> {
+  /** Shows one rewarded ad (native AdMob when available). Throws when offline or failed. */
+  public async showRewardedAd(): Promise<void> {
     if (!this.isOnline()) {
       throw new Error("تحتاج إلى اتصال بالإنترنت لمشاهدة الإعلانات");
     }
@@ -225,7 +222,14 @@ class AdManager {
         throw new Error("تعذر تحميل الإعلان، يرجى المحاولة لاحقاً");
       }
     }
+  }
 
+  public async watchRewardedAdForCustomAvatar(): Promise<{
+    watchedCount: number;
+    requiredCount: number;
+    unlocked: boolean;
+  }> {
+    await this.showRewardedAd();
     const current = this.getCustomAvatarAdProgress();
     const newCount = Math.min(current.watchedCount + 1, current.requiredCount);
     const updated = {

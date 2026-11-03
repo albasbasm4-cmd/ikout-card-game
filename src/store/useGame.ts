@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { canDecideContinue } from "../engine/matchContinue";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { GameState, Card, Bid, Suit, Difficulty, TrickPlay, PlayerSlot } from "../types/kout";
 import { verifyCheatReport, applyCheatVerdict, type ReportedCardType } from "../rules/cheat";
@@ -472,6 +473,7 @@ export function useGame(options: UseGameOptions = {}) {
         targetScore: t,
         initialDealer: 0,
         seed: Math.floor(Math.random() * 1000000),
+        players: engineRef.current?.state.players ?? options.players,
       });
       engineRef.current = newEngine;
       const firstState = newEngine.startRound();
@@ -668,8 +670,51 @@ export function useGame(options: UseGameOptions = {}) {
     return true;
   }, []);
 
+  // ---- قرار الفريق الخاسر بعد نهاية المباراة: استمرار أو إنهاء ----
+  const applyContinueDecision = useCallback(
+    (seat: number, continuePlay: boolean) => {
+      const engine = engineRef.current;
+      if (!engine) return;
+      if (!canDecideContinue(engine.state as GameState, seat, humanSeatsRef.current)) return;
+      if (continuePlay) {
+        startNewGame();
+        return;
+      }
+      const stopped: GameState = { ...(engine.state as GameState), matchStopped: true, version: engine.state.version + 1 };
+      const nextEngine = new KoutGameEngine({ variant: stopped.variant, targetScore: stopped.targetScore, players: stopped.players }, stopped);
+      engineRef.current = nextEngine;
+      if (options.netHost) options.netHost.session.replaceEngine(nextEngine);
+      commit(stopped);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [startNewGame, commit],
+  );
+
+  const decideContinue = useCallback(
+    (continuePlay: boolean) => {
+      if (options.netClient) {
+        sendClientPacket("CONTINUE_DECISION", { continuePlay });
+        return;
+      }
+      applyContinueDecision(activeHumanSeatRef.current ?? localSeatsRef.current[0] ?? 0, continuePlay);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [applyContinueDecision, sendClientPacket],
+  );
+
+  useEffect(() => {
+    const host = options.netHost;
+    if (!host || typeof host.session.onContinueDecision !== "function") return;
+    return host.session.onContinueDecision((seat, c) => applyContinueDecision(seat, c));
+  }, [applyContinueDecision, options.netHost]);
+
+  const mySeatForDecision = options.netClient ? options.netClient.mySeat : (activeHumanSeat ?? localSeats[0] ?? 0);
+  const canDecide = canDecideContinue(state, mySeatForDecision, humanSeats);
+
   return {
     state,
+    decideContinue,
+    canDecide,
     difficulty,
     setDifficulty,
     variant,

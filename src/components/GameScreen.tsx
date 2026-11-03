@@ -88,6 +88,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     humanDeclareTrump,
     startNextRound,
     startNewGame,
+    decideContinue,
+    canDecide,
     handleHumanTimeout,
     humanSeats,
     freePlay,
@@ -593,23 +595,33 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   </div>
                 </div>
 
-                {/* New Game Button — المضيف يبدأ المباراة في اللعب الجماعي */}
-                {!netClient && (
-                <Button
-                  type="button"
-                  onClick={() => {
-                    playTapSound();
-                    startNewGame();
-                  }}
-                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-black text-xs sm:text-sm shadow-xl active:scale-98 cursor-pointer flex items-center justify-center gap-2 border border-amber-200"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>لعبة جديدة</span>
-                </Button>
-                )}
-                {netClient && (
+                {state.matchStopped ? (
+                  <>
+                    <div className="w-full py-2.5 mb-2 rounded-2xl bg-black/60 border border-rose-400/40 text-rose-200 text-xs font-bold text-center">
+                      قرر الفريق الخاسر إنهاء اللعب
+                    </div>
+                    {onGoHome && (
+                      <Button type="button" onClick={() => { playTapSound(); onGoHome(); }} className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-amber-200">
+                        <Home className="w-4 h-4" />
+                        <span>الرئيسية</span>
+                      </Button>
+                    )}
+                  </>
+                ) : canDecide ? (
+                  <div className="w-full flex flex-col gap-2">
+                    <p className="text-xs font-bold text-amber-100">هل تريد الاستمرار في اللعب؟</p>
+                    <Button type="button" onClick={() => { playTapSound(); decideContinue(true); }} className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-amber-200">
+                      <RotateCcw className="w-4 h-4" />
+                      <span>نعم، استمر</span>
+                    </Button>
+                    <Button type="button" onClick={() => { playTapSound(); decideContinue(false); }} className="w-full py-3 rounded-2xl bg-black/60 text-amber-100 font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-amber-400/40">
+                      <X className="w-4 h-4" />
+                      <span>لا، إنهاء</span>
+                    </Button>
+                  </div>
+                ) : (
                   <div className="w-full py-2.5 rounded-2xl bg-black/60 border border-amber-400/30 text-amber-200 text-xs font-bold text-center">
-                    بانتظار المضيف لبدء مباراة جديدة…
+                    بانتظار قرار الفريق الخاسر: الاستمرار أو الإنهاء…
                   </div>
                 )}
               </div>
