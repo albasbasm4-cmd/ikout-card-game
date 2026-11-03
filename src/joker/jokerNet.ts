@@ -41,7 +41,13 @@ export function isJokerHostActive(): boolean {
 
 function emitSeats(): void {
   if (!host) return;
-  for (const l of host.seatListeners) l({ ...host.pidNames });
+  const names = { ...host.pidNames };
+  for (const l of host.seatListeners) l(names);
+  // نبث مقاعد الغرفة لكل الأجهزة المنضمة ليظهر لها مكانها في غرفة المضيف قبل بدء المباراة
+  const packet = { type: "SEATS", payload: { names } };
+  for (const clientId of host.clientIdToPid.keys()) {
+    hubSendTo(clientId, { ch: "joker", packet });
+  }
 }
 
 function sendStateTo(clientId: string): void {
@@ -185,6 +191,8 @@ interface JokerClientState {
   myPid: string;
   code: string;
   stateListeners: Set<(s: JokerGame) => void>;
+  /** مقاعد الغرفة الواردة من المضيف قبل بدء المباراة (واجهة غرفة المضيف للمنضم). */
+  seatListeners: Set<(names: Record<string, string>) => void>;
 }
 
 let client: JokerClientState | null = null;
@@ -266,6 +274,7 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
           myPid: String(p.payload?.["pid"] ?? "p1"),
           code: opts.code,
           stateListeners: new Set(),
+          seatListeners: new Set(),
         };
         socket.onMessage((pkt) => {
           const m = pkt as unknown as { type?: string; payload?: Record<string, unknown> };
@@ -274,6 +283,11 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
             const st = m.payload?.["state"] as JokerGame | undefined;
             if (st) {
               for (const l of client.stateListeners) l(st);
+            }
+          } else if (m.type === "SEATS") {
+            const names = m.payload?.["names"] as Record<string, string> | undefined;
+            if (names) {
+              for (const l of client.seatListeners) l(names);
             }
           }
         });
@@ -289,5 +303,14 @@ export function onJokerClientState(cb: (s: JokerGame) => void): () => void {
   client.stateListeners.add(cb);
   return () => {
     client?.stateListeners.delete(cb);
+  };
+}
+
+/** يشترك في تحديث مقاعد الغرفة الواردة من المضيف (واجهة غرفة المضيف للمنضم). */
+export function onJokerClientSeats(cb: (names: Record<string, string>) => void): () => void {
+  if (!client) return () => {};
+  client.seatListeners.add(cb);
+  return () => {
+    client?.seatListeners.delete(cb);
   };
 }

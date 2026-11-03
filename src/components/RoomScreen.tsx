@@ -17,8 +17,10 @@ import { useStageFit } from "../hooks/use-stage-fit";
 import { playTapSound } from "../utils/audio";
 import { ProfileEditor } from "./ProfileEditor";
 import { QrModal } from "./QrModal";
-import { JoinScreen } from "./JoinScreen";
-import { generateRoomCode } from "../network/localIp";
+import { generateRoomCode, parseRoomPayload } from "../network/localIp";
+import { InlineQrScanner } from "./InlineQrScanner";
+import { LocalClientSocket, ClientSocketStatus } from "../network/LocalClientSocket";
+import { getJoinCandidateIps } from "../network/wssBridge";
 import {
   startKoutHost,
   koutHostStartMatch,
@@ -113,7 +115,11 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
   const [sel, setSel] = useState<number | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [showScanner, setShowScanner] = useState<null | { code?: string; manual?: boolean }>(null);
+  const [showScanner, setShowScanner] = useState(false);
+  /** الاتصال المباشر جارٍ بعد إدخال الرمز أو مسح QR (بدون أي شاشة إضافية). */
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const joinSocketRef = useRef<LocalClientSocket | null>(null);
   /** join: 'code' = إدخال الرمز، 'room' = داخل الغرفة بانتظار المضيف */
   const [joined, setJoined] = useState(false);
   /** لوبي المضيف كما يرصده المنضم (من حزم SEAT_UPDATE) */
@@ -211,6 +217,85 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     setToastMsg(m);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToastMsg(null), 2200);
+  };
+
+  /** الاتصال المباشر بمضيف الغرفة: بعد إدخال الرمز أو مسح QR يدخل المنضم
+   * غرفة المضيف فوراً ليرى مقعده قبل بدء المباراة — دون أي واجهة إضافية. */
+  const connectDirect = (code: string, presetIp?: string) => {
+    const trimmed = code.trim();
+    if (trimmed.length < 4) {
+      toast("أدخل رمز الغرفة");
+      return;
+    }
+    playTapSound();
+    setConnectError(null);
+    setConnecting(true);
+    setJoinCode(trimmed);
+
+    const connectToIp = (ip: string, port: number, candidates: string[]) => {
+      const token = `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const socket = new LocalClientSocket({
+        url: `ws://${ip}:${port}`,
+        playerToken: token,
+        playerName: loadProfile().name || "لاعب",
+        maxReconnectAttempts: 4,
+        initialBackoffMs: 600,
+        channel: "kout",
+        roomCode: trimmed,
+      });
+      joinSocketRef.current = socket;
+
+      const failOrFallback = () => {
+        socket.disconnect();
+        const rest = candidates.filter((c) => c !== ip);
+        if (rest.length > 0) {
+          connectToIp(rest[0], port, rest);
+          return;
+        }
+        setConnecting(false);
+        setConnectError(
+          "فشل الاتصال بمضيف الغرفة (انتهت المهلة). تأكد من أن المضيف فتح غرفة وأن الجهازين متصلان بنفس الشبكة، أو أعد إدخال الرمز.",
+        );
+        toast("تعذر الاتصال بالمضيف");
+      };
+
+      const connectionTimeout = setTimeout(() => {
+        if (socket.getStatus() !== "CONNECTED") failOrFallback();
+      }, 4000);
+
+      socket.onStatusChange((st: ClientSocketStatus) => {
+        if (st === "CONNECTED") {
+          clearTimeout(connectionTimeout);
+          setConnecting(false);
+          setShowScanner(false);
+          setActiveKoutClient({ socket, mySeat: 0, playerToken: token, roomCode: trimmed });
+          setJoined(true);
+          setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
+          setTimeout(() => window.dispatchEvent(new Event("resize")), 300);
+        } else if (st === "HOST_DROPPED") {
+          clearTimeout(connectionTimeout);
+          failOrFallback();
+        }
+      });
+    };
+
+    if (presetIp) {
+      const { ip, port } = parseRoomPayload(presetIp);
+      if (ip) {
+        connectToIp(ip, port, [ip]);
+        return;
+      }
+    }
+
+    void (async () => {
+      const candidates = await getJoinCandidateIps();
+      if (!candidates.length) {
+        setConnecting(false);
+        setConnectError("لم يتم العثور على مضيف على الشبكة المحلية — تأكد من الاتصال بنفس نقطة الاتصال.");
+        return;
+      }
+      connectToIp(candidates[0], 8080, candidates);
+    })();
   };
 
   const count = PLAYERS[cfg.p];
@@ -449,14 +534,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
                   type="button"
                   className="rm-btn rm-red"
                   style={{ top: 216 }}
-                  onClick={() => {
-                    playTapSound();
-                    if (joinCode.trim().length < 4) {
-                      toast("أدخل رمز الغرفة");
-                      return;
-                    }
-                    setShowScanner({ code: joinCode.trim(), manual: true });
-                  }}
+                  onClick={() => connectDirect(joinCode)}
                 >
                   <span>انضمام</span>
                 </button>
@@ -467,11 +545,21 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
                   style={{ top: 372 }}
                   onClick={() => {
                     playTapSound();
-                    setShowScanner({});
+                    setShowScanner(true);
                   }}
                 >
                   <span>📷 مسح رمز QR</span>
                 </button>
+                {connecting && (
+                  <div className="rm-lbl" style={{ marginTop: 12, color: "#ffd27a" }}>
+                    جارِ الاتصال بمضيف الغرفة…
+                  </div>
+                )}
+                {connectError && !connecting && (
+                  <div className="rm-lbl" style={{ marginTop: 12, color: "#ffb4ae" }}>
+                    {connectError}
+                  </div>
+                )}
               </div>
             )}
 
@@ -683,25 +771,20 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
         {qrOpen && <QrModal roomCode={roomCode} isOpen onClose={() => setQrOpen(false)} />}
       </div>
 
-      {/* شاشة الانضمام والمسح كطبقة فوقية تحافظ على بنية المسرح وملاءمته للشاشة */}
+      {/* كاميرا المسح داخل اللعبة: 80% من الشاشة في المنتصف — دون أي واجهة إضافية */}
       {showScanner && (
-        <div className="fixed inset-0 z-50 bg-black">
-          <JoinScreen
-            initialCode={showScanner.code}
-            initialMode={showScanner.manual ? "MANUAL" : undefined}
-            onBack={() => {
-              setShowScanner(null);
-              setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
-              setTimeout(() => window.dispatchEvent(new Event("resize")), 300);
-            }}
-            onConnected={() => {
-              setShowScanner(null);
-              setJoined(true);
-              setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
-              setTimeout(() => window.dispatchEvent(new Event("resize")), 300);
-            }}
-          />
-        </div>
+        <InlineQrScanner
+          hint="وجّه الكاميرا نحو رمز غرفة الكوت"
+          onCode={(raw) => {
+            if (raw.startsWith("ws://") || raw.startsWith("wss://")) {
+              const { ip, port, roomCode: parsedRoom } = parseRoomPayload(raw);
+              connectDirect(parsedRoom ?? "", `ws://${ip}:${port}`);
+            } else {
+              connectDirect(raw);
+            }
+          }}
+          onCancel={() => setShowScanner(false)}
+        />
       )}
     </div>
   );

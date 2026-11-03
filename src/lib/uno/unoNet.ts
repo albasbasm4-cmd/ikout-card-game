@@ -83,6 +83,11 @@ function emitSeats(): void {
   if (!host) return;
   const seats = [...host.seatNames];
   for (const l of host.seatListeners) l(seats);
+  // نبث مقاعد الغرفة لكل الأجهزة المنضمة ليظهر لها مكانها في غرفة المضيف قبل بدء المباراة
+  const packet = { type: "SEATS", payload: { seats } };
+  for (const clientId of host.clientIdToSeat.keys()) {
+    hubSendTo(clientId, { ch: "uno", packet });
+  }
 }
 
 function sendStateTo(clientId: string): void {
@@ -228,6 +233,8 @@ interface UnoClientState {
   mySeat: number;
   code: string;
   stateListeners: Set<(s: GameState) => void>;
+  /** مقاعد الغرفة الواردة من المضيف قبل بدء المباراة (واجهة غرفة المضيف للمنضم). */
+  seatListeners: Set<(seats: (string | null)[]) => void>;
   /** آخر حالة وصلت من المضيف (لاستئنافها فور فتح شاشة اللعب دون فقدانها). */
   lastState: GameState | null;
 }
@@ -269,6 +276,11 @@ function listenToClientSocket(socket: LocalClientSocket): void {
       if (st) {
         client.lastState = st;
         for (const l of client.stateListeners) l(st);
+      }
+    } else if (p.type === "SEATS") {
+      const seats = p.payload?.["seats"] as (string | null)[] | undefined;
+      if (seats) {
+        for (const l of client.seatListeners) l(seats);
       }
     }
   });
@@ -324,6 +336,7 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
           mySeat: 0,
           code: opts.code,
           stateListeners: new Set(),
+          seatListeners: new Set(),
           lastState: null,
         };
         listenToClientSocket(socket);
@@ -339,6 +352,15 @@ export function onUnoClientState(cb: (s: GameState) => void): () => void {
   client.stateListeners.add(cb);
   return () => {
     client?.stateListeners.delete(cb);
+  };
+}
+
+/** يشترك في تحديث مقاعد الغرفة الواردة من المضيف (واجهة غرفة المضيف للمنضم). */
+export function onUnoClientSeats(cb: (seats: (string | null)[]) => void): () => void {
+  if (!client) return () => {};
+  client.seatListeners.add(cb);
+  return () => {
+    client?.seatListeners.delete(cb);
   };
 }
 

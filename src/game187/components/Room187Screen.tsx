@@ -14,7 +14,7 @@ import { useStageFit } from "../../hooks/use-stage-fit";
 import { playTapSound } from "../../utils/audio";
 import { ProfileEditor } from "../../components/ProfileEditor";
 import { QRCodeSVG } from "qrcode.react";
-import jsQR from "jsqr";
+import { InlineQrScanner } from "@/components/InlineQrScanner";
 import {
   Room187Channel,
   Client187Packet,
@@ -58,91 +58,22 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
   const [qrOpen, setQrOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const scanVideoRef = useRef<HTMLVideoElement | null>(null);
-  const scanStreamRef = useRef<MediaStream | null>(null);
 
-  // مسح رمز الغرفة بالكاميرا: نحلل إطارات الفيديو محلياً بـ jsQR
-  // (BarcodeDetector غير متوفر في WebView الأندرويد غالباً)
-  useEffect(() => {
-    if (!scanOpen) return;
-    let cancelled = false;
-    let tries = 0;
-
-    const tick = async () => {
-      if (cancelled) return;
-      const video = scanVideoRef.current;
-      if (!video || video.readyState < 2 || video.videoWidth === 0) {
-        window.setTimeout(tick, 100);
-        return;
-      }
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) {
-        showToast("تعذر تشغيل محلل الرمز — اكتب الرمز يدوياً");
-        setScanOpen(false);
-        return;
-      }
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0);
-      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const found = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
-      if (found?.data) {
-        let code = found.data;
-        if (code.startsWith("g187-room:")) code = code.slice(10);
-        streamStop();
-        setScanOpen(false);
-        handleJoinByCode(code);
-        return;
-      }
-      if (++tries > 600) {
-        streamStop();
-        setScanOpen(false);
-        showToast("لم يُعثر على رمز QR — أقرب الرمز أكثر أو أدخله يدوياً");
-        return;
-      }
-      window.setTimeout(tick, 66);
-    };
-
-    const streamStop = () => {
-      scanStreamRef.current?.getTracks().forEach((t) => t.stop());
-      scanStreamRef.current = null;
-    };
-
-    const start = async () => {
+  /** عند قراءة رمز QR داخل اللعبة: انضمام مباشر دون أي واجهة إضافية. */
+  const handleScannedCode = (raw: string) => {
+    let code = raw.trim();
+    if (code.startsWith("g187-room:")) code = code.slice(10);
+    else if (code.includes("room=")) {
       try {
-        let stream: MediaStream;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
-          });
-        } catch {
-          // بعض الأجهزة ترفض قيود facingMode: نجرّب الكاميرا الافتراضية
-          stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        }
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        scanStreamRef.current = stream;
-        if (scanVideoRef.current) {
-          scanVideoRef.current.srcObject = stream;
-          await scanVideoRef.current.play().catch(() => {});
-        }
-        void tick();
+        const u = new URL(code);
+        code = u.searchParams.get("room") || code;
       } catch {
-        showToast("يرجى منح إذن الكاميرا لمسح الرمز أو إدخاله يدوياً");
-        setScanOpen(false);
+        // keep code
       }
-    };
-    void start();
-
-    return () => {
-      cancelled = true;
-      streamStop();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanOpen]);
+    }
+    setScanOpen(false);
+    handleJoinByCode(code);
+  };
 
   const channelRef = useRef<Room187Channel | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -780,42 +711,13 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
           </div>
         )}
 
-        {/* Scan Camera Modal */}
+        {/* كاميرا المسح داخل اللعبة: 80% من الشاشة في المنتصف */}
         {scanOpen && (
-          <div className="r187-md" onClick={() => setScanOpen(false)}>
-            <div className="r187-mc" onClick={(e) => e.stopPropagation()}>
-              <h2 style={{ fontSize: 28, fontWeight: 900, marginBottom: 16 }}>مسح رمز QR</h2>
-              <p style={{ fontSize: 18, marginBottom: 20 }}>وجّه الكاميرا نحو رمز الغرفة</p>
-              <video
-                ref={scanVideoRef}
-                playsInline
-                muted
-                style={{
-                  width: "100%",
-                  maxWidth: 420,
-                  aspectRatio: "3 / 4",
-                  borderRadius: 16,
-                  background: "#000",
-                  objectFit: "cover",
-                  marginBottom: 20,
-                }}
-              />
-              <button
-                type="button"
-                className="r187-btn r187-red"
-                style={{
-                  position: "relative",
-                  width: 200,
-                  height: 60,
-                  margin: "0 auto",
-                  display: "grid",
-                }}
-                onClick={() => setScanOpen(false)}
-              >
-                <span>إلغاء</span>
-              </button>
-            </div>
-          </div>
+          <InlineQrScanner
+            hint="وجّه الكاميرا نحو رمز غرفة 187"
+            onCode={handleScannedCode}
+            onCancel={() => setScanOpen(false)}
+          />
         )}
 
         {/* Toast Alert */}

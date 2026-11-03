@@ -6,6 +6,7 @@ import {
   jokerClientSendAct,
   jokerHostNewGame,
   jokerHostPublish,
+  onJokerClientSeats,
   onJokerClientState,
   onJokerHostSeats,
   onJokerHostState,
@@ -30,11 +31,11 @@ import {
   Users,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import jsQR from "jsqr";
 import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProfileEditor } from "@/components/ProfileEditor";
 import { characterFace, CHARACTER_IDS, useProfile } from "@/utils/profile";
+import { InlineQrScanner } from "@/components/InlineQrScanner";
 import { useSettings } from "@/store/useSettings";
 import { useStageFit } from "@/hooks/use-stage-fit";
 import { playCardSound, playWinSound, playLoseSound } from "@/utils/audio";
@@ -71,12 +72,12 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
-  const scanVideo = useRef<HTMLVideoElement>(null);
-  const scanStream = useRef<MediaStream | null>(null);
   /** دور هذا الجهاز: محلي، مستضيف عبر الشبكة، أو منضم لمضيف بعيد. */
   const [netRole, setNetRole] = useState<"local" | "host" | "client">("local");
   /** أسماء اللاعبين البعيدين الذين انضموا فعلياً (مفتاح = معرّف اللاعب). */
   const [remoteNames, setRemoteNames] = useState<Record<string, string>>({});
+  /** مقاعد الغرفة كما يبثها المضيف (واجهة غرفة المضيف للمنضم). */
+  const [clientSeats, setClientSeats] = useState<Record<string, string>>({});
   const awarded = useRef<number>(0);
   const netClient = getJokerNetClient();
   const netHostActive = isJokerHostActive();
@@ -102,6 +103,20 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
         bot: false,
       });
   }
+  /** مقاعد غرفة المضيف مرتبة للمنضم: المضيف أولاً ثم المنضمون حسب رقم المقعد. */
+  const clientSeatsRows: [string, string][] = (() => {
+    const entries: [string, string][] = [];
+    const names = netRole === "client" ? clientSeats : {};
+    entries.push(["p0", names["p0"] || "المضيف"]);
+    const rest = Object.entries(names).filter(([k]) => k !== "p0" && /^p\d+$/.test(k));
+    rest.sort((a, b) => Number(a[0].slice(1)) - Number(b[0].slice(1)));
+    for (const [k, v] of rest) entries.push([k, v]);
+    if (!entries.some(([k]) => k === human)) {
+      entries.splice(1, 0, [human, profile.name || "لاعب"]);
+    }
+    return entries;
+  })();
+  const clientSeatsNum = clientSeatsRows.length;
   // لا بداية إلا بأربعة لاعبين حقيقيين على الأقل
   const canStart = players.length >= 4 && players.length <= 15;
   const start = () => {
@@ -146,132 +161,46 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
       }
       setJoinError(null);
       setRoomCode(v);
+      setClientSeats({});
       setNetRole("client");
       setModal(null);
       setScreen("room");
     })();
   };
 
-  const stopScan = () => {
-    scanStream.current?.getTracks().forEach((t) => t.stop());
-    scanStream.current = null;
-    setScanOpen(false);
+  /** تطبيع الرمز المقروء من QR: joker-room:CODE أو URL فيه room= أو رمز خام. */
+  const normalizeScanned = (c: string) => {
+    let x = c.trim();
+    if (x.startsWith("joker-room:")) x = x.slice(11);
+    else if (x.includes("room=")) {
+      try {
+        const u = new URL(x);
+        x = u.searchParams.get("room") || x;
+      } catch {
+        // keep x
+      }
+    }
+    return x;
   };
 
-  const startScan = async () => {
-    type BD = { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> };
-    const Ctor = (window as unknown as { BarcodeDetector?: new (o: object) => BD }).BarcodeDetector;
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setJoinError("الكاميرا غير مدعومة على هذا الجهاز — اكتب الرمز يدوياً");
+  // عند قراءة رمز QR داخل اللعبة: اتصال مباشر دون أي واجهة إضافية
+  const handleScannedCode = (raw: string) => {
+    const v = normalizeScanned(raw);
+    setScanOpen(false);
+    if (!/^[0-9]{4,6}$/.test(v)) {
+      setJoinError("رمز غير صالح في رمز QR — أدخل الرمز يدوياً");
       return;
     }
-    try {
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      }
-      scanStream.current?.getTracks().forEach((t) => t.stop());
-      scanStream.current = stream;
-      setScanOpen(true);
-      setJoinError(null);
-      await new Promise((r) => setTimeout(r, 50));
-      if (!scanVideo.current) {
-        stream.getTracks().forEach((t) => t.stop());
-        setScanOpen(false);
-        return;
-      }
-      scanVideo.current.srcObject = stream;
-      await scanVideo.current.play();
-
-      const handle = (raw: string) => {
-        stream.getTracks().forEach((t) => t.stop());
-        scanStream.current = null;
-        setScanOpen(false);
-        const input = document.getElementById("joker-room-input") as HTMLInputElement | null;
-        if (input) input.value = raw;
-        doJoin(raw);
-      };
-      const normalize = (c: string) => {
-        let x = c.trim();
-        if (x.startsWith("joker-room:")) x = x.slice(11);
-        else if (x.includes("room=")) {
-          try {
-            const u = new URL(x);
-            x = u.searchParams.get("room") || x;
-          } catch {
-            // keep x
-          }
-        }
-        return x;
-      };
-      if (Ctor) {
-        const det = new Ctor({ formats: ["qr_code"] });
-        const tick = async () => {
-          if (!scanVideo.current || scanStream.current !== stream) return;
-          const res = await det.detect(scanVideo.current).catch(() => []);
-          const hit = res.find(
-            (r) =>
-              r.rawValue.startsWith("joker-room:") ||
-              r.rawValue.includes("room=") ||
-              /^[0-9]{4,6}$/.test(r.rawValue),
-          );
-          if (hit) handle(normalize(hit.rawValue));
-          else requestAnimationFrame(tick);
-        };
-        tick();
-      } else {
-        // لا يوجد BarcodeDetector في WebView الأندرويد: تحليل الإطارات محلياً بـ jsQR
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        if (!ctx) {
-          setJoinError("تعذر تشغيل محلل الرمز — اكتب الرمز يدوياً");
-          stopScan();
-          return;
-        }
-        let tries = 0;
-        const jsTick = async () => {
-          if (!scanVideo.current || scanStream.current !== stream) return;
-          if (scanVideo.current.readyState >= 2 && scanVideo.current.videoWidth > 0) {
-            canvas.width = scanVideo.current.videoWidth;
-            canvas.height = scanVideo.current.videoHeight;
-            ctx.drawImage(scanVideo.current, 0, 0);
-            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const found = jsQR(img.data, img.width, img.height, {
-              inversionAttempts: "dontInvert",
-            });
-            if (found?.data) {
-              const v = normalize(found.data);
-              if (/^[0-9]{4,6}$/.test(v)) {
-                handle(v);
-                return;
-              }
-            }
-          }
-          if (++tries > 600) {
-            stopScan();
-            setJoinError("لم يُعثر على رمز QR — أقرب الرمز أكثر أو أدخله يدوياً");
-            return;
-          }
-          setTimeout(jsTick, 66);
-        };
-        void jsTick();
-      }
-    } catch (err: unknown) {
-      scanStream.current?.getTracks().forEach((t) => t.stop());
-      scanStream.current = null;
-      setScanOpen(false);
-      const name = err instanceof Error ? err.name : "";
-      setJoinError(
-        name === "NotAllowedError" || name === "SecurityError"
-          ? "تم رفض إذن الكاميرا — امنح التطبيق الإذن من إعدادات النظام أو اكتب الرمز يدوياً"
-          : "تعذر تشغيل الكاميرا — اكتب الرمز يدوياً",
-      );
-    }
+    const input = document.getElementById("joker-room-input") as HTMLInputElement | null;
+    if (input) input.value = v;
+    doJoin(v);
   };
+
+  // المنضم: يتبع مقاعد الغرفة ليظهر مكانه في غرفة المضيف قبل بدء المباراة
+  useEffect(() => {
+    if (screen !== "room" || netRole !== "client") return;
+    return onJokerClientSeats((names) => setClientSeats(names));
+  }, [screen, netRole]);
 
   // المنضم: يستقبل الحالة من المضيف ويبدأ اللعب تلقائياً عند وصولها
   useEffect(() => {
@@ -395,10 +324,53 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                   </div>
                   <div className="kd">
                     <div className="ksb kdk" style={{ marginBottom: 16 }}>
-                      تم الاتصال بالمضيف — بانتظار بدء المباراة…
+                      أنت داخل غرفة المضيف · مقعدك: <b style={{ color: "#00e5ff" }}>{human.toUpperCase()}</b>
                     </div>
-                    <Button className="kb kbl" onClick={back}>
-                      رجوع
+                    <div
+                      id="ksa"
+                      style={
+                        {
+                          "--c": Math.min(3, Math.max(2, clientSeatsNum)),
+                          "--r": Math.ceil(Math.max(1, clientSeatsNum) / Math.min(3, Math.max(2, clientSeatsNum))),
+                        } as React.CSSProperties
+                      }
+                    >
+                      {clientSeatsRows.map(([pid, name], idx) => (
+                        <div className={`ks ${pid === human ? "me" : "bot"}`} key={pid}>
+                          <span className="knum">{idx + 1}</span>
+                          <div className="kav">
+                            {pid === human ? (
+                              <img src={characterFace(profile.characterId)} alt="" />
+                            ) : (
+                              <span
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: "100%",
+                                  height: "100%",
+                                  fontWeight: 900,
+                                  fontSize: "clamp(14px, 3vh, 26px)",
+                                }}
+                              >
+                                {(name || "؟").slice(0, 1)}
+                              </span>
+                            )}
+                          </div>
+                          <span className="ksn">{pid === "p0" ? `${name} — المضيف` : name}</span>
+                          <div className="kbg">
+                            <b className={pid === human ? "hu" : "bt"}>
+                              {pid === human ? "أنت" : pid === "p0" ? "المضيف" : "لاعب"}
+                            </b>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="kst kdk" style={{ marginTop: 14 }}>
+                      في انتظار بدء المباراة من المضيف…
+                    </div>
+                    <Button className="kb kbl" style={{ marginTop: 10 }} onClick={back}>
+                      خروج من الغرفة
                     </Button>
                   </div>
                 </div>
@@ -839,30 +811,21 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                       <Button
                         className="kb kbl"
                         style={{ width: 200 }}
-                        onClick={() => void startScan()}
+                        onClick={() => {
+                          setJoinError(null);
+                          setScanOpen(true);
+                        }}
                       >
                         <Camera className="w-5 h-5 ml-2" />
                         مسح رمز QR
                       </Button>
                     </div>
                     {scanOpen && (
-                      <div style={{ marginTop: 16 }}>
-                        <video
-                          ref={scanVideo}
-                          muted
-                          playsInline
-                          style={{
-                            width: "100%",
-                            height: 300,
-                            objectFit: "cover",
-                            borderRadius: "12px",
-                            background: "rgba(0,0,0,0.6)",
-                          }}
-                        />
-                        <Button className="kb kbl" style={{ width: 200 }} onClick={stopScan}>
-                          إلغاء المسح
-                        </Button>
-                      </div>
+                      <InlineQrScanner
+                        hint="وجّه الكاميرا نحو رمز غرفة الجوكر"
+                        onCode={handleScannedCode}
+                        onCancel={() => setScanOpen(false)}
+                      />
                     )}
                     {joinError && (
                       <p style={{ color: "#ff6b6b", fontWeight: 700, marginTop: 14 }}>
