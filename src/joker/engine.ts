@@ -26,7 +26,7 @@ export interface JokerGame {
   results: JokerResult[];
 }
 export function createJokerGame(players: JokerPlayer[]): JokerGame {
-  if (players.length < 4 || players.length > 9) throw new Error("الجوكر تحتاج من ٤ إلى ٩ لاعبين");
+  if (players.length < 4 || players.length > 15) throw new Error("الجوكر تحتاج من ٤ إلى ١٥ لاعباً");
   return { players, round: 0, phase: "room", joker: "", cards: {}, out: {}, log: [], results: [] };
 }
 export function dealJoker(prev: JokerGame, random = Math.random): JokerGame {

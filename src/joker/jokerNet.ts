@@ -92,7 +92,7 @@ export async function startJokerHost(code: string): Promise<void> {
         const name = String(p.payload?.["name"] ?? "لاعب");
         const used = new Set(host.clientIdToPid.values());
         let pid: string | null = null;
-        for (let i = 1; i <= 9; i++) {
+        for (let i = 1; i <= 14; i++) {
           const candidate = `p${i}`;
           if (!used.has(candidate)) {
             pid = candidate;

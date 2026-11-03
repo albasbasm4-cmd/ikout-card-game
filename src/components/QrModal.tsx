@@ -87,7 +87,7 @@ export const QrModal: React.FC<QrModalProps> = ({
       dir="rtl"
       className={`fixed inset-0 p-safe z-[1000] overflow-y-auto bg-black/85 backdrop-blur-md flex items-center justify-center p-4 text-amber-50 select-none animate-in fade-in duration-200 ${className}`}
     >
-      <div className="relative w-[min(75vw,560px)] min-w-[280px] max-h-[90dvh] overflow-y-auto break-words bg-neutral-900 border border-amber-500/40 rounded-3xl p-5 shadow-2xl flex flex-col items-center text-center">
+      <div className="relative w-[min(75vw,560px)] min-w-[280px] max-h-[90dvh] overflow-y-auto break-words bg-gradient-to-b from-[#101e2e] to-[#0a141f] border-2 border-amber-500/60 shadow-[0_20px_50px_rgba(0,0,0,0.85)] rounded-3xl p-5 shadow-2xl flex flex-col items-center text-center">
         {/* Close Button */}
         <button
           type="button"

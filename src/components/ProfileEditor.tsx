@@ -496,11 +496,12 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
         >
           <div
             style={{
-              background: "#18181b",
+              background: "linear-gradient(180deg, #101e2e 0%, #0a141f 100%)",
               border: "2px solid #eab308",
-              borderRadius: "20px",
-              padding: "20px",
-              width: "min(75vw, 720px)",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.85), inset 0 0 30px rgba(234, 179, 8, 0.12)",
+              borderRadius: "24px",
+              padding: "24px",
+              width: "min(75vw, 760px)",
               minWidth: "min(92vw, 320px)",
               maxHeight: "88dvh",
               fontFamily: "inherit",

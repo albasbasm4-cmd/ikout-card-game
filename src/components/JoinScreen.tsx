@@ -327,9 +327,9 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
   return (
     <div
       dir="rtl"
-      className={`min-h-[100dvh] w-full bg-neutral-950 flex justify-center items-center p-0 sm:p-4 text-amber-50 select-none ${className}`}
+      className={`min-h-[100dvh] w-full bg-[#0d1620] flex justify-center items-center p-2 sm:p-4 text-amber-50 select-none ${className}`}
     >
-      <div className="relative w-full max-w-md h-[100dvh] pt-safe pb-safe px-safe sm:h-[844px] sm:max-h-[92vh] sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col wood-rail border border-amber-900/40">
+      <div className="relative w-full max-w-xl h-[92dvh] max-h-[760px] pt-safe pb-safe px-safe rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85)] flex flex-col bg-gradient-to-b from-[#101e2e] to-[#0a141f] border-2 border-amber-500/60">
         {/* Top Header */}
         <header className="relative z-10 px-4 py-3 flex items-center justify-between border-b border-amber-500/20 bg-gradient-to-b from-black/80 to-black/40 backdrop-blur-md">
           <div className="flex items-center gap-2">

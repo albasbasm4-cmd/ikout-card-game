@@ -103,7 +103,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
       });
   }
   // لا بداية إلا بأربعة لاعبين حقيقيين على الأقل
-  const canStart = players.length >= 4 && players.length <= 9;
+  const canStart = players.length >= 4 && players.length <= 15;
   const start = () => {
     if (!canStart) return;
     const g = dealJoker(createJokerGame(players));
@@ -416,7 +416,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                     <div className="klp">
                       <div className="ksb kdk">
                         <span className="t">اللاعبون</span>
-                        <b className="n">{count} / 9</b>
+                        <b className="n">{count} / 15</b>
                         <div className="kstp">
                           <Button
                             className="kchip"
@@ -429,7 +429,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                           <span>المقاعد</span>
                           <Button
                             className="kchip"
-                            disabled={count === 9}
+                            disabled={count === 15}
                             aria-label="زيادة المقاعد"
                             onClick={() => setCount((c) => c + 1)}
                           >

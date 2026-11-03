@@ -19,7 +19,7 @@ function game(): JokerGame {
   return { ...s, joker: "p0", cards: { p0: "JK", p1: "A♠", p2: "2♠", p3: "3♠" } };
 }
 describe("original Joker game loop", () => {
-  it("deals one Joker and distinct ordinary cards to 4–9 players", () => {
+  it("deals one Joker and distinct ordinary cards to 4–15 players", () => {
     const s = dealJoker(createJokerGame(players), () => 0.5);
     expect(Object.values(s.cards).filter((c) => c === "JK")).toHaveLength(1);
     expect(new Set(Object.values(s.cards)).size).toBe(4);
