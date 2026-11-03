@@ -857,10 +857,9 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                         }
                       }}
                     />
-                    <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                    <div className="kjoin-row">
                       <Button
                         className="kb kr"
-                        style={{ width: 200 }}
                         onClick={() => {
                           const val = (
                             document.getElementById("joker-room-input") as HTMLInputElement
@@ -872,7 +871,6 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                       </Button>
                       <Button
                         className="kb kbl"
-                        style={{ width: 200 }}
                         onClick={() => {
                           setJoinError(null);
                           setScanOpen(true);

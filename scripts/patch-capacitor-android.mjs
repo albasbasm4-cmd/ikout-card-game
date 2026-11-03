@@ -3,8 +3,11 @@ import path from "node:path";
 
 const manifestPath = path.resolve(process.cwd(), "android/app/src/main/AndroidManifest.xml");
 if (!fs.existsSync(manifestPath)) {
-  console.error(`AndroidManifest.xml not found: ${manifestPath}`);
-  process.exit(1);
+  console.warn(
+    `WARN: AndroidManifest.xml not found at ${manifestPath}. ` +
+      "لم يتم إنشاء مشروع أندرويد بعد (شغّل npx cap add android أولاً) — تم تخطي إصلاح الأندرويد.",
+  );
+  process.exit(0);
 }
 
 let manifest = fs.readFileSync(manifestPath, "utf-8");

@@ -1263,7 +1263,7 @@
     inset: 0;
     display: none;
     z-index: 15;
-    background: var(--joker-color-72);
+    background: rgba(2, 14, 30, 0.88);
   }
   #md.on {
     display: block;
@@ -1334,6 +1334,30 @@
     width: 260px;
     height: 68px;
     font-size: 32px;
+  }
+  /* أزرار نافذة الانضمام: عرض مرن يستوعب النص مع الأيقونة دون خروج */
+  .kmc .kjoin-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: stretch;
+  }
+  .kmc .kjoin-row .kb {
+    margin: 18px 0 0;
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+    height: 68px;
+    font-size: 27px;
+    padding: 0 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .kmc .kjoin-row .kb svg {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
   }
   #toast {
     position: absolute;

@@ -941,12 +941,18 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
     }
 
     let last2 = 0;
+    let lastIdleDraw = 0;
     const ctx2 = cv.getContext("2d")!;
     let animId = 0;
 
     function loop(now: number) {
       animId = requestAnimationFrame(loop);
       if (screen2Visible && state !== "exploding") return;
+      // توفير الطاقة: الوقوف الهادئ بلا جزيئات لا يحتاج 60-120 إطاراً/ثانية
+      if (state === "look" && parts.length === 0) {
+        if (now - lastIdleDraw < 90) return;
+        lastIdleDraw = now;
+      }
       const dt = Math.min((now - last2) / 1000, 0.05);
       last2 = now;
       ctx2.clearRect(0, 0, SW, SH);
