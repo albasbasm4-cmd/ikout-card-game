@@ -10,6 +10,12 @@ import {
   hasCustomAvatar,
   CustomAvatarData,
   CustomVoiceClip,
+  listCustomAvatars,
+  newCustomAvatar,
+  applyVoiceAd,
+  isSavedCustomAvatar,
+  ADS_PER_UNLOCK,
+  UPGRADED_CLIP_SLOTS,
 } from "../utils/customAvatar";
 import { Sparkles, Plus, Trash2, Camera, Upload } from "lucide-react";
 import { adManager } from "../ads/AdManager";
@@ -541,8 +547,31 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               </button>
             </div>
 
-            {/* شرط الـ 5 إعلانات لكل جلسة تخصيص إذا لم تكتمل */}
-            {!customAdProgress.unlocked && (
+            {/* قائمة الشخصيات المخصصة: كل شخصية جديدة تحتاج 5 إعلانات */}
+            <div className="pc-cust-list">
+              {listCustomAvatars().map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`pc-cust-chip ${a.id === customData.id ? "pc-selected" : ""}`}
+                  onClick={() => setCustomData(a)}
+                >
+                  {a.avatarImage ? <img src={a.avatarImage} alt="" /> : <Camera size={14} />}
+                  <span>{a.name}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                className={`pc-cust-chip pc-cust-new ${!isSavedCustomAvatar(customData.id) ? "pc-selected" : ""}`}
+                onClick={() => setCustomData(newCustomAvatar())}
+              >
+                <Plus size={14} />
+                <span>شخصية جديدة</span>
+              </button>
+            </div>
+
+            {/* شرط الـ 5 إعلانات لكل شخصية جديدة */}
+            {!customAdProgress.unlocked && !isSavedCustomAvatar(customData.id) && (
               <div
                 style={{
                   background: "rgba(234, 179, 8, 0.15)",
@@ -554,7 +583,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 }}
               >
                 <p style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#fef08a" }}>
-                  يلزم مشاهدة 5 إعلانات لفتح جلسة التخصيص وحفظ التغييرات: (
+                  يلزم مشاهدة 5 إعلانات لإنشاء شخصية جديدة: (
                   {customAdProgress.watchedCount}/5)
                 </p>
                 <Button
@@ -690,6 +719,24 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 <span style={{ fontSize: "11px", color: "#71717a" }}>أقصى مدة 3 ثوانٍ لكل صوت</span>
               </div>
 
+              {customData.maxClips < UPGRADED_CLIP_SLOTS && (
+                <button
+                  type="button"
+                  className="pc-cust-upgrade"
+                  onClick={async () => {
+                    try {
+                      await adManager.showRewardedAd();
+                      setCustomData((prev) => applyVoiceAd(prev));
+                    } catch (e: any) {
+                      alert(e?.message || "تعذر تحميل الإعلان");
+                    }
+                  }}
+                >
+                  <Video size={14} />
+                  <span>ترقية إلى 10 أصوات — شاهد إعلان ({customData.voiceAdsWatched}/{ADS_PER_UNLOCK})</span>
+                </button>
+              )}
+
               {customData.clips.map((clip, idx) => (
                 <div
                   key={clip.id}
@@ -704,7 +751,7 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                     marginBottom: "8px",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -716,7 +763,20 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                     >
                       <Volume2 size={16} />
                     </Button>
-                    <span style={{ fontSize: "13px", fontWeight: "bold" }}>{clip.name}</span>
+                    <input
+                      type="text"
+                      className="pc-cust-cliptext"
+                      value={clip.name}
+                      maxLength={30}
+                      aria-label={`عبارة الصوت ${idx + 1}`}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCustomData((prev) => ({
+                          ...prev,
+                          clips: prev.clips.map((c) => (c.id === clip.id ? { ...c, name: v } : c)),
+                        }));
+                      }}
+                    />
                   </div>
                   <Button
                     variant="ghost"
