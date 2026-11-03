@@ -42,6 +42,7 @@ import { botAwareness, chooseMove } from "@/lib/uno/bot";
 import { clearGame, loadGame, saveGame } from "@/lib/uno/storage";
 import {
   getUnoNetClient,
+  unoClientGetLastState,
   isUnoHostActive,
   onUnoClientState,
   onUnoHostState,
@@ -156,8 +157,10 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
 
   useEffect(() => {
     if (netClient) {
-      // المنضم: الحالة تصل من المضيف عبر الشبكة
+      // المنضم: الحالة تصل من المضيف عبر الشبكة — نستأنف آخر حالة وصلت قبل الاشتراك
       setLoaded(true);
+      const last = unoClientGetLastState();
+      if (last) setS(last);
       return onUnoClientState((st) => setS(st));
     }
     if (netHost) {
@@ -255,11 +258,14 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       if (animate) {
         setFlyingCard({ card: animate, fromSeat: ME, fromX: 50, fromY: 88, rotateStart: 0 });
         setHiddenHandCardId(animate.id);
-        setTimeout(() => {
-          setFlyingCard(null);
-          setHiddenHandCardId(null);
-          busy.current = false;
-        }, reduced ? 80 : 540);
+        setTimeout(
+          () => {
+            setFlyingCard(null);
+            setHiddenHandCardId(null);
+            busy.current = false;
+          },
+          reduced ? 80 : 540,
+        );
       }
     },
     [ME, reduced],
@@ -322,11 +328,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
   if (!s)
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-4">
-        {netClient ? (
-          <p>بانتظار المضيف يبدأ المباراة…</p>
-        ) : (
-          <p>لا توجد مباراة محفوظة.</p>
-        )}
+        {netClient ? <p>بانتظار المضيف يبدأ المباراة…</p> : <p>لا توجد مباراة محفوظة.</p>}
         <Button
           onClick={() => {
             if (onBack) onBack();

@@ -72,9 +72,14 @@ export class WebBarcodeScanner implements IBarcodeScanner {
       throw new Error("الكاميرا غير مدعومة على هذا المتصفح");
     }
 
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
-    });
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+    } catch {
+      // بعض الأجهزة ترفض قيود facingMode: نجرّب الكاميرا الافتراضية
+      this.stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    }
 
     if (videoElement) {
       videoElement.srcObject = this.stream;
@@ -178,7 +183,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
 }) => {
   const [mode, setMode] = useState<"SCAN" | "MANUAL">(initialMode ?? "SCAN");
   const [playerName, setPlayerName] = useState<string>("لاعب");
-  const [hostIp, setHostIp] = useState<string>("192.168.1.105");
+  const [hostIp, setHostIp] = useState<string>("");
   const [roomCode, setRoomCode] = useState<string>(initialCode ?? "");
   const [status, setStatus] = useState<"IDLE" | "SCANNING" | "CONNECTING" | "ERROR" | "SUCCESS">(
     "IDLE",
@@ -207,9 +212,18 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
       const rawPayload = await scannerRef.current.startScan(videoRef.current);
       handlePayloadScanned(rawPayload);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const name = err instanceof Error ? err.name : "";
+      let reason: string;
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        reason =
+          "تم رفض إذن الكاميرا — امنح التطبيق إذن الكاميرا من إعدادات النظام ثم أعد المحاولة، أو أدخل الرمز يدوياً.";
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        reason = "لم تُعثر على كاميرا متاحة على هذا الجهاز — استخدم الإدخال اليدوي.";
+      } else {
+        reason = `${err instanceof Error ? err.message : String(err)}. يمكنك إدخال البيانات يدوياً.`;
+      }
       setStatus("ERROR");
-      setErrorMessage(`تعذر مسح رمز QR: ${msg}. يمكنك إدخال البيانات يدوياً.`);
+      setErrorMessage(`تعذر مسح رمز QR: ${reason}`);
     }
   };
 
@@ -249,7 +263,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
         }
         setStatus("ERROR");
         setErrorMessage(
-          "فشل الاتصال بمضيف الغرفة (انتهت المهلة). تأكد من أن المضيف فتح غرفة اللعب الجماعي، وأن الجهازين متصلان بنفس نقطة الاتصال/الشبكة.",
+          "فشل الاتصال بمضيف الغرفة (انتهت المهلة). تأكد من أن المضيف فتح غرفة اللعب الجماعي وأن الجهازين متصلان بنفس نقطة الاتصال/الشبكة، أو أدخل عنوان IP الظاهر على شاشة المضيف (زر رمز QR).",
         );
       };
 
@@ -285,7 +299,9 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const typedIp = hostIp.trim();
+    const typed = hostIp.trim();
+    // العنوان القديم المعروض تلقائياً لا يُعامَل كإدخال حقيقي من اللاعب
+    const typedIp = typed === "192.168.1.105" ? "" : typed;
     if (!typedIp && !roomCode.trim()) {
       setErrorMessage("يرجى إدخال عنوان IP الخاص بالمضيف أو رمز الغرفة.");
       return;
@@ -422,6 +438,18 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
                 <Camera className="w-4 h-4" />
                 <span>{status === "SCANNING" ? "جارِ المسح..." : "تشغيل الكاميرا للمسح"}</span>
               </button>
+              {status === "SCANNING" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    scannerRef.current.stopScan();
+                    setStatus("IDLE");
+                  }}
+                  className="mt-2 text-[11px] font-bold text-amber-200/70 hover:text-white cursor-pointer"
+                >
+                  إلغاء المسح
+                </button>
+              )}
             </div>
           )}
 

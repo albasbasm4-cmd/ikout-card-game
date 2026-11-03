@@ -111,9 +111,15 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
 
     const start = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment" },
+          });
+        } catch {
+          // بعض الأجهزة ترفض قيود facingMode: نجرّب الكاميرا الافتراضية
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -748,10 +754,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
                   marginBottom: 16,
                 }}
               >
-                <QRCodeSVG
-                  value={`g187-room:${roomCode}`}
-                  size={220}
-                />
+                <QRCodeSVG value={`g187-room:${roomCode}`} size={220} />
               </div>
               <p style={{ fontSize: 24, fontWeight: 800, marginBottom: 20 }}>
                 رمز الغرفة:{" "}

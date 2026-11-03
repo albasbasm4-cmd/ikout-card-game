@@ -1289,6 +1289,9 @@
       0 0 60px var(--joker-color-72);
     text-align: center;
     animation: kup 0.3s;
+    max-height: 1020px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .kmc h2 {
     margin: 0 0 16px;

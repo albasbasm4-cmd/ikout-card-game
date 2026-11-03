@@ -91,10 +91,16 @@ export function Join({ onBack }: JoinProps = {}) {
       return;
     }
 
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
+    } catch {
+      // بعض الأجهزة ترفض قيود facingMode: نجرّب الكاميرا الافتراضية
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    }
+    try {
       activeStream.current?.getTracks().forEach((t) => t.stop());
       activeStream.current = stream;
       setScanning(true);
@@ -186,10 +192,19 @@ export function Join({ onBack }: JoinProps = {}) {
         };
         void jsTick();
       }
-    } catch {
+    } catch (err: unknown) {
       activeStream.current?.getTracks().forEach((t) => t.stop());
       activeStream.current = null;
-      toast.error("يرجى منح إذن الكاميرا لمسح الرمز أو إدخاله يدوياً");
+      const name = err instanceof Error ? err.name : "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        toast.error(
+          "تم رفض إذن الكاميرا — امنح التطبيق الإذن من إعدادات النظام أو اكتب الرمز يدوياً",
+        );
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        toast.error("لا توجد كاميرا متاحة — اكتب الرمز يدوياً");
+      } else {
+        toast.error("يرجى منح إذن الكاميرا لمسح الرمز أو إدخاله يدوياً");
+      }
       setScanning(false);
     }
   };

@@ -126,9 +126,8 @@ export async function startUnoHost(code: string): Promise<void> {
     },
     onClientMessage(clientId, msg) {
       if (!host) return;
-      const p = (msg as Record<string, unknown>)['packet'] as
-      | { type?: string; payload?: Record<string, unknown> }
-      | undefined;
+      const p = (msg as Record<string, unknown>)["packet"] as
+        { type?: string; payload?: Record<string, unknown> } | undefined;
       if (!p?.type) return;
       if (p.type === "HELLO") {
         let seat = host.clientIdToSeat.get(clientId);
@@ -229,12 +228,19 @@ interface UnoClientState {
   mySeat: number;
   code: string;
   stateListeners: Set<(s: GameState) => void>;
+  /** آخر حالة وصلت من المضيف (لاستئنافها فور فتح شاشة اللعب دون فقدانها). */
+  lastState: GameState | null;
 }
 
 let client: UnoClientState | null = null;
 
 export function getUnoNetClient(): UnoClientState | null {
   return client;
+}
+
+/** آخر حالة وصلت من المضيف — تُستخدم عند فتح شاشة اللعب بعد فوات اشتراك المستمع. */
+export function unoClientGetLastState(): GameState | null {
+  return client?.lastState ?? null;
 }
 
 export function unoClientSendIntent(intent: UnoIntent): void {
@@ -261,6 +267,7 @@ function listenToClientSocket(socket: LocalClientSocket): void {
     } else if (p.type === "STATE") {
       const st = p.payload?.["state"] as GameState | undefined;
       if (st) {
+        client.lastState = st;
         for (const l of client.stateListeners) l(st);
       }
     }
@@ -268,10 +275,7 @@ function listenToClientSocket(socket: LocalClientSocket): void {
 }
 
 /** المنضم: يبحث عن المضيف على نقطة الاتصال وينضم بغرفة الرمز. */
-export async function connectUnoClient(opts: {
-  code: string;
-  name: string;
-}): Promise<boolean> {
+export async function connectUnoClient(opts: { code: string; name: string }): Promise<boolean> {
   disconnectUnoClient();
   const candidates = await getJoinCandidateIps();
   for (const ip of candidates) {
@@ -302,7 +306,7 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
         resolve(false);
       }
     };
-    const timeout = setTimeout(() => finish(false), 3500);
+    const timeout = setTimeout(() => finish(false), 1800);
     socket.onStatusChange((st) => {
       if (st === "CONNECTED") {
         socket.send({ v: 1, type: "HELLO", payload: { name: opts.name || "لاعب" } } as never);
@@ -320,6 +324,7 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
           mySeat: 0,
           code: opts.code,
           stateListeners: new Set(),
+          lastState: null,
         };
         listenToClientSocket(socket);
         resolve(true);

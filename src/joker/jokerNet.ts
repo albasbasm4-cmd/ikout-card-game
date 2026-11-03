@@ -6,12 +6,7 @@
  * المضيف: يبقي الحالة المرجعية (يتضمن هوية حامل الجوكر) ويبث نسخاً مقنّعة لكل جهاز،
  * وتُكشف هوية الجوكر وورق الجميع فقط في طور النتائج.
  */
-import {
-  ensureHubServer,
-  hubBroadcast,
-  hubSendTo,
-  registerHubChannel,
-} from "../network/gameHub";
+import { ensureHubServer, hubBroadcast, hubSendTo, registerHubChannel } from "../network/gameHub";
 import { getJoinCandidateIps } from "../network/wssBridge";
 import { LocalClientSocket } from "../network/LocalClientSocket";
 import { actJoker, type JokerGame } from "./engine";
@@ -91,8 +86,7 @@ export async function startJokerHost(code: string): Promise<void> {
     onClientMessage(clientId, msg) {
       if (!host) return;
       const p = (msg as Record<string, unknown>)["packet"] as
-        | { type?: string; payload?: Record<string, unknown> }
-        | undefined;
+        { type?: string; payload?: Record<string, unknown> } | undefined;
       if (!p?.type) return;
       if (p.type === "HELLO") {
         const name = String(p.payload?.["name"] ?? "لاعب");
@@ -145,9 +139,7 @@ export function stopJokerHost(): Promise<void> {
 }
 
 /** المضيف: أسماء اللاعبين البعيدين الحاليين (واجهة لوبي المضيف). */
-export function onJokerHostSeats(
-  cb: (names: Record<string, string>) => void,
-): () => void {
+export function onJokerHostSeats(cb: (names: Record<string, string>) => void): () => void {
   if (!host) return () => {};
   host.seatListeners.add(cb);
   return () => {
@@ -221,10 +213,7 @@ export function disconnectJokerClient(): void {
 }
 
 /** المنضم: يبحث عن المضيف على نقطة الاتصال وينضم بغرفة الرمز. */
-export async function connectJokerClient(opts: {
-  code: string;
-  name: string;
-}): Promise<boolean> {
+export async function connectJokerClient(opts: { code: string; name: string }): Promise<boolean> {
   disconnectJokerClient();
   const candidates = await getJoinCandidateIps();
   for (const ip of candidates) {
@@ -234,10 +223,7 @@ export async function connectJokerClient(opts: {
   return false;
 }
 
-function probeJokerHost(
-  ip: string,
-  opts: { code: string; name: string },
-): Promise<boolean> {
+function probeJokerHost(ip: string, opts: { code: string; name: string }): Promise<boolean> {
   return new Promise((resolve) => {
     let settled = false;
     const socket = new LocalClientSocket({
@@ -258,7 +244,7 @@ function probeJokerHost(
         resolve(false);
       }
     };
-    const timeout = window.setTimeout(() => finish(false), 3500);
+    const timeout = window.setTimeout(() => finish(false), 1800);
     socket.onStatusChange((st) => {
       if (st === "CONNECTED") {
         socket.send({

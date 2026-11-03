@@ -890,6 +890,9 @@
     flex-direction: column;
     align-items: center;
     gap: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 12px;
   }
   .kjl {
     font:
@@ -900,7 +903,7 @@
     text-shadow: 0 2px 0 var(--uno-lobby-color-53);
   }
   #ci {
-    width: 520px;
+    width: min(520px, 100%);
     height: 86px;
     border-radius: 16px;
     border: 4px solid var(--uno-lobby-color-44);
@@ -935,7 +938,7 @@
     border: none;
     text-shadow: 0 2px 0 var(--uno-lobby-color-53);
     position: relative;
-    width: 520px;
+    width: min(520px, 100%);
     height: 72px;
     border-radius: 22px;
     font-size: 30px;
