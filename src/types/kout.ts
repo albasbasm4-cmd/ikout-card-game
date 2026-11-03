@@ -64,6 +64,8 @@ export interface GameState {
   targetScore: number;
   version: number;
   players?: PlayerSlot[];
+  /** Losing team chose not to continue after GAME_END. */
+  matchStopped?: boolean;
 }
 
 export interface SyncStatePacket {
