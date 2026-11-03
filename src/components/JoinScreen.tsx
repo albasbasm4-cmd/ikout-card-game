@@ -417,39 +417,15 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
           {/* Mode 1: Camera QR Scanner */}
           {mode === "SCAN" && (
             <div className="bg-black/40 border border-amber-500/20 rounded-2xl p-4 shadow-md backdrop-blur-xs flex flex-col items-center text-center">
-              <div className="relative w-60 h-60 rounded-2xl overflow-hidden border-2 border-dashed border-amber-400/50 bg-black flex items-center justify-center mb-3">
-                <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-                {status !== "SCANNING" && (
-                  <div className="absolute inset-0 bg-neutral-900/90 flex flex-col items-center justify-center p-4">
-                    <Camera className="w-10 h-10 text-amber-400/60 mb-2" />
-                    <span className="text-xs text-amber-200/70">
-                      اضغط بالأسفل لتشغيل الكاميرا ومسح رمز المضيف
-                    </span>
-                  </div>
-                )}
-              </div>
-
               <button
                 type="button"
-                disabled={status === "CONNECTING"}
+                disabled={status === "CONNECTING" || status === "SCANNING"}
                 onClick={handleStartScan}
-                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-800 hover:from-emerald-600 hover:to-emerald-700 text-white font-extrabold text-xs border border-emerald-400/40 shadow-lg active:scale-98 cursor-pointer flex items-center justify-center gap-1.5"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 text-white font-extrabold text-sm border border-amber-300/40 shadow-lg cursor-pointer flex items-center justify-center gap-2"
               >
-                <Camera className="w-4 h-4" />
-                <span>{status === "SCANNING" ? "جارِ المسح..." : "تشغيل الكاميرا للمسح"}</span>
+                <Camera className="w-5 h-5" />
+                <span>{status === "SCANNING" ? "جارِ المسح..." : "مسح رمز QR"}</span>
               </button>
-              {status === "SCANNING" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    scannerRef.current.stopScan();
-                    setStatus("IDLE");
-                  }}
-                  className="mt-2 text-[11px] font-bold text-amber-200/70 hover:text-white cursor-pointer"
-                >
-                  إلغاء المسح
-                </button>
-              )}
             </div>
           )}
 
@@ -559,6 +535,26 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
             </div>
           )}
         </div>
+
+        {status === "SCANNING" && (
+          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-black/95 p-5">
+            <p className="text-sm font-bold text-amber-200">وجّه الكاميرا نحو رمز الغرفة</p>
+            <div className="relative w-full max-w-sm aspect-square overflow-hidden rounded-3xl border-2 border-amber-400/70 bg-black shadow-2xl">
+              <video ref={videoRef} className="h-full w-full object-cover" playsInline muted />
+              <div className="pointer-events-none absolute inset-8 rounded-2xl border-2 border-white/80" />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                scannerRef.current.stopScan();
+                setStatus("IDLE");
+              }}
+              className="rounded-xl border border-amber-400/40 px-5 py-2 font-bold text-amber-100"
+            >
+              إلغاء
+            </button>
+          </div>
+        )}
 
         {/* Footer */}
         <footer className="relative z-10 px-4 py-2.5 border-t border-amber-500/20 bg-black/80 text-[10px] text-amber-200/50 flex items-center justify-between">

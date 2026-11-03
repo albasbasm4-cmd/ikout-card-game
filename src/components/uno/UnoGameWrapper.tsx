@@ -47,7 +47,7 @@ export default function UnoGameWrapper({ onBack }: UnoGameWrapperProps) {
       onBack={onBack}
       onStartPlay={() => setScreen("play")}
       onCreateRoom={() => setScreen("room")}
-      onJoinRoom={() => setScreen("join")}
+      onJoinRoom={() => setScreen("play")}
     />
   );
 }

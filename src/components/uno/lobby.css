@@ -1579,3 +1579,28 @@
 .uno-lobby .kb:disabled {
   cursor: not-allowed;
 }
+
+
+/* Shared iKout navy-and-gold room palette */
+.uno-lobby #st { background: linear-gradient(180deg, #101e2e 0%, #0a141f 100%); }
+.uno-lobby #card, .uno-lobby #net { border: 2px solid rgba(234,179,8,.45); background: linear-gradient(180deg, #101e2e 0%, #0a141f 100%); color: #fff; }
+.uno-lobby #card .hd, .uno-lobby #net .hd { color: #f5d783; background: rgba(0,0,0,.28); border-bottom: 1px solid rgba(234,179,8,.28); }
+.uno-lobby .rp, .uno-lobby .rb, .uno-lobby .nm { background: rgba(0,0,0,.5); }
+.uno-lobby .inf-val, .uno-lobby .nm { color: #f5d783; }
+.uno-lobby #back { border: 2px solid rgba(234,179,8,.45); background: linear-gradient(180deg,#263d55,#14263a); box-shadow: 0 7px 0 #09121d; }
+.uno-lobby .btn.red, .uno-lobby .btn.nb, .uno-lobby .ab, .uno-lobby .kchip, .uno-lobby .kb { color: #fff; border-color: rgba(234,179,8,.45); background: linear-gradient(180deg,#d6a642,#9b6b20); box-shadow: 0 5px 0 #624313; }
+.uno-lobby #net .btn.red { min-width: 0; padding: 0 16px; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+.uno-lobby .kchip { min-width: 48px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+.uno-lobby #ci { border-color: rgba(234,179,8,.45); }
+
+.uno-join-modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.82); backdrop-filter: blur(8px); }
+.uno-join-panel { position: relative; width: min(100%, 460px); display: flex; flex-direction: column; gap: 14px; padding: 28px; border: 2px solid rgba(234,179,8,.45); border-radius: 24px; background: linear-gradient(180deg,#101e2e,#0a141f); color: #fff; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.uno-join-panel h2 { margin: 0; text-align: center; color: #f5d783; font-size: 24px; font-weight: 900; }
+.uno-join-panel label { color: #f5d783; font-weight: 700; }
+.uno-join-panel input { width: 100%; padding: 12px 16px; border: 1px solid rgba(234,179,8,.45); border-radius: 12px; background: rgba(0,0,0,.5); color: #fff; font-size: 20px; font-weight: 800; letter-spacing: .18em; text-align: center; }
+.uno-join-action, .uno-join-camera { min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; border: 1px solid rgba(234,179,8,.45); border-radius: 14px; background: linear-gradient(180deg,#d6a642,#9b6b20); color: #fff; font-weight: 900; white-space: nowrap; cursor: pointer; }
+.uno-join-close { position: absolute; top: 8px; left: 12px; border: 0; background: transparent; color: #f5d783; font-size: 30px; cursor: pointer; }
+.uno-viewfinder { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 20px; background: rgba(0,0,0,.96); }
+.uno-viewfinder video { width: min(100%,400px); aspect-ratio: 1; border: 2px solid rgba(234,179,8,.7); border-radius: 24px; object-fit: cover; }
+.uno-viewfinder-frame { position: absolute; width: min(70vw,280px); aspect-ratio: 1; border: 2px solid white; border-radius: 18px; pointer-events: none; }
+.uno-viewfinder button { padding: 10px 24px; border: 1px solid rgba(234,179,8,.4); border-radius: 12px; background: #101e2e; color: white; }
