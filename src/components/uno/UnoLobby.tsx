@@ -43,7 +43,7 @@ export default function UnoLobby({
   const [joinCode, setJoinCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const joinRoomRef = useRef<(code: string) => Promise<void>>();
+  const joinRoomRef = useRef<((code: string) => Promise<void>) | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
