@@ -665,8 +665,11 @@
   /* buttons */
   .kb {
     position: relative;
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     cursor: pointer;
     color: var(--joker-color-66);
     font:

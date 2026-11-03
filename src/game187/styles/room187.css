@@ -1,19 +1,19 @@
 /* ===== 187 Room & Menu Styles (from غرفة_اللعب (1).html) ===== */
 .r187-root {
-  --sky-top: #101e2e;
-  --sky-mid: #0d1926;
-  --sky-low: #0a141f;
-  --ink: #0a141f;
-  --panel-pink-top: #17283a;
-  --panel-pink-bot: #101e2e;
-  --red-top: #d6a642;
-  --red-bot: #9b6b20;
-  --red-sh: #624313;
-  --blue-top: #263d55;
-  --blue-bot: #14263a;
-  --blue-sh: #09121d;
-  --cyan: #f5d783;
-  --gold: #f2c94c;
+  --sky-top: #8fb8dc;
+  --sky-mid: #a7c9e6;
+  --sky-low: #cfe4f3;
+  --ink: #a7c9e6;
+  --panel-pink-top: #e27fc2;
+  --panel-pink-bot: #cc55a6;
+  --red-top: #f2594d;
+  --red-bot: #cc2821;
+  --red-sh: #8c1a17;
+  --blue-top: #10a6f4;
+  --blue-bot: #0376d2;
+  --blue-sh: #065a9e;
+  --cyan: #00e5ff;
+  --gold: #ffd23f;
   position: absolute;
   inset: 0;
   overflow: hidden;
@@ -31,7 +31,7 @@
   height: 1080px;
   transform-origin: center;
   overflow: hidden;
-  background: linear-gradient(180deg, #101e2e 0%, #0a141f 100%);
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-low) 100%);
 }
 
 .r187-glow {
@@ -40,7 +40,7 @@
   top: 60px;
   width: 1000px;
   height: 560px;
-  background: radial-gradient(ellipse at 50% 50%, rgba(234, 179, 8, 0.12), transparent 68%);
+  background: radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.55), transparent 68%);
 }
 
 .r187-cl {
@@ -65,7 +65,7 @@
   width: 194px;
   height: 194px;
   border-radius: 50%;
-  background: rgba(234, 179, 8, 0.12);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .r187-sk {
@@ -97,7 +97,7 @@
   height: 88px;
   border-radius: 50% 50% 46% 46%;
   background: radial-gradient(#ecd0a8, #b58658);
-  border: 2px solid rgba(234, 179, 8, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   display: grid;
   place-items: center;
   font-size: 52px;
@@ -187,7 +187,7 @@
 }
 .r187-red {
   border-radius: 40px;
-  border: 2px solid rgba(234, 179, 8, 0.55);
+  border: 2px solid #ff948a;
   background: linear-gradient(180deg, var(--red-top), var(--red-bot));
   box-shadow: 0 6px 0 var(--red-sh);
   font-size: 38px;
@@ -197,7 +197,7 @@
 }
 .r187-blue {
   border-radius: 40px;
-  border: 2px solid rgba(234, 179, 8, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   background: linear-gradient(180deg, var(--blue-top), var(--blue-bot));
   box-shadow: 0 6px 0 var(--blue-sh);
   font-size: 34px;
@@ -207,7 +207,7 @@
 }
 .r187-pink {
   border-radius: 40px;
-  border: 2px solid rgba(234, 179, 8, 0.55);
+  border: 2px solid #ff948a;
   background: linear-gradient(180deg, #d6a642, #9b6b20);
   box-shadow: 0 6px 0 #9c2e60;
   font-size: 34px;
@@ -261,10 +261,10 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  border: 2px solid rgba(234, 179, 8, 0.45);
+  border: 5px solid #fff;
   border-radius: 28px;
   overflow: hidden;
-  background: linear-gradient(180deg, #101e2e 0%, #0a141f 100%);
+  background: linear-gradient(180deg, var(--panel-pink-top), var(--panel-pink-bot));
   box-shadow:
     0 10px 0 rgba(0, 0, 0, 0.22),
     0 0 44px rgba(0, 0, 0, 0.25);
@@ -314,7 +314,7 @@
   position: relative;
   width: 660px;
   height: 556px;
-  border: 2px solid rgba(234, 179, 8, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   border-radius: 30px;
   overflow: hidden;
   box-shadow:
@@ -329,10 +329,10 @@
   }
 }
 .r187-mm-card.pk {
-  background: linear-gradient(180deg, #101e2e 0%, #0a141f 100%);
+  background: linear-gradient(180deg, var(--panel-pink-top), var(--panel-pink-bot));
 }
 .r187-mm-card.bl {
-  background: linear-gradient(180deg, #101e2e 0%, #0a141f 100%);
+  background: linear-gradient(180deg, #10a6f4, #0376d2);
 }
 .r187-mm-hd {
   position: absolute;
@@ -418,7 +418,7 @@
   height: 660px;
 }
 .r187-dk {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(122, 22, 84, 0.38);
   border-radius: 16px;
 }
 .r187-lp {
@@ -477,7 +477,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.58);
+  background: rgba(122, 22, 84, 0.4);
 }
 .r187-sb div {
   display: flex;
@@ -540,19 +540,19 @@
   gap: 10px;
   padding: 14px 10px;
   border-radius: 20px;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(122, 22, 84, 0.38);
   border: 4px solid transparent;
   position: relative;
 }
 .r187-seat.me {
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(96, 15, 66, 0.5);
 }
 .r187-av2 {
   width: 96px;
   height: 96px;
   border-radius: 50%;
   background: radial-gradient(#ecd0a8, #b58658);
-  border: 2px solid rgba(234, 179, 8, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   display: grid;
   place-items: center;
   font-size: 52px;
@@ -609,7 +609,7 @@
   cursor: pointer;
   color: #fff;
   font-weight: 900;
-  border: 2px solid rgba(234, 179, 8, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   background: linear-gradient(var(--blue-top), var(--blue-bot));
   box-shadow: 0 4px 0 var(--blue-sh);
   padding: 0 20px;
@@ -645,8 +645,8 @@
   margin: 36px auto 28px;
   display: block;
   border-radius: 28px;
-  border: 2px solid rgba(234, 179, 8, 0.45);
-  background: rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: rgba(96, 15, 66, 0.45);
   color: var(--cyan);
   font:
     900 68px/1 Cairo,
@@ -676,8 +676,8 @@
   backdrop-filter: blur(8px);
 }
 .r187-mc {
-  background: #1a2128;
-  border: 2px solid rgba(234, 179, 8, 0.45);
+  background: var(--sky-mid);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   border-radius: 28px;
   padding: 28px;
   text-align: center;
@@ -688,21 +688,21 @@
 
 /* Unified room palette and flexible Arabic controls. */
 .r187-card, .r187-mm-card, .r187-mc { color: #fff; }
-.r187-hd { color: #f5d783; border-bottom-color: rgba(234, 179, 8, 0.28); background: rgba(0,0,0,.28); }
-.r187-mm-hd { color: #f5d783; }
-.r187-mm-ring, .r187-sun { border-color: rgba(234,179,8,.35); }
-.r187-mm-ring { background: rgba(0,0,0,.3); }
+.r187-hd { color: #fff; border-bottom-color: rgba(255,255,255,.85); background: rgba(255,255,255,.13); }
+.r187-mm-hd { color: #fff; }
+.r187-mm-ring, .r187-sun { border-color: rgba(255,255,255,.5); }
+.r187-mm-ring { background: rgba(255,255,255,.22); }
 .r187-btn, .r187-chip { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; padding-left: 16px; padding-right: 16px; white-space: nowrap; }
 .r187-mm-b { min-width: 0; }
-.r187-ci { max-width: calc(100% - 32px); border-color: rgba(234,179,8,.45); }
-.r187-mc { background: linear-gradient(180deg, #101e2e 0%, #0a141f 100%); }
+.r187-ci { max-width: calc(100% - 32px); border-color: rgba(255,255,255,.85); }
+.r187-mc { background: linear-gradient(180deg, var(--panel-pink-top), var(--panel-pink-bot)); }
 
 .r187-ci { width: min(520px, calc(100% - 32px)); }
 .r187-btn span { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .r187-jv-card .r187-btn { max-width: calc(100% - 32px); }
 
-.r187-lpink { border-color: rgba(234,179,8,.55) !important; background: linear-gradient(180deg,#d6a642,#9b6b20) !important; box-shadow: 0 6px 0 #624313 !important; }
-.r187-dk, .r187-sb, .r187-stt { background: rgba(0,0,0,.5); }
-.r187-chip[style] { background: linear-gradient(180deg,#d6a642,#9b6b20) !important; border-color: rgba(234,179,8,.55) !important; }
-.r187-seat { border-color: rgba(234,179,8,.18); }
-.r187-seat.me { border-color: rgba(234,179,8,.5); }
+.r187-lpink { border-color: #f3b6e6 !important; background: linear-gradient(#dc7cc6, #c351a9) !important; box-shadow: 0 6px 0 #9c3a86 !important; }
+.r187-dk, .r187-sb, .r187-stt { background: rgba(122,22,84,.38); }
+.r187-chip[style] { background: linear-gradient(180deg,var(--blue-top),var(--blue-bot)) !important; border-color: rgba(126,206,255,.9) !important; }
+.r187-seat { border-color: rgba(255,255,255,.25); }
+.r187-seat.me { border-color: #fff; }

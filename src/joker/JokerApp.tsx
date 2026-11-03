@@ -335,7 +335,25 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                         } as React.CSSProperties
                       }
                     >
-                      {clientSeatsRows.map(([pid, name], idx) => (
+                      {Array.from(
+                        { length: Math.max(4, clientSeatsNum) },
+                        (_, idx) => idx,
+                      ).map((idx) => {
+                        const row = clientSeatsRows[idx];
+                        if (!row) {
+                          return (
+                            <div className="ks empty" key={`cempty-${idx}`}>
+                              <span className="knum">{idx + 1}</span>
+                              <div className="kav">+</div>
+                              <span className="ksn">مقعد فارغ</span>
+                              <div className="kbg">
+                                <b className="bt">بانتظار لاعب</b>
+                              </div>
+                            </div>
+                          );
+                        }
+                        const [pid, name] = row;
+                        return (
                         <div className={`ks ${pid === human ? "me" : "bot"}`} key={pid}>
                           <span className="knum">{idx + 1}</span>
                           <div className="kav">
@@ -364,7 +382,8 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                             </b>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <div className="kst kdk" style={{ marginTop: 14 }}>
                       في انتظار بدء المباراة من المضيف…
@@ -409,31 +428,62 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                           </Button>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: "12px", width: "100%" }}>
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          top: 358,
+                          height: 96,
+                          display: "flex",
+                          gap: 12,
+                        }}
+                      >
                         <Button
                           type="button"
                           className="kb kbl"
-                          style={{ flex: 1 }}
+                          style={{ flex: 1, fontSize: 26 }}
                           onClick={() => setShowQr(true)}
                         >
-                          <QrCode className="w-5 h-5 ml-2" />
-                          رمز QR
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 8,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            <QrCode className="w-5 h-5" />
+                            رمز QR
+                          </span>
                         </Button>
                         <Button
                           id="go"
                           className="kb kr ready"
                           style={
                             canStart
-                              ? { flex: 2 }
-                              : { flex: 2, filter: "grayscale(.5)", opacity: 0.6 }
+                              ? { flex: 2, fontSize: 30, top: 0, height: "100%" }
+                              : { flex: 2, fontSize: 30, top: 0, height: "100%", filter: "grayscale(.5)", opacity: 0.6 }
                           }
                           disabled={!canStart}
                           onClick={start}
                         >
-                          ابدأ اللعبة
+                          <span>ابدأ اللعبة</span>
                         </Button>
                       </div>
-                      <div className="kst kdk">
+                      <div
+                        className="kst kdk"
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          top: 464,
+                          height: 78,
+                          fontSize: 24,
+                          lineHeight: 1.4,
+                        }}
+                      >
                         {canStart
                           ? "الكل جاهز — ابدأ المباراة"
                           : `تحتاج ${4 - players.length} لاعبين إضافيين على الأقل لبدء المباراة`}
@@ -449,20 +499,32 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                         } as React.CSSProperties
                       }
                     >
-                      {players.map((p, i) => (
-                        <div className={`ks ${i === 0 ? "me" : "bot"}`} key={p.id}>
-                          <span className="knum">{i + 1}</span>
-                          <div className="kav">
-                            <img src={characterFace(p.char)} alt="" />
+                      {Array.from({ length: count }, (_, i) => {
+                        const p = players[i];
+                        return p ? (
+                          <div className={`ks ${i === 0 ? "me" : "bot"}`} key={p.id}>
+                            <span className="knum">{i + 1}</span>
+                            <div className="kav">
+                              <img src={characterFace(p.char)} alt="" />
+                            </div>
+                            <span className="ksn">{p.name}</span>
+                            <div className="kbg">
+                              <b className={i === 0 ? "hu" : "bt"}>
+                                {i === 0 ? "المضيف (أنت)" : "لاعب"}
+                              </b>
+                            </div>
                           </div>
-                          <span className="ksn">{p.name}</span>
-                          <div className="kbg">
-                            <b className={i === 0 ? "hu" : "bt"}>
-                              {i === 0 ? "المضيف (أنت)" : "لاعب"}
-                            </b>
+                        ) : (
+                          <div className="ks empty" key={`empty-${i}`}>
+                            <span className="knum">{i + 1}</span>
+                            <div className="kav">+</div>
+                            <span className="ksn">مقعد فارغ</span>
+                            <div className="kbg">
+                              <b className="bt">بانتظار لاعب</b>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
