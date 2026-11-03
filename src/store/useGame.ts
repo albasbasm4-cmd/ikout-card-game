@@ -1,9 +1,9 @@
 /**
-import { canDecideContinue } from "../engine/matchContinue";
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { canDecideContinue } from "../engine/matchContinue";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { GameState, Card, Bid, Suit, Difficulty, TrickPlay, PlayerSlot } from "../types/kout";
 import { verifyCheatReport, applyCheatVerdict, type ReportedCardType } from "../rules/cheat";
