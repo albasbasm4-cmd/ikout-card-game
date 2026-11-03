@@ -1,0 +1,122 @@
+name: Sign and Build Release APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build signed release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "21"
+
+      - name: Check signing secret
+        env:
+          KS_PASSWORD: ${{ secrets.KS_PASSWORD }}
+        run: |
+          if [ -z "$KS_PASSWORD" ]; then
+            echo "::error::Secret KS_PASSWORD غير موجود. اضفه من Settings > Secrets and variables > Actions باسم KS_PASSWORD بقيمة كلمة سر قوية واحفظها عندك."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Run Tests & Build Web Assets
+        run: |
+          npm test
+          npm run build
+          node scripts/generate-static-html.mjs
+          node scripts/verify-assets.mjs
+
+      - name: Setup Android Project & Sync
+        run: |
+          node scripts/patch-capacitor-android.mjs
+          npx cap sync android
+          node scripts/patch-capacitor-android.mjs
+          node scripts/verify-assets.mjs
+
+      - name: Create encrypted keystore (first run only)
+        env:
+          KS_PASSWORD: ${{ secrets.KS_PASSWORD }}
+        run: |
+          if [ ! -f android/ikout-release.keystore.enc ]; then
+            keytool -genkeypair -v -keystore ikout-release.keystore \
+              -alias ikout -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$KS_PASSWORD" -keypass "$KS_PASSWORD" \
+              -dname "CN=iKout Card Game, OU=Mobile, O=iKout, L=Aden, S=Aden, C=YE"
+            openssl enc -aes-256-cbc -pbkdf2 -salt \
+              -in ikout-release.keystore -out android/ikout-release.keystore.enc \
+              -pass pass:"$KS_PASSWORD"
+            rm -f ikout-release.keystore
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add android/ikout-release.keystore.enc
+            git commit -m "chore: add encrypted release keystore"
+            git push
+          fi
+
+      - name: Decrypt keystore
+        env:
+          KS_PASSWORD: ${{ secrets.KS_PASSWORD }}
+        run: |
+          openssl enc -d -aes-256-cbc -pbkdf2 \
+            -in android/ikout-release.keystore.enc \
+            -out ikout-release.keystore -pass pass:"$KS_PASSWORD"
+
+      - name: Build signed release APK
+        working-directory: android
+        env:
+          KS_PASSWORD: ${{ secrets.KS_PASSWORD }}
+        run: |
+          cp ../ikout-release.keystore app/ikout-release.keystore
+          cat >> app/build.gradle <<'GRADLE'
+
+          android {
+              signingConfigs {
+                  ikoutRelease {
+                      storeFile file("ikout-release.keystore")
+                      storePassword System.getenv("KS_PASSWORD")
+                      keyAlias "ikout"
+                      keyPassword System.getenv("KS_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.ikoutRelease
+                  }
+              }
+          }
+          GRADLE
+          chmod +x gradlew
+          ./gradlew assembleRelease --stacktrace
+
+      - name: Attach signed APK to latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: iKout Card Game - احدث اصدار
+          body: |
+            نسخة موقعة رسميا (release) مبنية تلقائيا عبر GitHub Actions.
+            حمّل ملف app-release.apk وثبته على الهاتف مباشرة.
+          files: android/app/build/outputs/apk/release/app-release.apk
+          make_latest: true
