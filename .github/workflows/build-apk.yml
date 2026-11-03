@@ -5,6 +5,9 @@ on:
     branches: [main, fix/android-apk-asset-packaging]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build & Package APK
@@ -59,3 +62,14 @@ jobs:
           name: ikout-card-game-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 14
+
+      - name: Attach APK to latest Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: iKout Card Game - احدث اصدار
+          body: |
+            تم بناء هذا الـ APK تلقائيا من فرع main عبر GitHub Actions.
+            حمّل ملف app-debug.apk وثبّته على الهاتف مباشرة.
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true
