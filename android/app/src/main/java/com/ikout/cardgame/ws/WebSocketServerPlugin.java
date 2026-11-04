@@ -214,16 +214,41 @@ public class WebSocketServerPlugin extends Plugin {
     @PluginMethod
     public void getGatewayIp(PluginCall call) {
         String ip = null;
+        // المصدر الأول: بوابة الشبكة الفعلية من LinkProperties (موثوق على أندرويد حديث)
         try {
-            WifiManager wifi = (WifiManager) getContext().getApplicationContext()
-                .getSystemService(android.content.Context.WIFI_SERVICE);
-            if (wifi != null) {
-                android.net.DhcpInfo dhcp = wifi.getDhcpInfo();
-                if (dhcp != null && dhcp.gateway != 0) {
-                    ip = intToIp(dhcp.gateway);
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getContext()
+                .getApplicationContext()
+                .getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                android.net.Network network = cm.getActiveNetwork();
+                if (network != null) {
+                    android.net.LinkProperties lp = cm.getLinkProperties(network);
+                    if (lp != null) {
+                        for (android.net.RouteInfo route : lp.getRoutes()) {
+                            if (route.isDefaultRoute()
+                                && route.getGateway() instanceof java.net.Inet4Address) {
+                                ip = route.getGateway().getHostAddress();
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         } catch (Exception ignored) {
+        }
+        // احتياط: DhcpInfo (غير موثوق دائماً على أندرويد حديث)
+        if (ip == null) {
+            try {
+                WifiManager wifi = (WifiManager) getContext().getApplicationContext()
+                    .getSystemService(android.content.Context.WIFI_SERVICE);
+                if (wifi != null) {
+                    android.net.DhcpInfo dhcp = wifi.getDhcpInfo();
+                    if (dhcp != null && dhcp.gateway != 0) {
+                        ip = intToIp(dhcp.gateway);
+                    }
+                }
+            } catch (Exception ignored) {
+            }
         }
         JSObject res = new JSObject();
         res.put("ip", ip);

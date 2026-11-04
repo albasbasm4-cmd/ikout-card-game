@@ -252,7 +252,7 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
         resolve(false);
       }
     };
-    const timeout = window.setTimeout(() => finish(false), 1800);
+    const timeout = window.setTimeout(() => finish(false), 3000);
     socket.onStatusChange((st) => {
       if (st === "CONNECTED") {
         socket.send({

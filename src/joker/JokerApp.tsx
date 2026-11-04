@@ -35,6 +35,7 @@ import { Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProfileEditor } from "@/components/ProfileEditor";
 import { characterFace, CHARACTER_IDS, useProfile } from "@/utils/profile";
+import { NetworkDiagnosticsPanel } from "@/components/NetworkDiagnosticsPanel";
 import { InlineQrScanner } from "@/components/InlineQrScanner";
 import { useSettings } from "@/store/useSettings";
 import { useStageFit } from "@/hooks/use-stage-fit";
@@ -71,6 +72,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [diagOpen, setDiagOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   /** دور هذا الجهاز: محلي، مستضيف عبر الشبكة، أو منضم لمضيف بعيد. */
   const [netRole, setNetRole] = useState<"local" | "host" | "client">("local");
@@ -887,6 +889,23 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                         onCancel={() => setScanOpen(false)}
                       />
                     )}
+                    <button
+                      type="button"
+                      onClick={() => setDiagOpen((v) => !v)}
+                      style={{
+                        marginTop: 12,
+                        padding: "8px 14px",
+                        borderRadius: 8,
+                        background: "rgba(255,255,255,0.08)",
+                        border: "1px solid rgba(255,255,255,0.25)",
+                        color: "#fff",
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      تشخيص الاتصال
+                    </button>
+                    {diagOpen && <NetworkDiagnosticsPanel className="mt-3" />}
                     {joinError && (
                       <p style={{ color: "#ff6b6b", fontWeight: 700, marginTop: 14 }}>
                         {joinError}

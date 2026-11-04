@@ -11,7 +11,7 @@
 
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Camera } from "lucide-react";
+import { ArrowRight, Camera, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { characterFace, useProfile } from "@/utils/profile";
 import { useSettings } from "@/store/useSettings";
@@ -20,6 +20,7 @@ import { ProfileEditor } from "@/components/ProfileEditor";
 import { CitySkyline, Clouds } from "@/components/HomeScreen";
 import { playTapSound } from "@/utils/audio";
 import { InlineQrScanner } from "@/components/InlineQrScanner";
+import { NetworkDiagnosticsPanel } from "@/components/NetworkDiagnosticsPanel";
 import {
   connectUnoClient,
   disconnectUnoClient,
@@ -75,6 +76,7 @@ export function Join({ onBack }: JoinProps = {}) {
   const [code, setCode] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [diagOpen, setDiagOpen] = useState(false);
   /** تم الاتصال بالمضيف: نعرض غرفة المضيف مباشرة — دون أي واجهة إضافية. */
   const [connected, setConnected] = useState(false);
   const [connectedCode, setConnectedCode] = useState("");
@@ -249,6 +251,11 @@ export function Join({ onBack }: JoinProps = {}) {
                 <button className="kb kr2" onClick={() => join()} disabled={joining}>
                   <span>انضمام</span>
                 </button>
+                <button className="kb kbl" onClick={() => setDiagOpen((v) => !v)}>
+                  <Activity className="inline-block ml-1 h-5 w-5" />
+                  <span>تشخيص الاتصال</span>
+                </button>
+                {diagOpen && <NetworkDiagnosticsPanel className="mt-3 w-full" />}
                 <div className="kor">— أو —</div>
                 <button className="kb kbl" onClick={() => setScannerOpen(true)}>
                   <Camera className="inline-block ml-1 h-5 w-5" />

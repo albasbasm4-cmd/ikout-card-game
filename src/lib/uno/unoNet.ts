@@ -135,6 +135,11 @@ export async function startUnoHost(code: string): Promise<void> {
         { type?: string; payload?: Record<string, unknown> } | undefined;
       if (!p?.type) return;
       if (p.type === "HELLO") {
+        const givenCode = String(p.payload?.["roomCode"] ?? "").trim().toUpperCase();
+        if (host.code && givenCode !== host.code.toUpperCase()) {
+          hubSendTo(clientId, { ch: "uno", packet: { type: "INVALID_ROOM" } });
+          return;
+        }
         let seat = host.clientIdToSeat.get(clientId);
         if (seat === undefined) {
           seat = host.seatNames.findIndex((n, i) => i > 0 && n === null);
@@ -318,16 +323,24 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
         resolve(false);
       }
     };
-    const timeout = setTimeout(() => finish(false), 1800);
+    const timeout = setTimeout(() => finish(false), 3000);
     socket.onStatusChange((st) => {
       if (st === "CONNECTED") {
-        socket.send({ v: 1, type: "HELLO", payload: { name: opts.name || "لاعب" } } as never);
+        socket.send({
+          v: 1,
+          type: "HELLO",
+          payload: { name: opts.name || "لاعب", roomCode: opts.code },
+        } as never);
       } else if (st === "HOST_DROPPED" || st === "DISCONNECTED") {
         finish(false);
       }
     });
     socket.onMessage((packet) => {
       const p = packet as unknown as { type?: string };
+      if (p.type === "INVALID_ROOM") {
+        finish(false);
+        return;
+      }
       if (p?.type === "WELCOME" && !settled) {
         settled = true;
         clearTimeout(timeout);

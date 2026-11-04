@@ -56,7 +56,7 @@ export function parseRoomPayload(payload: string): { ip: string; port: number; r
  */
 export async function getLocalIpAddress(): Promise<string> {
   if (typeof window === "undefined") {
-    return "192.168.1.100";
+    return "192.168.43.1";
   }
 
   // If running on a local LAN hostname or IP
@@ -69,6 +69,17 @@ export async function getLocalIpAddress(): Promise<string> {
     !hostname.endsWith(".run.app")
   ) {
     return hostname;
+  }
+
+  // الإضافة الأصلية أولاً: WebRTC داخل WebView قد يعيد مرشحات mDNS مشفرة
+  const wssPlugin = (window as any)?.Capacitor?.Plugins?.WebSocketServer;
+  if (wssPlugin && typeof wssPlugin.getIpAddress === "function") {
+    try {
+      const res = await wssPlugin.getIpAddress();
+      if (res && res.ip) return res.ip as string;
+    } catch {
+      // ignore
+    }
   }
 
   // Check for native Capacitor / Android bridge for IP
@@ -106,7 +117,7 @@ export async function getLocalIpAddress(): Promise<string> {
       return new Promise<string>((resolve) => {
         const timeout = setTimeout(() => {
           pc.close();
-          resolve("192.168.1.105");
+          resolve("192.168.43.1");
         }, 800);
 
         pc.onicecandidate = (event: any) => {
@@ -125,5 +136,5 @@ export async function getLocalIpAddress(): Promise<string> {
     // Ignore WebRTC permission errors
   }
 
-  return "192.168.1.105";
+  return "192.168.43.1";
 }

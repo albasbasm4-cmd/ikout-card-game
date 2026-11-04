@@ -16,6 +16,7 @@ import {
   Shield,
   Loader2,
 } from "lucide-react";
+import { NetworkDiagnosticsPanel } from "./NetworkDiagnosticsPanel";
 import { parseRoomPayload } from "../network/localIp";
 import { LocalClientSocket, ClientSocketStatus } from "../network/LocalClientSocket";
 import { getJoinCandidateIps } from "../network/wssBridge";
@@ -189,6 +190,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
     "IDLE",
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showDiag, setShowDiag] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerRef = useRef<IBarcodeScanner>(scannerOverride || new WebBarcodeScanner());
@@ -352,12 +354,23 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-300 bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-500/30">
+          <button
+              type="button"
+              onClick={() => setShowDiag((v) => !v)}
+              className="w-8 h-8 rounded-full bg-neutral-800 text-amber-300 hover:text-white flex items-center justify-center cursor-pointer active:scale-95 transition-colors"
+              aria-label="تشخيص الاتصال"
+            >
+              <Wifi className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-300 bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-500/30">
             <Wifi className="w-3.5 h-3.5 text-emerald-400" />
             <span>Wi-Fi محلي</span>
           </div>
         </header>
-
+{showDiag && (
+          <NetworkDiagnosticsPanel className="mx-4 mt-3 shrink-0" />
+        )}
+        
         {/* Tab Switcher: Scan vs Manual */}
         <div className="px-4 pt-3 pb-1">
           <div className="grid grid-cols-2 gap-2 bg-black/60 p-1 rounded-2xl border border-amber-500/20">

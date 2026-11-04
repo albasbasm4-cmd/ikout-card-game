@@ -15,6 +15,7 @@ import { playTapSound } from "../../utils/audio";
 import { ProfileEditor } from "../../components/ProfileEditor";
 import { QRCodeSVG } from "qrcode.react";
 import { InlineQrScanner } from "@/components/InlineQrScanner";
+import { NetworkDiagnosticsPanel } from "@/components/NetworkDiagnosticsPanel";
 import {
   Room187Channel,
   Client187Packet,
@@ -57,6 +58,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
   const [profileOpen, setProfileOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [diagOpen, setDiagOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   /** عند قراءة رمز QR داخل اللعبة: انضمام مباشر دون أي واجهة إضافية. */
@@ -526,6 +528,15 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
               >
                 <span>انضمام</span>
               </button>
+              <button
+                type="button"
+                className="r187-btn r187-blue"
+                style={{ width: 300, height: 60, margin: "0 auto 12px", display: "grid" }}
+                onClick={() => setDiagOpen((v) => !v)}
+              >
+                <span>تشخيص الاتصال</span>
+              </button>
+              {diagOpen && <NetworkDiagnosticsPanel className="mx-auto mb-3 w-[360px] max-w-full" />}
               <div className="r187-or">— أو —</div>
               <button
                 type="button"
