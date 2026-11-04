@@ -1,4 +1,5 @@
 import type { Card, Suit } from "../types/kout";
+import { CHARACTERS_DATA } from "../data/charactersData";
 import {
   CHARACTER_VOICES,
   type CharacterVoiceSet,
@@ -102,15 +103,47 @@ export function voiceSet(character: CharacterId | null | undefined): CharacterVo
  * The character's own verified clip for a situation. Every clip text was
  * confirmed by transcription, so bubble text always equals the spoken audio.
  */
+/**
+ * Fallback: every character bundle ships its own welcome/pass/win/lose/ace/taunt
+ * clip with verified wording in CHARACTERS_DATA. Characters whose transcribed
+ * manifest lacks a situation still speak with their own voice instead of staying
+ * silent — without this, many characters only talked in some situations.
+ */
+const FALLBACK_PHRASE_ID: Partial<Record<PhraseKey, string>> = {
+  pass: "pass-taunt",
+  win: "win",
+  lose: "lose",
+  "trump-ace": "ace",
+  opponent: "taunt",
+};
+
+function fallbackVoice(
+  character: CharacterId | null | undefined,
+  key: PhraseKey,
+): VoiceClip | undefined {
+  const data = character ? CHARACTERS_DATA[character] : undefined;
+  if (!data) return undefined;
+  if (key === "welcome") {
+    return data.welcomeAudioUrl && data.welcomeQuote
+      ? { file: data.welcomeAudioUrl.split("/").pop()!, text: data.welcomeQuote }
+      : undefined;
+  }
+  const phraseId = FALLBACK_PHRASE_ID[key];
+  if (!phraseId) return undefined;
+  const phrase = data.phrases?.find((p) => p.id === phraseId);
+  if (!phrase) return undefined;
+  return { file: phrase.audioUrl.split("/").pop()!, text: phrase.text };
+}
+
 export function voiceFor(
   character: CharacterId | null | undefined,
   key: PhraseKey,
 ): VoiceClip | undefined {
-  if (key === "opponent") return voiceSet(character).chat[0];
   const mk = MANIFEST_KEY[key];
-  return mk
+  const fromManifest = mk
     ? (voiceSet(character)[mk as keyof CharacterVoiceSet] as VoiceClip | undefined)
     : undefined;
+  return fromManifest ?? fallbackVoice(character, key);
 }
 
 /** Returns the character's own wording for a situation (falls back to the base line). */

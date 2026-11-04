@@ -9,8 +9,8 @@ import {
 
 /** Restored per-character voice bundles live under /assets/ikout/audio/voices/<id>/<clip>.mp3. */
 const BUNDLE_BASE = "/assets/ikout/audio/voices";
-/** A voice that cannot start within this window is dropped instead of playing late. */
-export const MAX_VOICE_DELAY_MS = 250;
+/** يُسمح بتأخير معقول لبدء الصوت: أول تشغيل يحتاج جلب الملف وفك ترميزه، والحد القديم (250ms) كان يُسقط الصوت فيصمت الشخصي. */
+export const MAX_VOICE_DELAY_MS = 1500;
 
 let ctx: AudioContext | null = null;
 const buffers = new Map<string, AudioBuffer>();

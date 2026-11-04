@@ -414,7 +414,8 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
                 dir="ltr"
                 value={cheatCodeInput}
                 onChange={(e) => setCheatCodeInput(e.target.value)}
-                placeholder="IKOUT_2026_VIP"
+                placeholder="أدخل الكود"
+                autoComplete="off"
               />
               <Button
                 onClick={() => {

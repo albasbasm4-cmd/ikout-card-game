@@ -5168,6 +5168,14 @@
   max-width: 80%;
   width: 420px;
   font-size: 26px;
+  /* قابل للتمرير دائماً: يُرى كود فتح الشخصيات كاملاً حتى على الشاشات القصيرة */
+  max-height: calc(100% - 150px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px 10px 24px;
+  scrollbar-width: thin;
 }
 .pc-identity img {
   width: 160px;
@@ -5530,6 +5538,9 @@
 .pc-fps-btn[aria-pressed="true"]{font-weight:800;border:2px solid #eab308;background:#eab308;color:#000}
 .pc-name-done{background:#eab308 !important;color:#000 !important;font-weight:800}
 .pc-name-done:hover{background:#f1c40f !important}
+.pc-vip-code{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;padding:10px 14px;border-radius:12px;background:#1b2328;border:1px solid #eab308;color:#fff;font-size:15px}
+.pc-vip-code span{color:#a7b6bf}
+.pc-vip-code b{color:#f5d783;letter-spacing:.06em;word-break:break-all}
 .pc-vip-row button{background:#eab308 !important;color:#000 !important;font-weight:800}
 .pc-vip-row button:hover{background:#f1c40f !important}
 

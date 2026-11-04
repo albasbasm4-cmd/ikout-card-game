@@ -2,9 +2,9 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  *
- * InlineQrScanner — كاميرا مسح رمز QR تعمل داخل اللعبة دون أي شاشة إضافية:
- * تظهر مباشرة بحجم 80% من الشاشة في المنتصف، وتستخدمها الألعاب الأربع
- * (كوت، 187، أونو، الجوكر) بنفس الشكل.
+ * InlineQrScanner — كاميرا مسح رمز QR بملء الشاشة دون أي واجهة إضافية:
+ * تفتح الكاميرا بحجم الشاشة كاملاً وتقرأ الرمز مباشرة، مع زر رجوع أزرق
+ * يعيد اللاعب إلى شاشة إنشاء/الانضمام الغرفة. تستخدمها الألعاب الأربعة بنفس الشكل.
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -143,109 +143,113 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
         position: "fixed",
         inset: 0,
         zIndex: 120,
-        background: "rgba(0,0,0,0.82)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+        background: "#000",
+        overflow: "hidden",
       }}
       role="dialog"
       aria-modal="true"
       aria-label="مسح رمز QR"
     >
+      <video
+        ref={videoRef}
+        playsInline
+        muted
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          display: "block",
+        }}
+      />
+      {/* إطار التسديد في المنتصف */}
+      <div
+        aria-hidden
+        style={{
+          pointerEvents: "none",
+          position: "absolute",
+          inset: "6%",
+          border: "3px solid rgba(255,255,255,0.9)",
+          borderRadius: 20,
+          boxShadow: "0 0 0 9999px rgba(0,0,0,0.35)",
+        }}
+      />
       <div
         style={{
-          width: "80%",
-          height: "80%",
-          position: "relative",
-          borderRadius: 24,
-          overflow: "hidden",
-          border: "3px solid #f5b942",
-          background: "#000",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
-          display: "flex",
-          flexDirection: "column",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          padding: "10px 16px",
+          textAlign: "center",
+          fontWeight: 800,
+          color: "#fff",
+          fontSize: "clamp(12px, 2.2vh, 20px)",
+          background: "rgba(0,0,0,0.45)",
+          pointerEvents: "none",
         }}
       >
-        <div
-          style={{
-            padding: "10px 16px",
-            textAlign: "center",
-            fontWeight: 800,
-            color: "#f5b942",
-            fontSize: "clamp(12px, 2.2vh, 20px)",
-            background: "rgba(0,0,0,0.6)",
-          }}
-        >
-          {hint}
-        </div>
-        <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          />
-          {/* إطار التسديد في المنتصف */}
-          <div
-            aria-hidden
-            style={{
-              pointerEvents: "none",
-              position: "absolute",
-              inset: "8%",
-              border: "2px solid rgba(255,255,255,0.85)",
-              borderRadius: 16,
-            }}
-          />
-          {error && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "8%",
-                textAlign: "center",
-                background: "rgba(0,0,0,0.72)",
-                color: "#ffb4ae",
-                fontWeight: 800,
-                fontSize: "clamp(12px, 2.4vh, 22px)",
-              }}
-            >
-              {error}
-            </div>
-          )}
-        </div>
-        <div
-          style={{
-            padding: "10px 16px 14px",
-            display: "flex",
-            justifyContent: "center",
-            background: "rgba(0,0,0,0.6)",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              streamRef.current?.getTracks().forEach((t) => t.stop());
-              streamRef.current = null;
-              onCancel();
-            }}
-            style={{
-              padding: "10px 34px",
-              borderRadius: 14,
-              border: "2px solid rgba(245,185,66,0.5)",
-              background: "linear-gradient(180deg,#1b2733,#101820)",
-              color: "#ffe9c2",
-              fontWeight: 900,
-              fontSize: "clamp(12px, 2.2vh, 20px)",
-              cursor: "pointer",
-            }}
-          >
-            إلغاء
-          </button>
-        </div>
+        {hint}
       </div>
+      {/* زر الرجوع: نفس الشكل الأزرق المستخدم في كل أيقونات التطبيق */}
+      <button
+        type="button"
+        onClick={() => {
+          streamRef.current?.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+          onCancel();
+        }}
+        aria-label="رجوع"
+        style={{
+          position: "absolute",
+          top: "clamp(10px, 2.5vmin, 20px)",
+          right: "clamp(12px, 2.5vmin, 24px)",
+          width: "clamp(44px, 7vmin, 56px)",
+          height: "clamp(44px, 7vmin, 56px)",
+          borderRadius: "50%",
+          border: "2px solid rgba(77,243,255,.45)",
+          background: "linear-gradient(135deg,rgba(60,188,255,.25),rgba(14,134,224,.45))",
+          boxShadow: "0 2px 10px rgba(10,90,156,.35)",
+          cursor: "pointer",
+          display: "grid",
+          placeItems: "center",
+          padding: 0,
+          zIndex: 2,
+        }}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="55%"
+          height="55%"
+          fill="none"
+          stroke="#fff"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+      {error && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "10%",
+            textAlign: "center",
+            background: "rgba(0,0,0,0.78)",
+            color: "#ffb4ae",
+            fontWeight: 800,
+            fontSize: "clamp(12px, 2.4vh, 22px)",
+          }}
+        >
+          {error}
+        </div>
+      )}
     </div>,
     document.body,
   );

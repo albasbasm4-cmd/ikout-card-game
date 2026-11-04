@@ -9,5 +9,11 @@
   },
   "android": {
     "allowMixedContent": true
+  },
+  "plugins": {
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    }
   }
 }

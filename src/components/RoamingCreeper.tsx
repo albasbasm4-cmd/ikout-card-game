@@ -321,14 +321,7 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
 
     buildAboutText(aboutText);
 
-    /* ---------- Smooth, stable scroll & touch-drag handling for About Us ---------- */
-    let lastTouchX = 0,
-      lastTouchY = 0,
-      lastTouchTime = 0;
-    let scrollVelocity = 0,
-      momentumRaf = 0;
-    let isDraggingScroll = false;
-
+    /* ---------- التمرير الأصلي: يديره النظام على #aboutText مثل بقية التطبيقات ---------- */
     let autoScrollRaf = 0,
       autoScrollTimer = 0,
       autoScrollActive = false;
@@ -392,88 +385,6 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
       capture: true,
       passive: true,
     });
-
-    function stopMomentum() {
-      if (momentumRaf) {
-        cancelAnimationFrame(momentumRaf);
-        momentumRaf = 0;
-      }
-    }
-
-    function handleWheel(e: WheelEvent) {
-      if (s2.dataset["phase"] !== "icon") return;
-      onUserInterruptScroll();
-      const isRotated = s2.dataset["orientation"] === "rotated-landscape";
-      const delta = isRotated
-        ? Math.abs(e.deltaY) >= Math.abs(e.deltaX)
-          ? e.deltaY
-          : e.deltaX
-        : Math.abs(e.deltaY) >= Math.abs(e.deltaX)
-          ? e.deltaY
-          : e.deltaX;
-      aboutText.scrollTop += delta;
-    }
-    s2.addEventListener("wheel", handleWheel, { passive: true });
-
-    function onTouchStart(e: TouchEvent | MouseEvent) {
-      if (s2.dataset["phase"] !== "icon") return;
-      onUserInterruptScroll();
-      const touch = (e as TouchEvent).touches ? (e as TouchEvent).touches[0] : (e as MouseEvent);
-      lastTouchX = touch.clientX;
-      lastTouchY = touch.clientY;
-      lastTouchTime = performance.now();
-      scrollVelocity = 0;
-      isDraggingScroll = true;
-      stopMomentum();
-    }
-
-    function onTouchMove(e: TouchEvent | MouseEvent) {
-      if (!isDraggingScroll || s2.dataset["phase"] !== "icon") return;
-      const touch = (e as TouchEvent).touches ? (e as TouchEvent).touches[0] : (e as MouseEvent);
-      const curX = touch.clientX;
-      const curY = touch.clientY;
-      const now = performance.now();
-      const dt = Math.max(1, now - lastTouchTime);
-
-      const isRotated = s2.dataset["orientation"] === "rotated-landscape";
-      const dy = lastTouchY - curY;
-      const dx = lastTouchX - curX;
-      // الاتجاه الطبيعي لسحب وقراءة النص: عند السحب لأسفل يتحرك النص لأسفل وعند السحب لأعلى يتحرك لأعلى
-      const delta = isRotated ? (Math.abs(dy) > Math.abs(dx) ? -dy : dx) : -dy;
-
-      if (Math.abs(delta) > 0.5) {
-        aboutText.scrollTop += delta;
-        scrollVelocity = delta / dt;
-        lastTouchX = curX;
-        lastTouchY = curY;
-        lastTouchTime = now;
-        if (e.cancelable && e.type === "touchmove") e.preventDefault();
-      }
-    }
-
-    function onTouchEnd() {
-      if (!isDraggingScroll) return;
-      isDraggingScroll = false;
-      if (Math.abs(scrollVelocity) > 0.15) {
-        let v = scrollVelocity * 16;
-        const friction = 0.95;
-        function stepMomentum() {
-          if (Math.abs(v) < 0.5 || s2.dataset["phase"] !== "icon") {
-            momentumRaf = 0;
-            return;
-          }
-          aboutText.scrollTop += v;
-          v *= friction;
-          momentumRaf = requestAnimationFrame(stepMomentum);
-        }
-        momentumRaf = requestAnimationFrame(stepMomentum);
-      }
-    }
-
-    s2.addEventListener("touchstart", onTouchStart, { passive: true });
-    s2.addEventListener("touchmove", onTouchMove as any, { passive: false });
-    s2.addEventListener("touchend", onTouchEnd, { passive: true });
-    s2.addEventListener("touchcancel", onTouchEnd, { passive: true });
 
     /* ---------- About Us story text ---------- */
     function buildAboutText(box: HTMLElement) {
@@ -1047,14 +958,8 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", fitAbout);
-      s2.removeEventListener("wheel", handleWheel);
-      s2.removeEventListener("touchstart", onTouchStart);
-      s2.removeEventListener("touchmove", onTouchMove as any);
-      s2.removeEventListener("touchend", onTouchEnd);
-      s2.removeEventListener("touchcancel", onTouchEnd);
       clearTimeout(aboutTimer);
       stopAutoScroll();
-      stopMomentum();
       aboutMusic.pause();
       cv.remove();
       tap.remove();
