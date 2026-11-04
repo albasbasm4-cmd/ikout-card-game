@@ -95,6 +95,11 @@ export async function startJokerHost(code: string): Promise<void> {
         { type?: string; payload?: Record<string, unknown> } | undefined;
       if (!p?.type) return;
       if (p.type === "HELLO") {
+        const givenCode = String(p.payload?.["roomCode"] ?? "").trim().toUpperCase();
+        if (host.code && givenCode !== host.code.toUpperCase()) {
+          hubSendTo(clientId, { ch: "joker", packet: { type: "INVALID_ROOM" } });
+          return;
+        }
         const name = String(p.payload?.["name"] ?? "لاعب");
         const used = new Set(host.clientIdToPid.values());
         let pid: string | null = null;
@@ -258,7 +263,7 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
         socket.send({
           v: 1,
           type: "HELLO",
-          payload: { name: opts.name || "لاعب" },
+          payload: { name: opts.name || "لاعب", roomCode: opts.code },
         } as never);
       } else if (st === "HOST_DROPPED" || st === "DISCONNECTED") {
         finish(false);
@@ -266,6 +271,10 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
     });
     socket.onMessage((packet) => {
       const p = packet as unknown as { type?: string; payload?: Record<string, unknown> };
+      if (p?.type === "INVALID_ROOM" && !settled) {
+        finish(false);
+        return;
+      }
       if (!client && p?.type === "WELCOME" && !settled) {
         settled = true;
         window.clearTimeout(timeout);

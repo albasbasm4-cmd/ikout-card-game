@@ -163,6 +163,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         playerName: profile.name || "لاعب",
         characterId: profile.characterId,
         clientToken: myTokenRef.current,
+        roomCode,
       });
     }
 

@@ -4,13 +4,13 @@
  */
 
 import { Card187, GameState187, Player187, Suit187 } from "../types";
-import { ensureHubServer, hubBroadcast, registerHubChannel } from "../../network/gameHub";
+import { ensureHubServer, hubBroadcast, hubSendTo, registerHubChannel } from "../../network/gameHub";
 import { getJoinCandidateIps } from "../../network/wssBridge";
 import { LocalClientSocket } from "../../network/LocalClientSocket";
 
 export type Client187Packet =
   | { type: "CHAT"; seat: number; message: string }
-  | { type: "JOIN"; playerName: string; characterId?: string; clientToken: string }
+  | { type: "JOIN"; playerName: string; characterId?: string; clientToken: string; roomCode?: string }
   | { type: "LEAVE"; clientToken: string }
   | { type: "BID"; seat: number; bid: number }
   | { type: "DISCARD"; seat: number; cardIds: string[] }
@@ -42,6 +42,7 @@ export class Room187Channel {
   private unregHost: (() => void) | null = null;
   private disposed = false;
   private role: "host" | "client" | "auto";
+  private code: string;
   /** رسائل مرسلة قبل جهوزية النقل (اتصال العميل أو تسجيل قناة المضيف). */
   private pending: (Client187Packet | Host187Packet)[] = [];
   private handlers = new Set<(msg: Client187Packet | Host187Packet) => void>();
@@ -54,6 +55,7 @@ export class Room187Channel {
    */
   constructor(roomCode: string, role: "host" | "client" | "auto" = "auto") {
     const code = roomCode.trim().toUpperCase();
+    this.code = code;
     this.role = role;
     if (typeof BroadcastChannel !== "undefined") {
       this.bc = new BroadcastChannel(`ikout187_room_${code}`);
@@ -82,12 +84,42 @@ export class Room187Channel {
       onClientDisconnected() {
         /* المضيف يكتشف المغادرة عبر توقف رسائل المنضم */
       },
-      onClientMessage: (_clientId, msg) => {
+      onClientMessage: (clientId, msg) => {
         const packet = (msg as Record<string, unknown>)["packet"] as
           | Client187Packet
           | Host187Packet
           | undefined;
-        if (packet) this.emit(packet);
+        if (!packet || typeof packet !== "object" || !("type" in packet)) return;
+        if (packet.type === "JOIN") {
+          const j = packet as Record<string, unknown> as {
+            payload?: Record<string, unknown>;
+            clientToken?: unknown;
+            roomCode?: unknown;
+          };
+          const reject = () => {
+            hubSendTo(clientId, {
+              ch: "g187",
+              packet: { type: "ERROR", message: "رمز الغرفة غير صحيح" } as never,
+            });
+          };
+          if (j.clientToken === undefined) {
+            // رسالة JOIN التلقائية من طبقة النقل: تحقق من الرمز ولا تسجل لاعباً وهمياً
+            const room = j.payload?.["roomCode"];
+            if (room === undefined || String(room).trim().toUpperCase() !== this.code) {
+              reject();
+            }
+            return;
+          }
+          // JOIN صريح من شاشة الغرفة: يجب أن يطابق رمز الغرفة
+          if (
+            j.roomCode === undefined ||
+            String(j.roomCode).trim().toUpperCase() !== this.code
+          ) {
+            reject();
+            return;
+          }
+        }
+        this.emit(packet);
       },
     });
     this.flushPending();
