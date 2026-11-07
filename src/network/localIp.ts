@@ -1,3 +1,4 @@
+import { getNativeWssPlugin } from "./wssBridge";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -72,13 +73,17 @@ export async function getLocalIpAddress(): Promise<string> {
   }
 
   // الإضافة الأصلية أولاً: WebRTC داخل WebView قد يعيد مرشحات mDNS مشفرة
-  const wssPlugin = (window as any)?.Capacitor?.Plugins?.WebSocketServer;
-  if (wssPlugin && typeof wssPlugin.getIpAddress === "function") {
+  const wssPlugin = getNativeWssPlugin();
+
+  if (wssPlugin?.getIpAddress) {
     try {
       const res = await wssPlugin.getIpAddress();
-      if (res && res.ip) return res.ip as string;
-    } catch {
-      // ignore
+
+      if (res?.ip) {
+        return res.ip;
+      }
+    } catch (error) {
+      console.error("[localIp] Native IP detection failed:", error);
     }
   }
 
