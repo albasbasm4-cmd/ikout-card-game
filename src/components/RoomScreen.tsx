@@ -128,6 +128,8 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
   const lobbyStartedRef = useRef(false);
   const [joinCode, setJoinCode] = useState("");
   const [roomCode] = useState<string>(() => generateRoomCode());
+  const [hostServerReady, setHostServerReady] = useState(false);
+  const [hostServerError, setHostServerError] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -143,12 +145,25 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
       variant: initialConfig?.variant ?? "BO6",
       targetScore: initialConfig?.targetScore ?? 51,
     });
+    let cancelled = false;
+
+    handle.startPromise.then((ok) => {
+      if (cancelled) return;
+
+      setHostServerReady(ok);
+
+      if (!ok) {
+        setHostServerError("تعذر تشغيل خادم اللعب الجماعي. أغلق الغرفة وحاول مجدداً.");
+      }
+    });
+
     const session = handle.session;
     const off = session.onSeatUpdate((seat, player) => {
       setSeatKind(seat, "HUMAN_REMOTE", player.name);
       setSeatConnected(seat, true);
     });
     return () => {
+      cancelled = true;
       off();
       clearKoutNet();
     };
@@ -291,7 +306,9 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
       const candidates = await getJoinCandidateIps();
       if (!candidates.length) {
         setConnecting(false);
-        setConnectError("لم يتم العثور على مضيف على الشبكة المحلية — تأكد من الاتصال بنفس نقطة الاتصال.");
+        setConnectError(
+          "لم يتم العثور على مضيف على الشبكة المحلية — تأكد من الاتصال بنفس نقطة الاتصال.",
+        );
         return;
       }
       connectToIp(candidates[0], 8080, candidates);
@@ -330,6 +347,12 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
 
   const startRoom = () => {
     playTapSound();
+
+    if (!hostServerReady || !getActiveKoutHost()?.started) {
+      toast(hostServerError || "انتظر حتى يصبح خادم الغرفة جاهزاً");
+      return;
+    }
+
     if (!allFilled) {
       toast("أكمل جميع المقاعد أولاً");
       return;
@@ -673,9 +696,15 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
                         type="button"
                         className={`rm-btn rm-red rm-go ${allFilled ? "" : "rm-gray"}`}
                         onClick={startRoom}
+                        disabled={!hostServerReady}
                       >
                         <span>ابدأ المباراة</span>
                       </button>
+                      {isHost && !hostServerReady && (
+                        <div className="rm-lbl" style={{ color: "#ffb4ae" }}>
+                          {hostServerError || "جارٍ تجهيز خادم اللعب الجماعي..."}
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="rm-stt rm-dk">
