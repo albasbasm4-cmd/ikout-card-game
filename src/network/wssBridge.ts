@@ -1,4 +1,5 @@
-import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -38,9 +39,9 @@ interface NativeWssPlugin {
   send(o: { clientId: string; message: string }): Promise<unknown>;
   broadcast(o: { message: string }): Promise<unknown>;
   closeClient?(o: { clientId: string }): Promise<unknown>;
-  getIpAddress?(): Promise<{ ip?: string }>;
-  getGatewayIp?(): Promise<{ ip?: string }>;
-  addListener(eventName: string, cb: (evt: any) => void): Promise<unknown> | void;
+  getIpAddress?(): Promise<{ ip?: string | null }>;
+  getGatewayIp?(): Promise<{ ip?: string | null }>;
+  addListener(eventName: string, cb: (evt: unknown) => void): Promise<PluginListenerHandle>;
 }
 
 const WebSocketServer = registerPlugin<NativeWssPlugin>("WebSocketServer");
@@ -58,42 +59,72 @@ export function getNativeWssPlugin(): NativeWssPlugin | null {
 export function createNativeWssBridge(): WssBridge {
   const plugin = getNativeWssPlugin();
   const handlers = new Set<(evt: WssClientEvent) => void>();
+  let listenerHandle: PluginListenerHandle | null = null;
+  let isStopped = false;
 
   const emit = (evt: WssClientEvent) => {
-    for (const h of handlers) h(evt);
+    if (isStopped) return;
+    for (const h of handlers) {
+      try {
+        h(evt);
+      } catch (err) {
+        console.error("[WssBridge] event handler error:", err);
+      }
+    }
   };
 
   if (plugin) {
-    plugin.addListener("wsEvent", (evt: any) => {
-      if (!evt || typeof evt.type !== "string") return;
-      const type = evt.type as WssClientEvent["type"];
-      if (
-        type !== "CLIENT_CONNECTED" &&
-        type !== "CLIENT_DISCONNECTED" &&
-        type !== "CLIENT_MESSAGE"
-      )
-        return;
-      const out: WssClientEvent = { type, clientId: String(evt.clientId ?? "") };
-      if (type === "CLIENT_MESSAGE") {
-        const raw = evt.data;
-        if (typeof raw === "string") {
-          try {
-            out.data = JSON.parse(raw);
-          } catch {
+    plugin
+      .addListener("wsEvent", (rawEvt: unknown) => {
+        if (!rawEvt || typeof rawEvt !== "object") return;
+        const evt = rawEvt as Record<string, unknown>;
+        if (typeof evt.type !== "string") return;
+        const type = evt.type as WssClientEvent["type"];
+        if (
+          type !== "CLIENT_CONNECTED" &&
+          type !== "CLIENT_DISCONNECTED" &&
+          type !== "CLIENT_MESSAGE"
+        ) {
+          return;
+        }
+
+        const out: WssClientEvent = {
+          type,
+          clientId: String(evt.clientId ?? ""),
+        };
+
+        if (type === "CLIENT_MESSAGE") {
+          const raw = evt.data;
+          if (typeof raw === "string") {
+            try {
+              out.data = JSON.parse(raw);
+            } catch {
+              out.data = raw;
+            }
+          } else {
             out.data = raw;
           }
-        } else {
-          out.data = raw;
         }
-      }
-      emit(out);
-    });
+
+        emit(out);
+      })
+      .then((handle) => {
+        if (isStopped) {
+          void handle.remove();
+        } else {
+          listenerHandle = handle;
+        }
+      })
+      .catch((err) => {
+        console.error("[WssBridge] Failed to register wsEvent listener:", err);
+      });
   }
 
   return {
     isNative: !!plugin,
     async start(port) {
       if (!plugin) return false;
+      isStopped = false;
       try {
         await plugin.start({ port });
         return true;
@@ -103,13 +134,24 @@ export function createNativeWssBridge(): WssBridge {
       }
     },
     stop() {
+      isStopped = true;
+      if (listenerHandle) {
+        try {
+          void listenerHandle.remove();
+        } catch {
+          /* ignore */
+        }
+        listenerHandle = null;
+      }
       try {
         void plugin?.stop();
       } catch {
         /* ignore */
       }
+      handlers.clear();
     },
     sendTo(clientId, message) {
+      if (isStopped) return;
       try {
         void plugin?.send({ clientId, message });
       } catch {
@@ -117,6 +159,7 @@ export function createNativeWssBridge(): WssBridge {
       }
     },
     broadcast(message) {
+      if (isStopped) return;
       try {
         void plugin?.broadcast({ message });
       } catch {
@@ -124,6 +167,7 @@ export function createNativeWssBridge(): WssBridge {
       }
     },
     closeClient(clientId) {
+      if (isStopped) return;
       try {
         void plugin?.closeClient?.({ clientId });
       } catch {
@@ -168,7 +212,7 @@ export async function getJoinCandidateIps(): Promise<string[]> {
   const bridge = tryCreateNativeWssBridge();
   if (bridge) {
     const gw = await bridge.getGatewayIp();
-    if (gw) candidates.push(gw);
+    if (gw && !candidates.includes(gw)) candidates.push(gw);
   }
   for (const fallback of ["192.168.43.1", "192.168.49.1", "192.168.1.1"]) {
     if (!candidates.includes(fallback)) candidates.push(fallback);

@@ -16,6 +16,7 @@ const requiredEntries = [
   '<uses-permission android:name="android.permission.INTERNET" />',
   '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />',
   '<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />',
+  '<uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />',
   '<uses-feature android:name="android.hardware.camera" android:required="false" />',
   '<uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />',
 ];
@@ -39,12 +40,19 @@ fs.writeFileSync(manifestPath, manifest, "utf-8");
 console.log(
   "Patched AndroidManifest.xml with camera/network permissions and hardware acceleration.",
 );
+
 // ---------------- تسجيل الإضافة الأصلية لخادم WebSocket ----------------
 // 1) نسخ مصدر الإضافة إلى مشروع الأندرويد
 // 2) إضافة اعتماد NanoHTTPD WebSocket إلى build.gradle
-// 3) تسجيل الإضافة في MainActivity حتى تتوفر window.Capacitor.Plugins.WebSocketServer
-const pluginSrc = path.resolve(process.cwd(), "android-plugin/com/ikout/cardgame/ws/WebSocketServerPlugin.java");
-const pluginDestDir = path.resolve(process.cwd(), "android/app/src/main/java/com/ikout/cardgame/ws");
+// 3) تسجيل الإضافة في MainActivity قبل super.onCreate والسماح بـ mixed content
+const pluginSrc = path.resolve(
+  process.cwd(),
+  "android-plugin/com/ikout/cardgame/ws/WebSocketServerPlugin.java",
+);
+const pluginDestDir = path.resolve(
+  process.cwd(),
+  "android/app/src/main/java/com/ikout/cardgame/ws",
+);
 const pluginDest = path.join(pluginDestDir, "WebSocketServerPlugin.java");
 
 if (fs.existsSync(pluginSrc)) {
@@ -60,32 +68,44 @@ if (fs.existsSync(gradlePath)) {
   let gradle = fs.readFileSync(gradlePath, "utf-8");
   const dep = "implementation 'org.nanohttpd:nanohttpd-websocket:2.3.1'";
   if (!gradle.includes("nanohttpd")) {
-    gradle = gradle.replace(
-      /dependencies\s*{/,
-      `dependencies {\n    ${dep}`,
-    );
+    gradle = gradle.replace(/dependencies\s*{/, `dependencies {\n    ${dep}`);
     fs.writeFileSync(gradlePath, gradle, "utf-8");
     console.log("Added NanoHTTPD WebSocket dependency to app/build.gradle.");
   }
 }
 
-const activityPath = path.resolve(process.cwd(), "android/app/src/main/java/com/ikout/cardgame/MainActivity.java");
+const activityPath = path.resolve(
+  process.cwd(),
+  "android/app/src/main/java/com/ikout/cardgame/MainActivity.java",
+);
 if (fs.existsSync(activityPath)) {
   const mainActivity = `package com.ikout.cardgame;
 
 import android.os.Bundle;
+import android.webkit.WebSettings;
+
 import com.getcapacitor.BridgeActivity;
 import com.ikout.cardgame.ws.WebSocketServerPlugin;
 
 public class MainActivity extends BridgeActivity {
-  @Override
-  public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    registerPlugin(WebSocketServerPlugin.class);
-  }
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        // يجب تسجيل الإضافة قبل تهيئة Capacitor Bridge
+        registerPlugin(WebSocketServerPlugin.class);
+
+        super.onCreate(savedInstanceState);
+
+        // السماح باتصالات WebSocket المحلية من WebView
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView()
+                .getSettings()
+                .setMixedContentMode(
+                    WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                );
+        }
+    }
 }
 `;
   fs.writeFileSync(activityPath, mainActivity, "utf-8");
-  console.log("Registered WebSocketServerPlugin in MainActivity.");
+  console.log("Registered WebSocketServerPlugin correctly in MainActivity.");
 }
-

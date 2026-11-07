@@ -14,7 +14,7 @@ import {
 } from "./protocol";
 import { GameState, PlayerSlot, SeatKind } from "../types/kout";
 import { RULES } from "../rules/config";
-import { verifyCheatReport, applyCheatVerdict } from "../rules/cheat";
+import { applyCheatVerdict } from "../rules/cheat";
 
 export interface HostSessionOptions {
   engine?: KoutGameEngine;
@@ -37,16 +37,28 @@ export class HostSession {
   private hostSeat: number;
   private optionsRef: HostSessionOptions;
   private transport: IHostTransport;
+  /** ربط معرف الاتصال المباشر (مثل c1) برقم المقعد */
   private tokenToSeat = new Map<string, number>();
+  /** ربط رقم المقعد بمعرف الاتصال المباشر */
   private seatToToken = new Map<number, string>();
+  /** ربط الرمز الدائم للجلسة (playerToken) برقم المقعد لدعم إعادة الاتصال واستعادة المقعد */
+  private sessionTokenToSeat = new Map<string, number>();
+  private seatToSessionToken = new Map<number, string>();
+
   private hostSeq = 0;
   private unsubscribeMessages?: () => void;
+  private unsubscribeDisconnects?: () => void;
   private roomCode?: string;
+
   // مضاد إساءة استخدام البلاغات: حد أقصى للجولة الواحدة وفاصل زمني بين البلاغات
   private cheatReportsThisRound = 0;
   private cheatReportRound = -1;
   private lastCheatReportAt = 0;
   private stateListeners = new Set<(state: GameState) => void>();
+  private seatListeners = new Set<
+    (seatIndex: number, player: PlayerSlot, players: PlayerSlot[]) => void
+  >();
+  private continueListeners = new Set<(seat: number, continuePlay: boolean) => void>();
 
   constructor(transport: IHostTransport, options: HostSessionOptions = {}) {
     this.transport = transport;
@@ -66,7 +78,7 @@ export class HostSession {
       });
     }
 
-    this.setupTransportListener();
+    this.setupTransportListeners();
   }
 
   public get state(): Readonly<GameState> {
@@ -94,10 +106,6 @@ export class HostSession {
     };
   }
 
-  private seatListeners = new Set<
-    (seatIndex: number, player: PlayerSlot, players: PlayerSlot[]) => void
-  >();
-
   /** يشترك في انضمام/تحديث مقعد (واجهة لوبي المضيف). */
   public onSeatUpdate(
     cb: (seatIndex: number, player: PlayerSlot, players: PlayerSlot[]) => void,
@@ -108,21 +116,7 @@ export class HostSession {
     };
   }
 
-  public startRound(seed?: number): void {
-    this.engine.startRound(seed);
-    this.broadcastState();
-  }
-
-  private setupTransportListener(): void {
-    this.unsubscribeMessages = this.transport.onClientMessage(
-      (playerToken: string, packet: ClientPacket) => {
-        this.handleClientPacket(playerToken, packet);
-      },
-    );
-  }
-
-  private continueListeners = new Set<(seat: number, continuePlay: boolean) => void>();
-  /** Continue/stop decision sent by a joined player after GAME_END. */
+  /** قرار الاستمرار/التوقف بعد نهاية المباراة */
   public onContinueDecision(cb: (seat: number, continuePlay: boolean) => void): () => void {
     this.continueListeners.add(cb);
     return () => {
@@ -130,10 +124,61 @@ export class HostSession {
     };
   }
 
+  public startRound(seed?: number): void {
+    this.engine.startRound(seed);
+    this.broadcastState();
+  }
+
+  private setupTransportListeners(): void {
+    this.unsubscribeMessages = this.transport.onClientMessage(
+      (playerToken: string, packet: ClientPacket) => {
+        this.handleClientPacket(playerToken, packet);
+      },
+    );
+
+    if (this.transport.onClientDisconnected) {
+      this.unsubscribeDisconnects = this.transport.onClientDisconnected((playerToken: string) => {
+        this.handleClientDisconnect(playerToken);
+      });
+    }
+  }
+
   public destroy(): void {
     if (this.unsubscribeMessages) {
       this.unsubscribeMessages();
       this.unsubscribeMessages = undefined;
+    }
+    if (this.unsubscribeDisconnects) {
+      this.unsubscribeDisconnects();
+      this.unsubscribeDisconnects = undefined;
+    }
+    this.stateListeners.clear();
+    this.seatListeners.clear();
+    this.continueListeners.clear();
+  }
+
+  /** معالجة انقطاع اتصال عميل مؤقتاً والاحتفاظ بمقعده لتمكينه من العودة */
+  public handleClientDisconnect(transportToken: string): void {
+    const seat = this.tokenToSeat.get(transportToken);
+    if (seat === undefined) return;
+
+    this.tokenToSeat.delete(transportToken);
+    this.seatToToken.delete(seat);
+
+    // تحديث حالة الاتصال في المقعد دون حذفه فوراً
+    const currentPlayers = [...(this.engine.state.players || [])];
+    if (currentPlayers[seat]) {
+      const updatedSlot: PlayerSlot = {
+        ...currentPlayers[seat],
+        connected: false,
+      };
+      currentPlayers[seat] = updatedSlot;
+      (this.engine.state as any).players = currentPlayers;
+
+      // إخطار واجهات اللوبي والمباراة بانقطاع اللاعب
+      this.optionsRef.onSeatUpdate?.(seat, updatedSlot, currentPlayers);
+      for (const l of this.seatListeners) l(seat, updatedSlot, currentPlayers);
+      this.broadcastState();
     }
   }
 
@@ -189,6 +234,7 @@ export class HostSession {
   private handleJoin(playerToken: string, packet: Extract<ClientPacket, { type: "JOIN" }>): void {
     const numSeats = RULES[this.engine.state.variant].seats;
     const preferred = packet.payload.preferredSeat;
+    const sessionToken = packet.playerToken || playerToken;
 
     if (this.roomCode) {
       const given = (packet.payload as { roomCode?: string }).roomCode?.trim().toUpperCase();
@@ -198,11 +244,28 @@ export class HostSession {
       }
     }
 
-    // Check if token already assigned
-    let assignedSeat = this.tokenToSeat.get(playerToken);
+    let assignedSeat: number | undefined;
 
+    // 1) فحص هل هذا اللاعب يعيد الاتصال بنفس رمز الجلسة الدائم (Reconnect)
+    if (sessionToken && this.sessionTokenToSeat.has(sessionToken)) {
+      const prevSeat = this.sessionTokenToSeat.get(sessionToken)!;
+      if (prevSeat !== this.hostSeat && prevSeat >= 0 && prevSeat < numSeats) {
+        // تنظيف أي معرف اتصال قديم لهذا المقعد
+        const oldTransport = this.seatToToken.get(prevSeat);
+        if (oldTransport && oldTransport !== playerToken) {
+          this.tokenToSeat.delete(oldTransport);
+        }
+        assignedSeat = prevSeat;
+      }
+    }
+
+    // 2) فحص هل الاتصال الحالي مسجل مسبقاً
     if (assignedSeat === undefined) {
-      // Find open seat (مقعد المضيف محجوز دائماً)
+      assignedSeat = this.tokenToSeat.get(playerToken);
+    }
+
+    // 3) تخصيص مقعد جديد مفتوح
+    if (assignedSeat === undefined) {
       if (
         preferred !== undefined &&
         preferred >= 0 &&
@@ -226,23 +289,29 @@ export class HostSession {
       return;
     }
 
-    // Register mapping
+    // تسجيل الربط الثنائي
     this.tokenToSeat.set(playerToken, assignedSeat);
     this.seatToToken.set(assignedSeat, playerToken);
+    if (sessionToken) {
+      this.sessionTokenToSeat.set(sessionToken, assignedSeat);
+      this.seatToSessionToken.set(assignedSeat, sessionToken);
+    }
 
-    // Update player slot in state
+    // تحديث بيانات اللاعب في المقعد
     const currentPlayers = [...(this.engine.state.players || [])];
+    const existingName = currentPlayers[assignedSeat]?.name;
     const updatedSlot: PlayerSlot = {
       seatIndex: assignedSeat,
       kind: "HUMAN_REMOTE" as SeatKind,
-      name: packet.payload.playerName || `لاعب ${assignedSeat + 1}`,
+      name: packet.payload.playerName || existingName || `لاعب ${assignedSeat + 1}`,
       team: (assignedSeat % 2) as 0 | 1,
       connected: true,
-      playerToken,
+      playerToken: sessionToken,
     };
     currentPlayers[assignedSeat] = updatedSlot;
+    (this.engine.state as any).players = currentPlayers;
 
-    // Inform client of assigned seat
+    // إرسال تحديث المقعد للاعب
     this.sendPacket(playerToken, {
       type: "SEAT_UPDATE",
       payload: {
@@ -252,10 +321,11 @@ export class HostSession {
       },
     });
 
-    // Send individual filtered state snapshot
+    // إرسال الحالة المخصصة لهذا المقعد
     this.sendFilteredStateToSeat(assignedSeat);
     this.optionsRef.onSeatUpdate?.(assignedSeat, updatedSlot, currentPlayers);
     for (const l of this.seatListeners) l(assignedSeat, updatedSlot, currentPlayers);
+    this.broadcastState();
   }
 
   private handleBidRequest(
@@ -278,7 +348,6 @@ export class HostSession {
       return;
     }
 
-    // Authoritative check: sender seat = current seat
     if (senderSeat !== this.engine.state.currentSeat) {
       this.sendError(
         playerToken,
@@ -318,7 +387,6 @@ export class HostSession {
       return;
     }
 
-    // Authoritative check: only winning bidder can declare trump
     if (senderSeat !== this.engine.state.bidderSeat) {
       this.sendError(
         playerToken,
@@ -358,7 +426,6 @@ export class HostSession {
       return;
     }
 
-    // Authoritative check: sender seat = current seat
     if (senderSeat !== this.engine.state.currentSeat) {
       this.sendError(
         playerToken,
@@ -370,7 +437,6 @@ export class HostSession {
     }
 
     try {
-      // اللعب الحر ضد لاعبين بشريين: أي ورقة مسموحة، والغش يُحكم به فقط عبر البلاغ
       this.engine.playCard(senderSeat, packet.payload.cardId, {
         allowAnyCard: this.isFreePlay(),
       });
@@ -381,7 +447,6 @@ export class HostSession {
     }
   }
 
-  /** هل اللعبة ضد لاعبين بشريين (يوجد بشريان أو أكثر)؟ حينها يُفعَّل اللعب الحر. */
   private isFreePlay(): boolean {
     return this.humanSeatCount() >= 2;
   }
@@ -392,10 +457,6 @@ export class HostSession {
     return humans > 0 ? humans : 1;
   }
 
-  /**
-   * بلاغ غش: يتحقق المضيف بيد المُبلَّغ عنه الكاملة وقت اللعب (لديه هو فقط الحقيقة).
-   * حد ٣ بلاغات لكل جولة وفاصل ٨ ثوانٍ بين البلاغات لمنع الإساءة.
-   */
   private handleCheatReport(
     playerToken: string,
     packet: Extract<ClientPacket, { type: "CHEAT_REPORT" }>,
@@ -443,7 +504,6 @@ export class HostSession {
     const { accusedSeat, cardType } = packet.payload;
     const result = applyCheatVerdict(this.engine.state, senderSeat, accusedSeat, cardType);
 
-    // بلاغ مرفوض (عن زميل في الفريق نفسه أو عن النفس): لا يستهلك الحد ولا يبدأ التبريد.
     if (!result) {
       this.sendError(
         playerToken,
@@ -457,36 +517,33 @@ export class HostSession {
     this.lastCheatReportAt = now;
     this.cheatReportsThisRound += 1;
 
-    // تحديث المحرك بالحالة الجديدة بالنقاط المضاعفة
     this.engine = new KoutGameEngine(
       { variant: this.engine.state.variant, targetScore: this.engine.state.targetScore },
       result.nextState,
     );
 
-    // الحكم يوصل لكل اللاعبين
     for (const seat of this.seatToToken.keys()) {
-      this.sendPacket(this.seatToToken.get(seat) as string, {
-        type: "CHEAT_VERDICT",
-        payload: {
-          confirmed: result.confirmed,
-          accusedSeat,
-          cardType,
-          reporterSeat: senderSeat,
-          roundNo: this.engine.state.roundNo,
-          announcement: result.announcement,
-          pointsAdded: result.pointsAdded,
-          winningTeam: result.winningTeam,
-        },
-      });
+      const clientToken = this.seatToToken.get(seat);
+      if (clientToken) {
+        this.sendPacket(clientToken, {
+          type: "CHEAT_VERDICT",
+          payload: {
+            confirmed: result.confirmed,
+            accusedSeat,
+            cardType,
+            reporterSeat: senderSeat,
+            roundNo: this.engine.state.roundNo,
+            announcement: result.announcement,
+            pointsAdded: result.pointsAdded,
+            winningTeam: result.winningTeam,
+          },
+        });
+      }
     }
 
-    // بث الحالة المحدثة لجميع اللاعبين
     this.broadcastState();
   }
 
-  /**
-   * Broadcasts individual filtered snapshots to all connected clients
-   */
   public broadcastState(): void {
     for (const [seatIndex, token] of this.seatToToken.entries()) {
       this.sendFilteredStateToSeat(seatIndex, token);

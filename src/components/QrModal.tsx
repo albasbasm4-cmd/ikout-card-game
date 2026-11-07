@@ -6,8 +6,19 @@
 import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { createPortal } from "react-dom";
-import { X, Copy, Check, QrCode as QrIcon, Wifi, Sparkles, Edit2, CheckCircle } from "lucide-react";
-import { encodeRoomPayload, getLocalIpAddress } from "../network/localIp";
+import {
+  X,
+  Copy,
+  Check,
+  QrCode as QrIcon,
+  Wifi,
+  Sparkles,
+  Edit2,
+  CheckCircle,
+  AlertTriangle,
+  RotateCw,
+} from "lucide-react";
+import { encodeRoomPayload, getLocalIpAddress, isValidIpv4 } from "../network/localIp";
 
 export interface QrModalProps {
   roomCode: string;
@@ -26,25 +37,50 @@ export const QrModal: React.FC<QrModalProps> = ({
   onClose,
   className = "",
 }) => {
-  const [ip, setIp] = useState<string>(initialIp || "192.168.1.105");
+  const [ip, setIp] = useState<string | null>(initialIp || null);
+  const [isDetecting, setIsDetecting] = useState<boolean>(!initialIp);
   const [isEditingIp, setIsEditingIp] = useState<boolean>(false);
-  const [tempIp, setTempIp] = useState<string>(ip);
+  const [tempIp, setTempIp] = useState<string>(initialIp || "");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState<boolean>(false);
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
 
-  useEffect(() => {
-    if (!initialIp) {
-      getLocalIpAddress().then((detected) => {
-        setIp(detected);
-        setTempIp(detected);
+  const detectIp = () => {
+    setIsDetecting(true);
+    getLocalIpAddress()
+      .then((detected) => {
+        if (detected && isValidIpv4(detected)) {
+          setIp(detected);
+          setTempIp(detected);
+        } else {
+          setIp(null);
+        }
+      })
+      .catch(() => {
+        setIp(null);
+      })
+      .finally(() => {
+        setIsDetecting(false);
       });
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (initialIp && isValidIpv4(initialIp)) {
+      setIp(initialIp);
+      setTempIp(initialIp);
+      setIsDetecting(false);
+    } else {
+      detectIp();
     }
-  }, [initialIp]);
+  }, [initialIp, isOpen]);
 
   // Generate QR whenever IP, port, or roomCode changes
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !ip) {
+      setQrDataUrl("");
+      return;
+    }
 
     const payload = encodeRoomPayload(ip, port, roomCode);
     QRCode.toDataURL(payload, {
@@ -61,7 +97,7 @@ export const QrModal: React.FC<QrModalProps> = ({
 
   if (!isOpen || typeof document === "undefined") return null;
 
-  const connectionUrl = `ws://${ip}:${port}`;
+  const connectionUrl = ip ? `ws://${ip}:${port}` : "";
 
   const handleCopyCode = () => {
     navigator.clipboard?.writeText(roomCode);
@@ -70,16 +106,18 @@ export const QrModal: React.FC<QrModalProps> = ({
   };
 
   const handleCopyUrl = () => {
+    if (!connectionUrl) return;
     navigator.clipboard?.writeText(connectionUrl);
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
   };
 
   const handleSaveIp = () => {
-    if (tempIp.trim()) {
-      setIp(tempIp.trim());
+    const trimmed = tempIp.trim();
+    if (isValidIpv4(trimmed)) {
+      setIp(trimmed);
+      setIsEditingIp(false);
     }
-    setIsEditingIp(false);
   };
 
   return createPortal(
@@ -106,25 +144,36 @@ export const QrModal: React.FC<QrModalProps> = ({
           <h2 className="text-base font-bold text-amber-300">رمز الانضمام للغرفة</h2>
         </div>
         <p className="text-[11px] text-amber-200/60 mb-3">
-          امسح الرمز بكاميرا الجوال أو أدخل الرمز يدوياً
+          امسح الرمز بكاميرا الجوال من جهاز اللاعب الآخر
         </p>
 
         {/* QR Code Container */}
-        <div className="relative bg-white p-3 rounded-2xl shadow-xl border-4 border-amber-400/40 mb-3">
-          {qrDataUrl ? (
+        <div className="relative bg-white p-3 rounded-2xl shadow-xl border-4 border-amber-400/40 mb-3 min-w-[200px] min-h-[200px] flex items-center justify-center">
+          {isDetecting ? (
+            <div className="w-48 h-48 flex flex-col items-center justify-center text-neutral-600 gap-2">
+              <RotateCw className="w-6 h-6 animate-spin text-amber-600" />
+              <span className="text-xs font-bold">جارٍ اكتشاف عنوان المضيف...</span>
+            </div>
+          ) : qrDataUrl ? (
             <img
               src={qrDataUrl}
               alt="QR Code للانضمام"
               className="w-48 h-48 sm:w-52 sm:h-52 rounded-lg object-contain"
             />
           ) : (
-            <div className="w-48 h-48 flex items-center justify-center text-neutral-400 text-xs">
-              جارِ توليد الرمز...
+            <div className="w-48 h-48 flex flex-col items-center justify-center text-red-600 p-2 gap-1.5">
+              <AlertTriangle className="w-7 h-7 text-amber-600" />
+              <span className="text-xs font-bold text-neutral-800">تعذر اكتشاف عنوان IP</span>
+              <span className="text-[10px] text-neutral-600">
+                أدخل عنوان IP يدوياً بالأسفل لعرض الرمز
+              </span>
             </div>
           )}
-          <div className="absolute -bottom-2 -right-2 bg-amber-400 text-black p-1 rounded-full shadow">
-            <Sparkles className="w-3.5 h-3.5" />
-          </div>
+          {qrDataUrl && (
+            <div className="absolute -bottom-2 -right-2 bg-amber-400 text-black p-1 rounded-full shadow">
+              <Sparkles className="w-3.5 h-3.5" />
+            </div>
+          )}
         </div>
 
         {/* 6-Digit Room Code Display */}
@@ -160,17 +209,28 @@ export const QrModal: React.FC<QrModalProps> = ({
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-1.5 text-neutral-300">
               <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-[11px] font-semibold">عنوان السيرفر (IP):</span>
+              <span className="text-[11px] font-semibold">عنوان الخادم (IP):</span>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsEditingIp(!isEditingIp)}
-              className="text-[10px] text-amber-300 hover:text-amber-200 flex items-center gap-0.5 cursor-pointer"
-            >
-              <Edit2 className="w-2.5 h-2.5" />
-              <span>{isEditingIp ? "إلغاء" : "تعديل IP"}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={detectIp}
+                title="إعادة فحص عنوان IP"
+                className="text-[10px] text-emerald-400 hover:text-emerald-300 flex items-center gap-0.5 cursor-pointer"
+              >
+                <RotateCw className={`w-2.5 h-2.5 ${isDetecting ? "animate-spin" : ""}`} />
+                <span>تحديث</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditingIp(!isEditingIp)}
+                className="text-[10px] text-amber-300 hover:text-amber-200 flex items-center gap-0.5 cursor-pointer"
+              >
+                <Edit2 className="w-2.5 h-2.5" />
+                <span>{isEditingIp ? "إلغاء" : "تعديل IP"}</span>
+              </button>
+            </div>
           </div>
 
           {isEditingIp ? (
@@ -179,13 +239,14 @@ export const QrModal: React.FC<QrModalProps> = ({
                 type="text"
                 value={tempIp}
                 onChange={(e) => setTempIp(e.target.value)}
-                placeholder="192.168.1.xxx"
+                placeholder="192.168.1.xxx أو 192.168.43.1"
                 className="flex-1 bg-black/60 border border-amber-400/40 rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-amber-300"
               />
               <button
                 type="button"
                 onClick={handleSaveIp}
-                className="p-1 bg-emerald-600 text-white rounded cursor-pointer"
+                disabled={!isValidIpv4(tempIp.trim())}
+                className="p-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded cursor-pointer"
               >
                 <CheckCircle className="w-4 h-4" />
               </button>
@@ -193,20 +254,22 @@ export const QrModal: React.FC<QrModalProps> = ({
           ) : (
             <div className="flex items-center justify-between mt-0.5">
               <span className="font-mono text-xs font-bold text-emerald-300 select-all">
-                {connectionUrl}
+                {connectionUrl || "لم يتم اكتشاف عنوان بعد"}
               </span>
-              <button
-                type="button"
-                onClick={handleCopyUrl}
-                className="text-[10px] text-amber-300/80 hover:text-amber-200 flex items-center gap-1 cursor-pointer"
-              >
-                {copiedUrl ? (
-                  <Check className="w-3 h-3 text-emerald-400" />
-                ) : (
-                  <Copy className="w-3 h-3" />
-                )}
-                <span>نسخ الرابط</span>
-              </button>
+              {connectionUrl && (
+                <button
+                  type="button"
+                  onClick={handleCopyUrl}
+                  className="text-[10px] text-amber-300/80 hover:text-amber-200 flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedUrl ? (
+                    <Check className="w-3 h-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3 h-3" />
+                  )}
+                  <span>نسخ الرابط</span>
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -39,13 +39,31 @@ export class KoutWssTransport implements IHostTransport {
         const env = msg as unknown as KoutEnvelope;
         if (!env || typeof env !== "object" || !env.packet) return;
         const packet = env.packet as ClientPacket;
-        for (const h of this.messageHandlers) h(clientId, packet);
+        for (const h of this.messageHandlers) {
+          try {
+            h(clientId, packet);
+          } catch (err) {
+            console.error("[KoutWssTransport] error handling message:", err);
+          }
+        }
       },
       onClientConnected: (clientId) => {
-        for (const h of this.connectHandlers) h(clientId);
+        for (const h of this.connectHandlers) {
+          try {
+            h(clientId);
+          } catch (err) {
+            console.error("[KoutWssTransport] error in onClientConnected:", err);
+          }
+        }
       },
       onClientDisconnected: (clientId) => {
-        for (const h of this.disconnectHandlers) h(clientId);
+        for (const h of this.disconnectHandlers) {
+          try {
+            h(clientId);
+          } catch (err) {
+            console.error("[KoutWssTransport] error in onClientDisconnected:", err);
+          }
+        }
       },
     });
     this.ready = true;
@@ -53,7 +71,7 @@ export class KoutWssTransport implements IHostTransport {
   }
 
   private assertReady() {
-    if (!this.ready) console.warn("[KoutWssTransport] start() لم يُستدعَ بعد");
+    if (!this.ready) console.warn("[KoutWssTransport] start() لم يُستدعَ بعد أو لم يكتمل");
   }
 
   sendToClient(playerToken: string, packet: HostPacket): void {
@@ -63,10 +81,6 @@ export class KoutWssTransport implements IHostTransport {
 
   broadcast(packet: HostPacket): void {
     this.assertReady();
-    // بث لكل العملاء المتصلين — الإضافة الأصلية تبث للجميع
-    // (الحزم موجهة بـ playerToken داخلها، والمنضم يتجاهل ما ليس له).
-    // ملاحظة: broadcast يرسل نفس الحزمة للجميع؛ بروتوكول الكوت يوجّه بحسب
-    // playerToken على العميل، لذا نستعمل sendToClient دائماً من HostSession.
     void packet;
   }
 
@@ -88,5 +102,9 @@ export class KoutWssTransport implements IHostTransport {
   destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    this.messageHandlers.clear();
+    this.connectHandlers.clear();
+    this.disconnectHandlers.clear();
+    this.ready = false;
   }
 }

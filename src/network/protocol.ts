@@ -59,7 +59,13 @@ export interface CheatReportPayload {
 }
 
 export type ClientPacketType =
-  "JOIN" | "BID_REQUEST" | "TRUMP_REQUEST" | "PLAY_CARD_REQUEST" | "CHEAT_REPORT" | "PING" | "CONTINUE_DECISION";
+  | "JOIN"
+  | "BID_REQUEST"
+  | "TRUMP_REQUEST"
+  | "PLAY_CARD_REQUEST"
+  | "CHEAT_REPORT"
+  | "PING"
+  | "CONTINUE_DECISION";
 
 export interface BaseClientPacket<TType extends ClientPacketType, TPayload> {
   v: number;
@@ -75,7 +81,10 @@ export type TrumpRequestPacket = BaseClientPacket<"TRUMP_REQUEST", TrumpRequestP
 export type PlayCardRequestPacket = BaseClientPacket<"PLAY_CARD_REQUEST", PlayCardRequestPayload>;
 export type CheatReportPacket = BaseClientPacket<"CHEAT_REPORT", CheatReportPayload>;
 export type PingPacket = BaseClientPacket<"PING", PingPayload>;
-export type ContinueDecisionPacket = BaseClientPacket<"CONTINUE_DECISION", { continuePlay: boolean }>;
+export type ContinueDecisionPacket = BaseClientPacket<
+  "CONTINUE_DECISION",
+  { continuePlay: boolean }
+>;
 
 export type ClientPacket =
   | JoinPacket
