@@ -1,3 +1,4 @@
+import { Capacitor, registerPlugin } from "@capacitor/core";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -42,11 +43,16 @@ interface NativeWssPlugin {
   addListener(eventName: string, cb: (evt: any) => void): Promise<unknown> | void;
 }
 
+const WebSocketServer = registerPlugin<NativeWssPlugin>("WebSocketServer");
+
 export function getNativeWssPlugin(): NativeWssPlugin | null {
   if (typeof window === "undefined") return null;
-  const win = window as any;
-  const plugin = win.Capacitor?.Plugins?.WebSocketServer;
-  return plugin && typeof plugin.start === "function" ? (plugin as NativeWssPlugin) : null;
+
+  if (!Capacitor.isPluginAvailable("WebSocketServer")) {
+    return null;
+  }
+
+  return WebSocketServer;
 }
 
 export function createNativeWssBridge(): WssBridge {
@@ -61,7 +67,11 @@ export function createNativeWssBridge(): WssBridge {
     plugin.addListener("wsEvent", (evt: any) => {
       if (!evt || typeof evt.type !== "string") return;
       const type = evt.type as WssClientEvent["type"];
-      if (type !== "CLIENT_CONNECTED" && type !== "CLIENT_DISCONNECTED" && type !== "CLIENT_MESSAGE")
+      if (
+        type !== "CLIENT_CONNECTED" &&
+        type !== "CLIENT_DISCONNECTED" &&
+        type !== "CLIENT_MESSAGE"
+      )
         return;
       const out: WssClientEvent = { type, clientId: String(evt.clientId ?? "") };
       if (type === "CLIENT_MESSAGE") {
