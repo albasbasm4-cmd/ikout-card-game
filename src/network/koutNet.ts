@@ -12,7 +12,6 @@ import { HostSession } from "./HostSession";
 import { KoutWssTransport } from "./KoutWssTransport";
 import { KoutGameEngine } from "../engine/KoutGameEngine";
 import { GameState, PlayerSlot } from "../types/kout";
-import { ensureHubServer, HUB_PORT } from "./gameHub";
 import type { ClientGameState } from "./protocol";
 import type { ITransport } from "./ITransport";
 
@@ -28,6 +27,7 @@ export interface KoutHostHandle {
   session: HostSession;
   config: { roomCode: string; variant: "BO6" | "BO4"; targetScore: number };
   started: boolean;
+  startPromise: Promise<boolean>;
 }
 
 export interface KoutClientHandle {
@@ -82,19 +82,31 @@ export function startKoutHost(
   });
   const handle: KoutHostHandle = {
     session,
-    config: { roomCode, variant: config.variant, targetScore: config.targetScore },
+    config: {
+      roomCode,
+      variant: config.variant,
+      targetScore: config.targetScore,
+    },
     started: false,
+    startPromise: Promise.resolve(false),
   };
   activeHost = handle;
-  void (async () => {
-    try {
-      const serverAvailable = await ensureHubServer(HUB_PORT);
-      const started = await transport.start();
-      handle.started = serverAvailable && started;
-    } catch (err) {
+  handle.startPromise = transport
+    .start()
+    .then((ok) => {
+      handle.started = ok;
+
+      if (!ok) {
+        console.error("[koutNet] تعذر تشغيل خادم WebSocket");
+      }
+
+      return ok;
+    })
+    .catch((err) => {
+      handle.started = false;
       console.error("[koutNet] host start failed", err);
-    }
-  })();
+      return false;
+    });
   return handle;
 }
 
