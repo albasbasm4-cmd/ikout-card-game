@@ -29,57 +29,127 @@ export interface HubChannelHandlers {
 }
 
 // ------------------------------------------------------------------
-// جانب المضيف
+// جانب المضيف (Singleton محكم مع startPromise مشترك)
 // ------------------------------------------------------------------
 
-interface HubServerState {
-  bridge: WssBridge;
-  started: boolean;
-  channels: Map<string, HubChannelHandlers>;
-}
-
-let hubServer: HubServerState | null = null;
+const registeredChannels = new Map<string, HubChannelHandlers>();
+let activeBridge: WssBridge | null = null;
+let serverStarted = false;
+let startPromise: Promise<boolean> | null = null;
+let bridgeUnsubscribe: (() => void) | null = null;
 
 export async function ensureHubServer(port = HUB_PORT): Promise<boolean> {
-  if (hubServer?.started) return true;
-  const bridge = tryCreateNativeWssBridge();
-  if (!bridge) return false;
-  if (!hubServer) {
-    hubServer = { bridge, started: false, channels: new Map() };
-    bridge.onEvent((evt) => {
-      if (evt.type === "CLIENT_CONNECTED") {
-        for (const h of hubServer!.channels.values()) h.onClientConnected?.(evt.clientId);
-      } else if (evt.type === "CLIENT_DISCONNECTED") {
-        for (const h of hubServer!.channels.values()) h.onClientDisconnected?.(evt.clientId);
-      } else if (evt.type === "CLIENT_MESSAGE" && evt.data && typeof evt.data === "object") {
-        const msg = evt.data as HubMessage;
-        const handler = typeof msg.ch === "string" ? hubServer!.channels.get(msg.ch) : undefined;
-        if (handler) handler.onClientMessage(evt.clientId, msg);
-      }
-    });
+  if (serverStarted && activeBridge) {
+    return true;
   }
-  const ok = await bridge.start(port);
-  hubServer.started = ok;
-  return ok;
+
+  if (startPromise) {
+    return startPromise;
+  }
+
+  startPromise = (async () => {
+    try {
+      const bridge = tryCreateNativeWssBridge();
+      if (!bridge) {
+        serverStarted = false;
+        return false;
+      }
+
+      // إيقاف أي جسر قديم غير مكتمل
+      if (activeBridge && activeBridge !== bridge) {
+        bridgeUnsubscribe?.();
+        activeBridge.stop();
+      }
+
+      activeBridge = bridge;
+      bridgeUnsubscribe?.();
+      bridgeUnsubscribe = bridge.onEvent((evt) => {
+        if (evt.type === "CLIENT_CONNECTED") {
+          for (const h of registeredChannels.values()) {
+            try {
+              h.onClientConnected?.(evt.clientId);
+            } catch (err) {
+              console.error("[gameHub] error in onClientConnected:", err);
+            }
+          }
+        } else if (evt.type === "CLIENT_DISCONNECTED") {
+          for (const h of registeredChannels.values()) {
+            try {
+              h.onClientDisconnected?.(evt.clientId);
+            } catch (err) {
+              console.error("[gameHub] error in onClientDisconnected:", err);
+            }
+          }
+        } else if (evt.type === "CLIENT_MESSAGE" && evt.data && typeof evt.data === "object") {
+          const msg = evt.data as HubMessage;
+          const handler = typeof msg.ch === "string" ? registeredChannels.get(msg.ch) : undefined;
+          if (handler) {
+            try {
+              handler.onClientMessage(evt.clientId, msg);
+            } catch (err) {
+              console.error(
+                `[gameHub] error in onClientMessage for channel ${String(msg.ch)}:`,
+                err,
+              );
+            }
+          }
+        }
+      });
+
+      const ok = await bridge.start(port);
+      serverStarted = ok;
+
+      if (!ok) {
+        bridgeUnsubscribe?.();
+        bridgeUnsubscribe = null;
+        bridge.stop();
+        activeBridge = null;
+      }
+
+      return ok;
+    } catch (err) {
+      console.error("[gameHub] ensureHubServer exception:", err);
+      bridgeUnsubscribe?.();
+      bridgeUnsubscribe = null;
+      activeBridge?.stop();
+      activeBridge = null;
+      serverStarted = false;
+      return false;
+    } finally {
+      startPromise = null;
+    }
+  })();
+
+  return startPromise;
 }
 
 export function registerHubChannel(ch: HubChannel, handlers: HubChannelHandlers): () => void {
-  if (!hubServer) {
-    hubServer = {
-      bridge: tryCreateNativeWssBridge() ?? ({} as WssBridge),
-      started: false,
-      channels: new Map(),
-    };
-  }
-  hubServer.channels.set(ch, handlers);
+  registeredChannels.set(ch, handlers);
   return () => {
-    if (hubServer && hubServer.channels.get(ch) === handlers) hubServer.channels.delete(ch);
+    if (registeredChannels.get(ch) === handlers) {
+      registeredChannels.delete(ch);
+    }
   };
+}
+
+export function stopHubServer(force = false): void {
+  if (force || registeredChannels.size === 0) {
+    bridgeUnsubscribe?.();
+    bridgeUnsubscribe = null;
+    try {
+      activeBridge?.stop();
+    } catch {
+      /* noop */
+    }
+    activeBridge = null;
+    serverStarted = false;
+    startPromise = null;
+  }
 }
 
 export function hubSendTo(clientId: string, msg: HubMessage): void {
   try {
-    hubServer?.bridge.sendTo(clientId, JSON.stringify(msg));
+    activeBridge?.sendTo(clientId, JSON.stringify(msg));
   } catch {
     /* noop */
   }
@@ -87,7 +157,7 @@ export function hubSendTo(clientId: string, msg: HubMessage): void {
 
 export function hubBroadcast(msg: HubMessage): void {
   try {
-    hubServer?.bridge.broadcast(JSON.stringify(msg));
+    activeBridge?.broadcast(JSON.stringify(msg));
   } catch {
     /* noop */
   }
@@ -95,18 +165,26 @@ export function hubBroadcast(msg: HubMessage): void {
 
 export function hubCloseClient(clientId: string): void {
   try {
-    hubServer?.bridge.closeClient(clientId);
+    activeBridge?.closeClient(clientId);
   } catch {
     /* noop */
   }
 }
 
 export function hubIsNative(): boolean {
-  return !!hubServer?.bridge.isNative;
+  return !!activeBridge?.isNative;
 }
 
 export async function hubGetHostIp(): Promise<string | null> {
-  return (await hubServer?.bridge.getIpAddress()) ?? null;
+  if (activeBridge) {
+    return (await activeBridge.getIpAddress()) ?? null;
+  }
+  const probe = tryCreateNativeWssBridge();
+  return (await probe?.getIpAddress()) ?? null;
+}
+
+export function hubIsStarted(): boolean {
+  return serverStarted && !!activeBridge;
 }
 
 // ------------------------------------------------------------------
@@ -235,12 +313,14 @@ export async function connectHubToHost(
   perIpTimeoutMs = 2500,
 ): Promise<HubClient | null> {
   for (const ip of candidates) {
-    const clean = ip.trim().replace(/^ws:\/\//i, "").replace(/:\d+$/, "");
+    const clean = ip
+      .trim()
+      .replace(/^ws:\/\//i, "")
+      .replace(/:\d+$/, "");
     if (!clean) continue;
     const client = new HubClient(`ws://${clean}:${port}`);
     const ok = await client.connect(perIpTimeoutMs);
     if (ok) {
-      // مصافحة القناة: نرسل رسالة hello حتى يعرف المضيف وجودنا (اختياري لكل لعبة)
       return client;
     }
     client.close();

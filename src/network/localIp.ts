@@ -1,4 +1,5 @@
 import { getNativeWssPlugin } from "./wssBridge";
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -10,6 +11,18 @@ import { getNativeWssPlugin } from "./wssBridge";
 export function generateRoomCode(): string {
   const code = Math.floor(100000 + Math.random() * 900000);
   return String(code);
+}
+
+export function isValidIpv4(ip: string): boolean {
+  if (!ip) return false;
+  const parts = ip.trim().split(".");
+  if (parts.length !== 4) return false;
+  for (const p of parts) {
+    if (!/^\d{1,3}$/.test(p)) return false;
+    const n = Number(p);
+    if (n < 0 || n > 255) return false;
+  }
+  return true;
 }
 
 /**
@@ -52,34 +65,23 @@ export function parseRoomPayload(payload: string): { ip: string; port: number; r
 }
 
 /**
- * Attempts to detect the local network IP using WebRTC candidate sniffing.
- * Falls back to hostname or standard LAN subnet address.
+ * Attempts to detect the local network IP:
+ * 1. Native WebSocketServer plugin (directly inspects active network interfaces)
+ * 2. Capacitor NetworkServer / AndroidBridge if present
+ * 3. WebRTC ICE candidate sniffing
+ * Returns null if no valid local network IP could be detected.
  */
-export async function getLocalIpAddress(): Promise<string> {
+export async function getLocalIpAddress(): Promise<string | null> {
   if (typeof window === "undefined") {
-    return "192.168.43.1";
+    return null;
   }
 
-  // If running on a local LAN hostname or IP
-  const hostname = window.location.hostname;
-  if (
-    hostname &&
-    hostname !== "localhost" &&
-    hostname !== "127.0.0.1" &&
-    !hostname.endsWith(".app") &&
-    !hostname.endsWith(".run.app")
-  ) {
-    return hostname;
-  }
-
-  // الإضافة الأصلية أولاً: WebRTC داخل WebView قد يعيد مرشحات mDNS مشفرة
+  // 1. الإضافة الأصلية أولاً (الأكثر دقة على أجهزة أندرويد الفعلية)
   const wssPlugin = getNativeWssPlugin();
-
   if (wssPlugin?.getIpAddress) {
     try {
       const res = await wssPlugin.getIpAddress();
-
-      if (res?.ip) {
+      if (res?.ip && isValidIpv4(res.ip) && !res.ip.startsWith("127.")) {
         return res.ip;
       }
     } catch (error) {
@@ -87,12 +89,12 @@ export async function getLocalIpAddress(): Promise<string> {
     }
   }
 
-  // Check for native Capacitor / Android bridge for IP
+  // 2. فحص جسور أندرويد الإضافية
   const win = window as any;
   if (win.Capacitor?.Plugins?.NetworkServer?.getIpAddress) {
     try {
       const res = await win.Capacitor.Plugins.NetworkServer.getIpAddress();
-      if (res && res.ip) return res.ip;
+      if (res && res.ip && isValidIpv4(res.ip)) return res.ip;
     } catch {
       // ignore
     }
@@ -100,13 +102,13 @@ export async function getLocalIpAddress(): Promise<string> {
   if (win.AndroidBridge?.getIpAddress) {
     try {
       const ip = win.AndroidBridge.getIpAddress();
-      if (ip) return ip;
+      if (ip && isValidIpv4(ip)) return ip;
     } catch {
       // ignore
     }
   }
 
-  // WebRTC local candidate discovery
+  // 3. WebRTC local candidate discovery
   try {
     const RTCPC =
       (window as any).RTCPeerConnection ||
@@ -119,27 +121,43 @@ export async function getLocalIpAddress(): Promise<string> {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      return new Promise<string>((resolve) => {
+      const webrtcIp = await new Promise<string | null>((resolve) => {
         const timeout = setTimeout(() => {
-          pc.close();
-          resolve("192.168.43.1");
+          try {
+            pc.close();
+          } catch {
+            /* noop */
+          }
+          resolve(null);
         }, 800);
 
         pc.onicecandidate = (event: any) => {
           if (!event || !event.candidate) return;
           const candidate = event.candidate.candidate;
           const match = candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
-          if (match && match[1] && !match[1].startsWith("127.")) {
+          if (match && match[1] && isValidIpv4(match[1]) && !match[1].startsWith("127.")) {
             clearTimeout(timeout);
-            pc.close();
+            try {
+              pc.close();
+            } catch {
+              /* noop */
+            }
             resolve(match[1]);
           }
         };
       });
+
+      if (webrtcIp) return webrtcIp;
     }
   } catch {
     // Ignore WebRTC permission errors
   }
 
-  return "192.168.43.1";
+  // 4. فحص اسم المضيف المحلي للمتصفح إذا كان IP محلياً صالحاً
+  const hostname = window.location.hostname;
+  if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1" && isValidIpv4(hostname)) {
+    return hostname;
+  }
+
+  return null;
 }

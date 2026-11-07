@@ -30,11 +30,7 @@ export interface JoinDiagnosticsReport {
 }
 
 /** محاولة فتح ws:// خام لعنوان معين وقياس النتيجة. */
-export function probeWebSocket(
-  ip: string,
-  port = 8080,
-  timeoutMs = 3000,
-): Promise<CandidateProbe> {
+export function probeWebSocket(ip: string, port = 8080, timeoutMs = 3000): Promise<CandidateProbe> {
   return new Promise((resolve) => {
     const started = Date.now();
     let settled = false;

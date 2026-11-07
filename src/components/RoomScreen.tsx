@@ -160,7 +160,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     const session = handle.session;
     const off = session.onSeatUpdate((seat, player) => {
       setSeatKind(seat, "HUMAN_REMOTE", player.name);
-      setSeatConnected(seat, true);
+      setSeatConnected(seat, !!player.connected);
     });
     return () => {
       cancelled = true;
@@ -238,7 +238,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
    * غرفة المضيف فوراً ليرى مقعده قبل بدء المباراة — دون أي واجهة إضافية. */
   const connectDirect = (code: string, presetIp?: string) => {
     const trimmed = code.trim();
-    if (trimmed.length < 4) {
+    if (!presetIp && trimmed.length < 4) {
       toast("أدخل رمز الغرفة");
       return;
     }

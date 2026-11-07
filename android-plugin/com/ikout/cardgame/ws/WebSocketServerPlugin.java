@@ -1,6 +1,5 @@
 package com.ikout.cardgame.ws;
 
-import android.annotation.SuppressLint;
 import android.net.wifi.WifiManager;
 
 import com.getcapacitor.JSObject;
@@ -12,6 +11,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import org.json.JSONException;
 
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
@@ -36,7 +36,7 @@ import fi.iki.elonen.NanoWSD;
  * الأحداث (wsEvent):
  *  - { type: "CLIENT_CONNECTED",    clientId }
  *  - { type: "CLIENT_DISCONNECTED", clientId }
- *  - { type: "CLIENT_MESSAGE",      clientId, data }   (data كائن JSON)
+ *  - { type: "CLIENT_MESSAGE",      clientId, data }   (data كائن JSON أو نص)
  */
 @CapacitorPlugin(name = "WebSocketServer")
 public class WebSocketServerPlugin extends Plugin {
@@ -46,46 +46,56 @@ public class WebSocketServerPlugin extends Plugin {
     private static final long PING_INTERVAL_SECONDS = 15;
 
     private WsServer server;
+    private int currentPort = -1;
     private final Map<String, WsSocket> clients = new ConcurrentHashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(1);
-    private final ScheduledExecutorService pinger = Executors.newSingleThreadScheduledExecutor(
-        r -> {
-            Thread t = new Thread(r, "wss-pinger");
-            t.setDaemon(true);
-            return t;
+    private ScheduledExecutorService pinger;
+
+    private synchronized ScheduledExecutorService getPinger() {
+        if (pinger == null || pinger.isShutdown() || pinger.isTerminated()) {
+            pinger = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "wss-pinger");
+                t.setDaemon(true);
+                return t;
+            });
         }
-    );
+        return pinger;
+    }
 
     private class WsSocket extends NanoWSD.WebSocket {
         final String id;
-        final ScheduledFuture<?> pingTask;
+        ScheduledFuture<?> pingTask;
 
         WsSocket(NanoHTTPD.IHTTPSession handshake, String id) {
             super(handshake);
             this.id = id;
-            this.pingTask = pinger.scheduleAtFixedRate(
-                () -> {
-                    try {
-                        if (isOpen()) {
-                            ping("ping".getBytes(StandardCharsets.UTF_8));
+            try {
+                this.pingTask = getPinger().scheduleAtFixedRate(
+                    () -> {
+                        try {
+                            if (isOpen()) {
+                                ping("ping".getBytes(StandardCharsets.UTF_8));
+                            }
+                        } catch (IOException | IllegalStateException ignored) {
                         }
-                    } catch (IOException | IllegalStateException ignored) {
-                    }
-                },
-                PING_INTERVAL_SECONDS,
-                PING_INTERVAL_SECONDS,
-                TimeUnit.SECONDS
-            );
+                    },
+                    PING_INTERVAL_SECONDS,
+                    PING_INTERVAL_SECONDS,
+                    TimeUnit.SECONDS
+                );
+            } catch (Exception e) {
+                this.pingTask = null;
+            }
         }
 
         @Override
         protected void onOpen() {
-            // الاتصال أُعلن عنه في openWebSocket
+            // الاتصال أُعلن عنه مسبقاً في openWebSocket
         }
 
         @Override
         protected void onClose(NanoWSD.WebSocketFrame.CloseCode code, String reason, boolean initiatedByRemote) {
-            pingTask.cancel(false);
+            cancelPing();
             handleSocketClosed(id);
         }
 
@@ -100,12 +110,20 @@ public class WebSocketServerPlugin extends Plugin {
 
         @Override
         protected void onPong(NanoWSD.WebSocketFrame pong) {
-            // تجاهل
+            // استجابة ping مقبولة
         }
 
         @Override
         protected void onException(IOException exception) {
-            // إغلاق غير نظيف: سيُعلن عند onClose
+            cancelPing();
+            handleSocketClosed(id);
+        }
+
+        void cancelPing() {
+            if (pingTask != null) {
+                pingTask.cancel(false);
+                pingTask = null;
+            }
         }
     }
 
@@ -125,39 +143,52 @@ public class WebSocketServerPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void start(PluginCall call) {
-        if (server != null) {
+    public synchronized void start(PluginCall call) {
+        int port = call.getInt("port", 8080);
+        if (server != null && currentPort == port) {
             call.resolve();
             return;
         }
-        int port = call.getInt("port", 8080);
+
+        // إذا كان هناك سيرفر يعمل على منفذ آخر، نقوم بإيقافه أولاً
+        stopInternal();
+
         try {
             server = new WsServer(port);
             server.start(0, false);
+            currentPort = port;
             call.resolve();
         } catch (IOException e) {
             server = null;
+            currentPort = -1;
             call.reject("START_FAILED", e.getMessage());
         }
     }
 
     @PluginMethod
-    public void stop(PluginCall call) {
+    public synchronized void stop(PluginCall call) {
+        stopInternal();
+        call.resolve();
+    }
+
+    private synchronized void stopInternal() {
         if (server != null) {
             try {
                 server.stop();
             } catch (Exception ignored) {
             }
             server = null;
+            currentPort = -1;
         }
+
         for (WsSocket socket : clients.values()) {
+            socket.cancelPing();
             try {
                 socket.close(NanoWSD.WebSocketFrame.CloseCode.NormalClosure, "server stopping", false);
             } catch (IOException ignored) {
             }
         }
         clients.clear();
-        call.resolve();
     }
 
     @PluginMethod
@@ -170,21 +201,29 @@ public class WebSocketServerPlugin extends Plugin {
                 socket.send(message == null ? "" : message);
                 call.resolve();
             } catch (IOException e) {
+                socket.cancelPing();
+                clients.remove(clientId);
+                notifyEvent("CLIENT_DISCONNECTED", clientId, null);
                 call.reject("SEND_FAILED", e.getMessage());
             }
         } else {
-            call.reject("CLIENT_NOT_FOUND", clientId);
+            call.reject("CLIENT_NOT_FOUND", clientId != null ? clientId : "null");
         }
     }
 
     @PluginMethod
     public void broadcast(PluginCall call) {
         String message = call.getString("message");
-        for (WsSocket socket : clients.values()) {
+        String msg = message == null ? "" : message;
+        for (Map.Entry<String, WsSocket> entry : clients.entrySet()) {
+            WsSocket socket = entry.getValue();
             if (socket.isOpen()) {
                 try {
-                    socket.send(message == null ? "" : message);
-                } catch (IOException ignored) {
+                    socket.send(msg);
+                } catch (IOException e) {
+                    socket.cancelPing();
+                    clients.remove(entry.getKey());
+                    notifyEvent("CLIENT_DISCONNECTED", entry.getKey(), null);
                 }
             }
         }
@@ -196,6 +235,7 @@ public class WebSocketServerPlugin extends Plugin {
         String clientId = call.getString("clientId");
         WsSocket socket = clientId != null ? clients.remove(clientId) : null;
         if (socket != null) {
+            socket.cancelPing();
             try {
                 socket.close(NanoWSD.WebSocketFrame.CloseCode.NormalClosure, "closed by server", false);
             } catch (IOException ignored) {
@@ -214,23 +254,63 @@ public class WebSocketServerPlugin extends Plugin {
     @PluginMethod
     public void getGatewayIp(PluginCall call) {
         String ip = null;
+        // المصدر الأول: بوابة الشبكة الفعلية من LinkProperties (موثوق على أندرويد حديث)
         try {
-            WifiManager wifi = (WifiManager) getContext().getApplicationContext()
-                .getSystemService(android.content.Context.WIFI_SERVICE);
-            if (wifi != null) {
-                android.net.DhcpInfo dhcp = wifi.getDhcpInfo();
-                if (dhcp != null && dhcp.gateway != 0) {
-                    ip = intToIp(dhcp.gateway);
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) getContext()
+                .getApplicationContext()
+                .getSystemService(android.content.Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                android.net.Network network = cm.getActiveNetwork();
+                if (network != null) {
+                    android.net.LinkProperties lp = cm.getLinkProperties(network);
+                    if (lp != null) {
+                        for (android.net.RouteInfo route : lp.getRoutes()) {
+                            if (route.isDefaultRoute()
+                                && route.getGateway() instanceof java.net.Inet4Address) {
+                                ip = route.getGateway().getHostAddress();
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         } catch (Exception ignored) {
+        }
+        // احتياط: DhcpInfo
+        if (ip == null) {
+            try {
+                WifiManager wifi = (WifiManager) getContext().getApplicationContext()
+                    .getSystemService(android.content.Context.WIFI_SERVICE);
+                if (wifi != null) {
+                    android.net.DhcpInfo dhcp = wifi.getDhcpInfo();
+                    if (dhcp != null && dhcp.gateway != 0) {
+                        ip = intToIp(dhcp.gateway);
+                    }
+                }
+            } catch (Exception ignored) {
+            }
         }
         JSObject res = new JSObject();
         res.put("ip", ip);
         call.resolve(res);
     }
 
-    // ---- داخلي ----
+    @Override
+    protected void handleOnDestroy() {
+        super.handleOnDestroy();
+        stopInternal();
+        synchronized (this) {
+            if (pinger != null) {
+                try {
+                    pinger.shutdownNow();
+                } catch (Exception ignored) {
+                }
+                pinger = null;
+            }
+        }
+    }
+
+    // ---- معالجة الأحداث الداخلية ----
 
     private void notifyEvent(String type, String clientId, Object data) {
         JSObject payload = new JSObject();
@@ -245,7 +325,7 @@ public class WebSocketServerPlugin extends Plugin {
         try {
             data = new org.json.JSONObject(raw);
         } catch (JSONException ignored) {
-            // ليست JSON: نمرر النص كما هو
+            // ليست كائن JSON صالح، نمرر النص
         }
         notifyEvent("CLIENT_MESSAGE", clientId, data);
     }
@@ -260,33 +340,85 @@ public class WebSocketServerPlugin extends Plugin {
             + ((value >> 24) & 0xFF);
     }
 
+    /**
+     * اكتشاف عنوان IP لجهاز المضيف:
+     * تمييز واجهات Hotspot و Wi-Fi الحقيقية، واستبعاد واجهات Loopback و VPN و Cell و Virtual.
+     * يُرجع null إذا لم توجد واجهة شبكة محلية صالحة.
+     */
     private static String detectHostIp() {
+        String hotspotIp = null;
         String wifiIp = null;
-        String anyIp = null;
+        String privateLanIp = null;
+
         try {
             Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
             for (NetworkInterface iface : Collections.list(ifaces)) {
                 if (!iface.isUp() || iface.isLoopback()) continue;
+
                 String name = iface.getName().toLowerCase();
+
+                // استبعاد واجهات VPN وشبكات البيانات الخلوية والواجهات الافتراضية
+                if (name.startsWith("tun") || name.startsWith("tap") || name.startsWith("ppp")
+                    || name.startsWith("wg") || name.startsWith("ipsec") || name.startsWith("rmnet")
+                    || name.startsWith("ccmni") || name.startsWith("pdp") || name.startsWith("dummy")
+                    || name.startsWith("p2p") || name.startsWith("docker")) {
+                    continue;
+                }
+
                 for (Enumeration<InetAddress> addrs = iface.getInetAddresses(); addrs.hasMoreElements(); ) {
                     InetAddress addr = addrs.nextElement();
-                    if (addr.isLoopbackAddress() || addr.getHostAddress().indexOf(':') >= 0) continue;
-                    boolean hotspot = false;
+                    if (!(addr instanceof Inet4Address) || addr.isLoopbackAddress()) continue;
+
+                    String hostAddr = addr.getHostAddress();
+                    if (hostAddr == null || hostAddr.startsWith("127.")) continue;
+
+                    // فحص هل هي واجهة نقطة اتصال Hotspot
+                    boolean isHotspot = false;
                     for (String h : HOTSPOT_IFACES) {
                         if (name.equals(h) || name.startsWith(h)) {
-                            hotspot = true;
+                            isHotspot = true;
                             break;
                         }
                     }
-                    if (hotspot) return addr.getHostAddress();
-                    if (name.startsWith("wlan0") && wifiIp == null) wifiIp = addr.getHostAddress();
-                    if (anyIp == null) anyIp = addr.getHostAddress();
+                    if (isHotspot && hotspotIp == null) {
+                        hotspotIp = hostAddr;
+                    }
+
+                    // فحص هل هي واجهة Wi-Fi عادية
+                    if ((name.startsWith("wlan") || name.startsWith("eth")) && wifiIp == null) {
+                        wifiIp = hostAddr;
+                    }
+
+                    // فحص هل العنوان من عناوين الشبكات المحلية القياسية (RFC 1918)
+                    if (isPrivateIpv4(hostAddr) && privateLanIp == null) {
+                        privateLanIp = hostAddr;
+                    }
                 }
             }
         } catch (Exception ignored) {
         }
+
+        if (hotspotIp != null) return hotspotIp;
         if (wifiIp != null) return wifiIp;
-        if (anyIp != null) return anyIp;
-        return "192.168.43.1";
+        if (privateLanIp != null) return privateLanIp;
+        return null;
+    }
+
+    private static boolean isPrivateIpv4(String ip) {
+        if (ip == null) return false;
+        return ip.startsWith("192.168.") || ip.startsWith("10.")
+            || (ip.startsWith("172.") && isClassBPrivate(ip));
+    }
+
+    private static boolean isClassBPrivate(String ip) {
+        try {
+            String[] parts = ip.split("\\.");
+            if (parts.length >= 2) {
+                int second = Integer.parseInt(parts[1]);
+                return second >= 16 && second <= 31;
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
     }
 }
