@@ -58,9 +58,9 @@ export function characterPortrait(characterId: string): string {
     } catch {
       /* ignore */
     }
-    return "/assets/ikout/characters/a1-face.png";
+    return "/assets/ikout/characters/a1-face.webp";
   }
-  return `/assets/ikout/characters/${characterId}-face.png`;
+  return `/assets/ikout/characters/${characterId}-face.webp`;
 }
 
 export function characterName(characterId: string): string {

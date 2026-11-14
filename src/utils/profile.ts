@@ -16,41 +16,41 @@ export function characterFace(characterId: string): string {
     } catch {
       /* ignore */
     }
-    return "/assets/ikout/characters/a1-portrait.png";
+    return "/assets/ikout/characters/a1-portrait.webp";
   }
-  return `/assets/ikout/characters/${characterId}-portrait.png`;
+  return `/assets/ikout/characters/${characterId}-portrait.webp`;
 }
 
 export type TableTheme = "classic" | "gold" | "wood" | "grass" | "outdoor";
 export type CardTheme = "deck" | "authentic" | "gold" | "moon" | "kuwait" | "maze" | "squares";
 
 export const TABLE_THEMES: { id: TableTheme; label: string; image: string }[] = [
-  { id: "classic", label: "الطاولة الأصلية", image: "/assets/ikout/tables/classic-table.png" },
-  { id: "gold", label: "طاولة ذهبية", image: "/assets/ikout/tables/gold-table.png" },
-  { id: "wood", label: "ديوانية خشب", image: "/assets/ikout/tables/wood-table.png" },
-  { id: "grass", label: "حوش العشب", image: "/assets/ikout/tables/grass-table.png" },
-  { id: "outdoor", label: "في الخارج", image: "/assets/ikout/tables/outdoor-table.png" },
+  { id: "classic", label: "الطاولة الأصلية", image: "/assets/ikout/tables/classic-table.webp" },
+  { id: "gold", label: "طاولة ذهبية", image: "/assets/ikout/tables/gold-table.webp" },
+  { id: "wood", label: "ديوانية خشب", image: "/assets/ikout/tables/wood-table.webp" },
+  { id: "grass", label: "حوش العشب", image: "/assets/ikout/tables/grass-table.webp" },
+  { id: "outdoor", label: "في الخارج", image: "/assets/ikout/tables/outdoor-table.webp" },
 ];
 
 const back = (name: string) => `/assets/ikout/cards/${encodeURIComponent(name)}`;
 export const CARD_THEMES: { id: CardTheme; label: string; back: string }[] = [
   { id: "deck", label: "الورق الكلاسيكي", back: "/assets/ikout/cards/deck/back.webp" },
-  { id: "authentic", label: "أصلي", back: back("authentic-back.png") },
-  { id: "gold", label: "ذهبي", back: back("Card Back - New - Squares Gold.png") },
-  { id: "moon", label: "قمر ليلي", back: back("Card Back - New - New Moon Blue.png") },
-  { id: "kuwait", label: "الكويت", back: back("CardBack-KuwaitFlagPortrait.png") },
-  { id: "maze", label: "متاهة زرقاء", back: back("Card Back - New - Blue Maze.png") },
-  { id: "squares", label: "مربعات حمراء", back: back("Card Back - New - Squares Red.png") },
+  { id: "authentic", label: "أصلي", back: back("authentic-back.webp") },
+  { id: "gold", label: "ذهبي", back: back("Card Back - New - Squares Gold.webp") },
+  { id: "moon", label: "قمر ليلي", back: back("Card Back - New - New Moon Blue.webp") },
+  { id: "kuwait", label: "الكويت", back: back("CardBack-KuwaitFlagPortrait.webp") },
+  { id: "maze", label: "متاهة زرقاء", back: back("Card Back - New - Blue Maze.webp") },
+  { id: "squares", label: "مربعات حمراء", back: back("Card Back - New - Squares Red.webp") },
 ];
 
 /** خلفيات سطح اللعب؛ خشب هي الافتراضية دائماً. */
 export type BgTheme = "wood" | "grass" | "pattern" | "pattern1" | "spotlight";
 export const BG_THEMES: { id: BgTheme; label: string; image: string }[] = [
-  { id: "wood", label: "خشب", image: "/assets/ikout/backgrounds/wood-bg.png" },
-  { id: "grass", label: "عشب", image: "/assets/ikout/backgrounds/grass-bg.png" },
-  { id: "pattern", label: "نقشة", image: "/assets/ikout/backgrounds/pattern-bg.png" },
-  { id: "pattern1", label: "نقشة ٢", image: "/assets/ikout/backgrounds/pattern1-bg.png" },
-  { id: "spotlight", label: "أضواء", image: "/assets/ikout/backgrounds/spotlight.png" },
+  { id: "wood", label: "خشب", image: "/assets/ikout/backgrounds/wood-bg.webp" },
+  { id: "grass", label: "عشب", image: "/assets/ikout/backgrounds/grass-bg.webp" },
+  { id: "pattern", label: "نقشة", image: "/assets/ikout/backgrounds/pattern-bg.webp" },
+  { id: "pattern1", label: "نقشة ٢", image: "/assets/ikout/backgrounds/pattern1-bg.webp" },
+  { id: "spotlight", label: "أضواء", image: "/assets/ikout/backgrounds/spotlight.webp" },
 ];
 export function backgroundImage(theme: BgTheme): string {
   return (BG_THEMES.find((b) => b.id === theme) ?? BG_THEMES[0]).image;

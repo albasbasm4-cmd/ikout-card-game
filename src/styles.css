@@ -5481,52 +5481,52 @@
 .kt-arena.bg-theme-wood {
   background-image:
     linear-gradient(rgba(8, 5, 2, 0.28), rgba(8, 5, 2, 0.28)),
-    url("/assets/ikout/backgrounds/wood-bg.png");
+    url("/assets/ikout/backgrounds/wood-bg.webp");
 }
 .kt-arena.bg-theme-grass {
   background-image:
     linear-gradient(rgba(8, 5, 2, 0.18), rgba(8, 5, 2, 0.18)),
-    url("/assets/ikout/backgrounds/grass-bg.png");
+    url("/assets/ikout/backgrounds/grass-bg.webp");
 }
 .kt-arena.bg-theme-pattern {
   background-image:
     linear-gradient(rgba(8, 5, 2, 0.28), rgba(8, 5, 2, 0.28)),
-    url("/assets/ikout/backgrounds/pattern-bg.png");
+    url("/assets/ikout/backgrounds/pattern-bg.webp");
 }
 .kt-arena.bg-theme-pattern1 {
   background-image:
     linear-gradient(rgba(8, 5, 2, 0.28), rgba(8, 5, 2, 0.28)),
-    url("/assets/ikout/backgrounds/pattern1-bg.png");
+    url("/assets/ikout/backgrounds/pattern1-bg.webp");
 }
 .kt-arena.bg-theme-spotlight {
   background-image:
     linear-gradient(rgba(8, 5, 2, 0.22), rgba(8, 5, 2, 0.22)),
-    url("/assets/ikout/backgrounds/spotlight.png");
+    url("/assets/ikout/backgrounds/spotlight.webp");
 }
 .uno-stage.bg-theme-wood {
   background-image:
     linear-gradient(rgba(8, 5, 2, 0.28), rgba(8, 5, 2, 0.28)),
-    url("/assets/ikout/backgrounds/wood-bg.png");
+    url("/assets/ikout/backgrounds/wood-bg.webp");
 }
 .uno-stage.bg-theme-grass {
   background-image:
     linear-gradient(rgba(8, 5, 2, 0.18), rgba(8, 5, 2, 0.18)),
-    url("/assets/ikout/backgrounds/grass-bg.png");
+    url("/assets/ikout/backgrounds/grass-bg.webp");
 }
 .uno-stage.bg-theme-pattern {
   background-image:
     linear-gradient(rgba(8, 5, 2, 0.28), rgba(8, 5, 2, 0.28)),
-    url("/assets/ikout/backgrounds/pattern-bg.png");
+    url("/assets/ikout/backgrounds/pattern-bg.webp");
 }
 .uno-stage.bg-theme-pattern1 {
   background-image:
     linear-gradient(rgba(8, 5, 2, 0.28), rgba(8, 5, 2, 0.28)),
-    url("/assets/ikout/backgrounds/pattern1-bg.png");
+    url("/assets/ikout/backgrounds/pattern1-bg.webp");
 }
 .uno-stage.bg-theme-spotlight {
   background-image:
     linear-gradient(rgba(8, 5, 2, 0.22), rgba(8, 5, 2, 0.22)),
-    url("/assets/ikout/backgrounds/spotlight.png");
+    url("/assets/ikout/backgrounds/spotlight.webp");
 }
 
 /* Identity tab extras — same identity as the rest of the app */

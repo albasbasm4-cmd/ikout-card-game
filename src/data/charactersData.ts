@@ -31,7 +31,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Bandar",
     welcomeQuote: "هلا بالربع، اليوم اللعب على أصوله!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a1/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a1-face.png",
+    faceAsset: "/assets/ikout/characters/a1-face.webp",
     clipsCount: 15,
     phrases: [
       {
@@ -121,7 +121,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Saleem",
     welcomeQuote: "أنا لها، والورق بيدي ما يخيب!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a2/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a2-face.png",
+    faceAsset: "/assets/ikout/characters/a2-face.webp",
     clipsCount: 16,
     phrases: [
       {
@@ -211,7 +211,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "FouadAR",
     welcomeQuote: "يا هلا بالحبايب، الضحكة والوناسة مضمونة!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a3/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a3-face.png",
+    faceAsset: "/assets/ikout/characters/a3-face.webp",
     clipsCount: 17,
     phrases: [
       {
@@ -301,7 +301,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Ahmad",
     welcomeQuote: "بهدوء وتركيز، كل ورقة بحساب.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a4/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a4-face.png",
+    faceAsset: "/assets/ikout/characters/a4-face.webp",
     clipsCount: 16,
     phrases: [
       {
@@ -391,7 +391,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Ali",
     welcomeQuote: "ذيب باللعب وما أضيع فرصة!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a5/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a5-face.png",
+    faceAsset: "/assets/ikout/characters/a5-face.webp",
     clipsCount: 17,
     phrases: [
       {
@@ -481,7 +481,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Muni",
     welcomeQuote: "كشخة ولعب راقي، نشوف منو يفوز!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a6/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a6-face.png",
+    faceAsset: "/assets/ikout/characters/a6-face.webp",
     clipsCount: 15,
     phrases: [
       {
@@ -571,7 +571,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Hanafi",
     welcomeQuote: "المعلم وصل، وسع للعب الصح!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a7/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a7-face.png",
+    faceAsset: "/assets/ikout/characters/a7-face.webp",
     clipsCount: 16,
     phrases: [
       {
@@ -661,7 +661,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Bubadran",
     welcomeQuote: "يا مرحبا، الديوانية عامرة بوجودكم.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a8/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a8-face.png",
+    faceAsset: "/assets/ikout/characters/a8-face.webp",
     clipsCount: 15,
     phrases: [
       {
@@ -751,7 +751,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Carol",
     welcomeQuote: "جاهزة للتحدي وبكل ثقة!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a9/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a9-face.png",
+    faceAsset: "/assets/ikout/characters/a9-face.webp",
     clipsCount: 17,
     phrases: [
       {
@@ -841,7 +841,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Hajiya",
     welcomeQuote: "يا بعد عمري، سمّوا بالرحمن والعبوا زين!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a10/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a10-face.png",
+    faceAsset: "/assets/ikout/characters/a10-face.webp",
     clipsCount: 17,
     phrases: [
       {
@@ -931,7 +931,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Faisal",
     welcomeQuote: "الكلام قليل، واللعب ثقيل.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a11/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a11-face.png",
+    faceAsset: "/assets/ikout/characters/a11-face.webp",
     clipsCount: 16,
     phrases: [
       {
@@ -1021,7 +1021,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Hasaneen",
     welcomeQuote: "يا فتاح يا عليم، الليلة سهرتنا صباحي!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a12/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a12-face.png",
+    faceAsset: "/assets/ikout/characters/a12-face.webp",
     clipsCount: 14,
     phrases: [
       {
@@ -1111,7 +1111,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "SourAR",
     welcomeQuote: "الجريء يكسب، ما نخاف من الكوت!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a13/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a13-face.png",
+    faceAsset: "/assets/ikout/characters/a13-face.webp",
     clipsCount: 16,
     phrases: [
       {
@@ -1201,7 +1201,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Budeena",
     welcomeQuote: "حياكم الله، الواجب فوق كل شي.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a14/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a14-face.png",
+    faceAsset: "/assets/ikout/characters/a14-face.webp",
     clipsCount: 16,
     phrases: [
       {
@@ -1291,7 +1291,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Sami",
     welcomeQuote: "متحمس حيل، خلونا نبدأ الجولة!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a15/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a15-face.png",
+    faceAsset: "/assets/ikout/characters/a15-face.webp",
     clipsCount: 17,
     phrases: [
       {
@@ -1381,7 +1381,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Fayrouz",
     welcomeQuote: "الأناقة والفوز دايماً ربعي.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a16/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a16-face.png",
+    faceAsset: "/assets/ikout/characters/a16-face.webp",
     clipsCount: 15,
     phrases: [
       {
@@ -1471,7 +1471,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Abbas",
     welcomeQuote: "شريكي ما أخليه، على الحلوة والمرة.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a17/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a17-face.png",
+    faceAsset: "/assets/ikout/characters/a17-face.webp",
     clipsCount: 17,
     phrases: [
       {
@@ -1561,7 +1561,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Bughazi",
     welcomeQuote: "يا هلا بريحة الماضي واللعب السنع.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a18/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a18-face.png",
+    faceAsset: "/assets/ikout/characters/a18-face.webp",
     clipsCount: 16,
     phrases: [
       {
@@ -1651,7 +1651,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Hamad",
     welcomeQuote: "الكابتن جاهز وخطتنا الفوز بس!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a19/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a19-face.png",
+    faceAsset: "/assets/ikout/characters/a19-face.webp",
     clipsCount: 15,
     phrases: [
       {
@@ -1741,7 +1741,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Smokey",
     welcomeQuote: "الهدوء قبل العاصفة، ركز بالورق.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a20/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a20-face.png",
+    faceAsset: "/assets/ikout/characters/a20-face.webp",
     clipsCount: 16,
     phrases: [
       {
@@ -1831,7 +1831,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Alcool",
     welcomeQuote: "اللعب المشاكس لعبتي، انتبهوا مني!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a21/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a21-face.png",
+    faceAsset: "/assets/ikout/characters/a21-face.webp",
     clipsCount: 20,
     phrases: [
       {
@@ -1921,7 +1921,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Abu Abdu",
     welcomeQuote: "الحكمة بالصبر واختيار الوقت المناسب.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a22/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a22-face.png",
+    faceAsset: "/assets/ikout/characters/a22-face.webp",
     clipsCount: 17,
     phrases: [
       {
@@ -2011,7 +2011,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Salman",
     welcomeQuote: "اللعب جدي، وما في تساهل اليوم!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a23/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a23-face.png",
+    faceAsset: "/assets/ikout/characters/a23-face.webp",
     clipsCount: 22,
     phrases: [
       {
@@ -2101,7 +2101,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Bokhilli",
     welcomeQuote: "كل نقطة محسوبة وما أفرط بشيء!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a24/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a24-face.png",
+    faceAsset: "/assets/ikout/characters/a24-face.webp",
     clipsCount: 21,
     phrases: [
       {
@@ -2191,7 +2191,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Agshar",
     welcomeQuote: "عنيد باللعب وما أستسلم لأحد!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a25/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a25-face.png",
+    faceAsset: "/assets/ikout/characters/a25-face.webp",
     clipsCount: 20,
     phrases: [
       {
@@ -2281,7 +2281,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Abood",
     welcomeQuote: "يا هلا بالحماس واللعب السريع!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a26/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a26-face.png",
+    faceAsset: "/assets/ikout/characters/a26-face.webp",
     clipsCount: 18,
     phrases: [
       {
@@ -2371,7 +2371,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Hasan",
     welcomeQuote: "ابتسم والعب، الفوز يجي بالروقان.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a27/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a27-face.png",
+    faceAsset: "/assets/ikout/characters/a27-face.webp",
     clipsCount: 19,
     phrases: [
       {
@@ -2461,7 +2461,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Maria",
     welcomeQuote: "الذكاء هو سر الفوز في الكوت.",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a28/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a28-face.png",
+    faceAsset: "/assets/ikout/characters/a28-face.webp",
     clipsCount: 18,
     phrases: [
       {
@@ -2551,7 +2551,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Kumar",
     welcomeQuote: "أرباب سلام عليكم، اللعب مية مية!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a29/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a29-face.png",
+    faceAsset: "/assets/ikout/characters/a29-face.webp",
     clipsCount: 19,
     phrases: [
       {
@@ -2641,7 +2641,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Abu Kheshan",
     welcomeQuote: "يا هلا بعيالنا، خلوني أعلمكم الكوت الأصلي!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a30/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a30-face.png",
+    faceAsset: "/assets/ikout/characters/a30-face.webp",
     clipsCount: 21,
     phrases: [
       {
@@ -2731,7 +2731,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Duke",
     welcomeQuote: "إلى الأمام، النصر حليفنا!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a31/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a31-face.png",
+    faceAsset: "/assets/ikout/characters/a31-face.webp",
     clipsCount: 20,
     phrases: [
       {
@@ -2821,7 +2821,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Samurai",
     welcomeQuote: "شرف المحارب في كل ورقة!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a32/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a32-face.png",
+    faceAsset: "/assets/ikout/characters/a32-face.webp",
     clipsCount: 22,
     phrases: [
       {
@@ -2911,7 +2911,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Toddler",
     welcomeQuote: "هييي! أنا الصغير بس فنان!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a33/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a33-face.png",
+    faceAsset: "/assets/ikout/characters/a33-face.webp",
     clipsCount: 19,
     phrases: [
       {
@@ -3001,7 +3001,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "AzizOthman",
     welcomeQuote: "يا ملك القعدة، اللعب الحقيقي يبدأ الحين!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a34/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a34-face.png",
+    faceAsset: "/assets/ikout/characters/a34-face.webp",
     clipsCount: 21,
     phrases: [
       {
@@ -3091,7 +3091,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Rana",
     welcomeQuote: "احتراف وذكاء، الجولة محسومة!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a35/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a35-face.png",
+    faceAsset: "/assets/ikout/characters/a35-face.webp",
     clipsCount: 18,
     phrases: [
       {
@@ -3181,7 +3181,7 @@ export const CHARACTERS_DATA: Record<string, CharacterData> = {
     voiceBundle: "Zombie",
     welcomeQuote: "الرعب وصل، ما في أمل تفوزون!",
     welcomeAudioUrl: "/assets/ikout/audio/voices/a36/welcome.mp3",
-    faceAsset: "/assets/ikout/characters/a36-face.png",
+    faceAsset: "/assets/ikout/characters/a36-face.webp",
     clipsCount: 21,
     phrases: [
       {
@@ -3290,7 +3290,7 @@ export function getCharacterData(characterId: string): CharacterData {
           voiceBundle: "Custom",
           welcomeQuote: clips[0]?.name || "أهلاً بكم في لعبتنا!",
           welcomeAudioUrl: clips[0]?.dataUrl || "",
-          faceAsset: parsed.avatarImage || "/assets/ikout/characters/a1-face.png",
+          faceAsset: parsed.avatarImage || "/assets/ikout/characters/a1-face.webp",
           clipsCount: clips.length,
           phrases: clips.map((c: any, idx: number) => ({
             id: c.id || `custom_${idx}`,
@@ -3312,7 +3312,7 @@ export function getCharacterData(characterId: string): CharacterData {
       voiceBundle: "Custom",
       welcomeQuote: "أهلاً بكم!",
       welcomeAudioUrl: "",
-      faceAsset: "/assets/ikout/characters/a1-face.png",
+      faceAsset: "/assets/ikout/characters/a1-face.webp",
       clipsCount: 0,
       phrases: [],
     };

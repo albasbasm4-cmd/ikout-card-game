@@ -1688,7 +1688,7 @@
   }
   /* ---- 187 / iKout look: wood room, wood table, real characters ---- */
   #scr.wood #kin {
-    background: url(/assets/ikout/backgrounds/wood-bg.png) center/cover no-repeat;
+    background: url(/assets/ikout/backgrounds/wood-bg.webp) center/cover no-repeat;
   }
   #scr.wood .kcl,
   #scr.wood .ksun,
@@ -1857,7 +1857,7 @@
   display: block;
 }
 .joker-app #kin {
-  background: url(/assets/ikout/backgrounds/wood-bg.png) center/cover;
+  background: url(/assets/ikout/backgrounds/wood-bg.webp) center/cover;
 }
 .joker-app #prof {
   z-index: 10;
