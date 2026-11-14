@@ -556,7 +556,8 @@ export function useGame(options: UseGameOptions = {}) {
 
     const executeBotTurn = async () => {
       try {
-        const decision = await getBotDecision(current, activeSeat, difficulty);
+        const botDifficulty = current.players?.[activeSeat]?.difficulty ?? difficulty;
+        const decision = await getBotDecision(current, activeSeat, botDifficulty);
 
         if (!isMounted) return;
 
