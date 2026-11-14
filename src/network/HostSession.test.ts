@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { LoopbackHub } from "./LoopbackTransport";
 import { HostSession } from "./HostSession";
 import { ClientPacket, HostPacket, ClientStateUpdatePacket, ErrorPacket } from "./protocol";
@@ -25,6 +25,7 @@ describe("HostSession & Network Protocol v1", () => {
   afterEach(() => {
     hostSession.destroy();
     hub.reset();
+    vi.useRealTimers();
   });
 
   it("strictly ensures client never receives others hands in CLIENT_STATE_UPDATE", async () => {
@@ -276,6 +277,45 @@ describe("HostSession & Network Protocol v1", () => {
     if (stateUpdate?.type === "CLIENT_STATE_UPDATE") {
       expect(stateUpdate.payload.state.players?.[2]?.playerToken).toBeUndefined();
     }
+  });
+
+  it("takes over a disconnected Kout seat with a medium bot after eight seconds", async () => {
+    vi.useFakeTimers();
+    const token = "bot-takeover-player-token";
+    const updates: { kind: string; connected: boolean }[] = [];
+    hostSession.onSeatUpdate((_seat, player) => {
+      updates.push({ kind: player.kind, connected: player.connected });
+    });
+
+    const firstClient = hub.createClientTransport(token);
+    firstClient.send({
+      v: 1,
+      seq: 1,
+      playerToken: token,
+      type: "JOIN",
+      payload: { playerName: "Temporary Player", preferredSeat: 1 },
+    });
+    await Promise.resolve();
+
+    firstClient.disconnect();
+    expect(updates[updates.length - 1]).toEqual({ kind: "HUMAN_REMOTE", connected: false });
+
+    vi.advanceTimersByTime(7999);
+    expect(updates[updates.length - 1]).toEqual({ kind: "HUMAN_REMOTE", connected: false });
+
+    vi.advanceTimersByTime(1);
+    expect(updates[updates.length - 1]).toEqual({ kind: "AI_BOT", connected: false });
+
+    const reconnectedClient = hub.createClientTransport(token);
+    reconnectedClient.send({
+      v: 1,
+      seq: 1,
+      playerToken: token,
+      type: "JOIN",
+      payload: { playerName: "Temporary Player", preferredSeat: 1 },
+    });
+    await Promise.resolve();
+    expect(updates[updates.length - 1]).toEqual({ kind: "HUMAN_REMOTE", connected: true });
   });
 
 });
