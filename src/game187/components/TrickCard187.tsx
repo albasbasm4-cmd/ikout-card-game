@@ -20,7 +20,7 @@ interface TrickCard187Props {
  * released/tapped it, or from the bot's avatar, to its slot — the same motion
  * as the iKout table. Presentation only: engine timing and rules are untouched.
  */
-export function TrickCard187({
+function TrickCard187Component({
   play,
   left,
   top,
@@ -105,4 +105,5 @@ export function TrickCard187({
   );
 }
 
+export const TrickCard187 = React.memo(TrickCard187Component);
 export default TrickCard187;

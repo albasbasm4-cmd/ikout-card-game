@@ -65,9 +65,37 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
     String(Math.floor(100000 + Math.random() * 900000)),
   );
   const [showQr, setShowQr] = useState(false);
-  const [game, setGame] = useState<JokerGame | null>(null);
-  const [holdingId, setHoldingId] = useState<string | null>(null);
-  const [modal, setModal] = useState<"rules" | "pick" | "confirm" | "network" | null>(null);
+  type JokerModal = "rules" | "pick" | "confirm" | "network" | null;
+  interface JokerSessionState {
+    game: JokerGame | null;
+    holdingId: string | null;
+    modal: JokerModal;
+  }
+  const [jokerSession, setJokerSession] = useState<JokerSessionState>({
+    game: null,
+    holdingId: null,
+    modal: null,
+  });
+  const { game, holdingId, modal } = jokerSession;
+
+  const setGame = useCallback((updater: JokerGame | null | ((prev: JokerGame | null) => JokerGame | null)) => {
+    setJokerSession((prev) => ({
+      ...prev,
+      game: typeof updater === "function" ? updater(prev.game) : updater,
+    }));
+  }, []);
+
+  const setHoldingId = useCallback((id: string | null) => {
+    setJokerSession((prev) => ({ ...prev, holdingId: id }));
+  }, []);
+
+  const setModal = useCallback((m: JokerModal) => {
+    setJokerSession((prev) => ({ ...prev, modal: m }));
+  }, []);
+
+  const updateJokerSession = useCallback((updates: Partial<JokerSessionState>) => {
+    setJokerSession((prev) => ({ ...prev, ...updates }));
+  }, []);
   const [target, setTarget] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -124,8 +152,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   const start = () => {
     if (!canStart) return;
     const g = dealJoker(createJokerGame(players));
-    setGame(g);
-    setHoldingId(null);
+    updateJokerSession({ game: g, holdingId: null });
     if (netHostActive) jokerHostNewGame(g);
     setScreen("game");
   };
@@ -208,9 +235,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   useEffect(() => {
     if (!netClient) return;
     const off = onJokerClientState((st) => {
-      setGame(st);
-      setHoldingId(null);
-      setModal(null);
+      updateJokerSession({ game: st, holdingId: null, modal: null });
       setScreen("game");
     });
     return off;
@@ -243,8 +268,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   // التدفق المطلوب: من طاولة الجوكر الزرجوع يعود إلى الشاشة الرئيسية مباشرة،
   // ومن شاشة إعداد المباراة خطوة واحدة إلى شاشة الدخول، ومن الدخول إلى الرئيسية.
   const back = () => {
-    setGame(null);
-    setModal(null);
+    updateJokerSession({ game: null, modal: null });
     if (netClient) disconnectJokerClient();
     if (netHostActive) void stopJokerHost();
     setNetRole("local");
@@ -701,8 +725,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                               onClick={() => {
                                 if (netClient) return; // المضيف يبدأ الجولة التالية
                                 const g2 = dealJoker(game);
-                                setGame(g2);
-                                setHoldingId(null);
+                                updateJokerSession({ game: g2, holdingId: null });
                                 if (netHostActive) jokerHostPublish(g2);
                               }}
                             >

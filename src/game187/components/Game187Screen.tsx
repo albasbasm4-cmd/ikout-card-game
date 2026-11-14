@@ -105,6 +105,39 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
     };
   });
 
+  const storageTimerRef = useRef<number | null>(null);
+  const pendingStorageRef = useRef<GameState187 | null>(null);
+
+  const flushStorage187 = useCallback(() => {
+    if (storageTimerRef.current !== null) {
+      window.clearTimeout(storageTimerRef.current);
+      storageTimerRef.current = null;
+    }
+    const state = pendingStorageRef.current;
+    if (!state) return;
+    try {
+      if (state.phase !== "ROUND_END") {
+        localStorage.setItem(STORAGE_KEY_187, JSON.stringify(state));
+      } else {
+        localStorage.removeItem(STORAGE_KEY_187);
+      }
+    } catch {
+      // ignore
+    }
+    pendingStorageRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    const flush = () => flushStorage187();
+    window.addEventListener("beforeunload", flush);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      flush();
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, [flushStorage187]);
+
   const syncState = useCallback(() => {
     if (!engineRef.current) return;
     const newState = { ...engineRef.current.state };
@@ -114,16 +147,16 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
       channelRef.current.send({ type: "STATE_UPDATE", state: newState });
     }
 
-    try {
-      if (newState.phase !== "ROUND_END") {
-        localStorage.setItem(STORAGE_KEY_187, JSON.stringify(newState));
-      } else {
-        localStorage.removeItem(STORAGE_KEY_187);
-      }
-    } catch {
-      // ignore
+    pendingStorageRef.current = newState;
+    if (newState.phase === "ROUND_END") {
+      flushStorage187();
+    } else if (storageTimerRef.current === null) {
+      storageTimerRef.current = window.setTimeout(() => {
+        storageTimerRef.current = null;
+        flushStorage187();
+      }, 300);
     }
-  }, [mode]);
+  }, [mode, flushStorage187]);
 
   const [speechBubbles, setSpeechBubbles] = useState<Record<number, string>>({});
   const playersRef = useRef(gameState.players);

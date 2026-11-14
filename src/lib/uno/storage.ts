@@ -25,14 +25,45 @@ function isValidSavedGame(s: unknown): s is GameState {
 
 const KEY = "uno.savedGame.v1";
 
-export function saveGame(s: GameState) {
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingState: GameState | null = null;
+
+function flushSaveGame() {
+  if (saveTimer !== null) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  if (!pendingState) return;
   try {
-    localStorage.setItem(KEY, JSON.stringify(s));
+    localStorage.setItem(KEY, JSON.stringify(pendingState));
   } catch {
     /* storage full or blocked */
   }
+  pendingState = null;
 }
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", flushSaveGame);
+  window.addEventListener("pagehide", flushSaveGame);
+}
+
+const isTest = typeof process !== "undefined" && (process.env.NODE_ENV === "test" || Boolean(process.env.VITEST));
+
+export function saveGame(s: GameState, immediate: boolean = false) {
+  pendingState = s;
+  if (isTest || immediate || s.status === "roundOver" || s.status === "matchOver") {
+    flushSaveGame();
+    return;
+  }
+  if (saveTimer !== null) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    flushSaveGame();
+  }, 300);
+}
+
 export function loadGame(): GameState | null {
+  flushSaveGame();
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
@@ -42,7 +73,13 @@ export function loadGame(): GameState | null {
     return null;
   }
 }
+
 export function clearGame() {
+  if (saveTimer !== null) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  pendingState = null;
   try {
     localStorage.removeItem(KEY);
   } catch {

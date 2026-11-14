@@ -94,7 +94,90 @@ const SPEED_LABELS: { id: BotSpeed; label: string }[] = [
   { id: "FAST", label: "سريع" },
 ];
 
-export const Table187: React.FC<Table187Props> = ({
+
+interface Seat187Props {
+  seat: number;
+  pos: string;
+  side: string;
+  isSameSide: boolean;
+  isActive: boolean;
+  character: string;
+  playerName: string;
+  isBot: boolean;
+  isBidder: boolean;
+  phase: string;
+  held: number;
+  badge: string | null;
+  speechBubble?: string;
+  cardBackUrl: string;
+}
+
+const Seat187 = React.memo(function Seat187({
+  seat,
+  pos,
+  side,
+  isSameSide,
+  isActive,
+  character,
+  playerName,
+  isBot,
+  isBidder,
+  phase,
+  held,
+  badge,
+  speechBubble,
+  cardBackUrl,
+}: Seat187Props) {
+  const fanMid = (held - 1) / 2;
+  return (
+    <div
+      data-seat-origin={seat}
+      className={`kt-seat kt-pos-${pos} kt-side-${side} ${isSameSide ? "kt-team" : "kt-opp"} ${isActive ? "kt-active" : ""}`}
+    >
+      <div className="kt-avatar">
+        <img
+          src={characterFace(character)}
+          alt={playerName}
+          draggable={false}
+        />
+      </div>
+      {isBidder && phase !== "BID" && (
+        <Crown className="kt-crown" />
+      )}
+      <div className="kt-name">
+        {isBot && <Bot className="kt-bot" />}
+        <span>{playerName}</span>
+      </div>
+      {held > 0 && (
+        <div className={`kt-fan kt-fan-${side}`} aria-label={`${held} أوراق`}>
+          <div className="kt-fan-ring">
+            {Array.from({ length: held }, (_, i) => (
+              <span
+                key={i}
+                className="kt-mini"
+                style={
+                  {
+                    "--r": `${(i - fanMid) * 3}deg`,
+                  } as React.CSSProperties
+                }
+              >
+                <img src={cardBackUrl} alt="" draggable={false} />
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {badge && <span className="kt-badge">{badge}</span>}
+      {speechBubble && (
+        <div className="kt-speech" role="status">
+          {bubbleText187(speechBubble, character)}
+        </div>
+      )}
+    </div>
+  );
+});
+
+const Table187Component: React.FC<Table187Props> = ({
   state,
   mySeat = 0,
   displayedTrick,
@@ -589,55 +672,24 @@ export const Table187: React.FC<Table187Props> = ({
               const relative = (seat - mySeat + 5) % 5;
               const pos = SEAT_POS[relative];
               const side = pos === "L" ? "left" : pos === "R" ? "right" : "top";
-              const badge = badgeFor(seat);
-              const held = state.hands[seat]?.length ?? 0;
-              const fanMid = (held - 1) / 2;
               return (
-                <div
+                <Seat187
                   key={seat}
-                  data-seat-origin={seat}
-                  className={`kt-seat kt-pos-${pos} kt-side-${side} ${sameSide(seat) ? "kt-team" : "kt-opp"} ${active === seat ? "kt-active" : ""}`}
-                >
-                  <div className="kt-avatar">
-                    <img
-                      src={characterFace(seatCharacters[seat])}
-                      alt={name(seat)}
-                      draggable={false}
-                    />
-                  </div>
-                  {state.bidderSeat === seat && state.phase !== "BID" && (
-                    <Crown className="kt-crown" />
-                  )}
-                  <div className="kt-name">
-                    {isBot(seat) && <Bot className="kt-bot" />}
-                    <span>{name(seat)}</span>
-                  </div>
-                  {held > 0 && (
-                    <div className={`kt-fan kt-fan-${side}`} aria-label={`${held} أوراق`}>
-                      <div className="kt-fan-ring">
-                        {Array.from({ length: held }, (_, i) => (
-                          <span
-                            key={i}
-                            className="kt-mini"
-                            style={
-                              {
-                                "--r": `${(i - fanMid) * 3}deg`,
-                              } as React.CSSProperties
-                            }
-                          >
-                            <img src={cardBack(profile.cards)} alt="" draggable={false} />
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {badge && <span className="kt-badge">{badge}</span>}
-                  {speechBubbles[seat] && (
-                    <div className="kt-speech" role="status">
-                      {bubbleText187(speechBubbles[seat], seatCharacters[seat])}
-                    </div>
-                  )}
-                </div>
+                  seat={seat}
+                  pos={pos}
+                  side={side}
+                  isSameSide={sameSide(seat)}
+                  isActive={active === seat}
+                  character={seatCharacters[seat]}
+                  playerName={name(seat)}
+                  isBot={isBot(seat)}
+                  isBidder={state.bidderSeat === seat}
+                  phase={state.phase}
+                  held={state.hands[seat]?.length ?? 0}
+                  badge={badgeFor(seat)}
+                  speechBubble={speechBubbles[seat]}
+                  cardBackUrl={cardBack(profile.cards)}
+                />
               );
             })}
 
@@ -1095,9 +1147,10 @@ export const Table187: React.FC<Table187Props> = ({
     </div>
   );
 };
+export const Table187 = React.memo(Table187Component);
 
 /** Centered dialog inside the game stage. */
-function Modal({
+const Modal = React.memo(function Modal({
   children,
   onClose,
   title,
@@ -1141,10 +1194,10 @@ function Modal({
       </div>
     </div>
   );
-}
+});
 
 /** Hakem's hand while giving away 4 cards: same fan and card look as the play hand; tap toggles a card. */
-function DiscardFan({
+const DiscardFan = React.memo(function DiscardFan({
   cards,
   selected,
   onToggle,
@@ -1223,6 +1276,6 @@ function DiscardFan({
       </div>
     </div>
   );
-}
+});
 
 export default Table187;

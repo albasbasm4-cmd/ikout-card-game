@@ -1,430 +1,709 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import { GameEngine187 } from "../engine";
-import { Card187, GameState187, Player187, Suit187, TrickPlay187 } from "../types";
-import { calculateTrickPoints, resolveTrickWinner187 } from "../rules";
-import { loadSettings } from "../../store/useSettings";
-import { Table187 } from "./Table187";
-import {
-  evaluateBotBid,
-  chooseBotTrump,
-  chooseBotDiscards,
-  chooseBotCardToPlay,
-  planBotDiscardAndTrump,
-} from "../ai";
-import { playTapSound } from "../../utils/audio";
-import { play187Sound } from "../audio";
-import { isMessage187 } from "../messages";
-import { playChatVoice187 } from "../voices";
-import { Room187Channel, Client187Packet, Host187Packet } from "../network/network187";
-
-export interface Room187SeatInfo {
-  isHost: boolean;
-  mySeat: number;
+/* ===== 187 Room & Menu Styles (from غرفة_اللعب (1).html) ===== */
+.r187-root {
+  --sky-top: #8fb8dc;
+  --sky-mid: #a7c9e6;
+  --sky-low: #cfe4f3;
+  --ink: #a7c9e6;
+  --panel-pink-top: #e27fc2;
+  --panel-pink-bot: #cc55a6;
+  --red-top: #f2594d;
+  --red-bot: #cc2821;
+  --red-sh: #8c1a17;
+  --blue-top: #10a6f4;
+  --blue-bot: #0376d2;
+  --blue-sh: #065a9e;
+  --cyan: #00e5ff;
+  --gold: #ffd23f;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--ink);
+  font-family: Cairo, Tahoma, "Segoe UI", sans-serif;
+  color: #fff;
+  user-select: none;
 }
 
-export interface Game187ScreenProps {
-  players: Player187[];
-  initialState?: GameState187;
-  mode?: "single" | "room";
-  roomCode?: string;
-  /** هوية هذا الجهاز في الغرفة: المضيف مقعد 0، وكل منضم مقعده من رمز جهازه.
-   *  بدونها يُشتق القِدم: المضيف = أول مقعد HUMAN_LOCAL، والمنضم = 1. */
-  roomSeatInfo?: Room187SeatInfo;
-  onExit: () => void;
+.r187-st {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2400px;
+  height: 1080px;
+  transform-origin: center;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-low) 100%);
 }
 
-const STORAGE_KEY_187 = "ikout_187_state";
-/** How long a completed trick stays on the table; longer than the 0.8s card flight so the last card lands first. */
-export const TRICK_HOLD_MS_187 = 1500;
-const speedFactor = () => {
-  const s = loadSettings().botSpeed;
-  return s === "SLOW" ? 1.6 : s === "FAST" ? 0.6 : 1;
-};
+.r187-glow {
+  position: absolute;
+  left: 700px;
+  top: 60px;
+  width: 1000px;
+  height: 560px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.55), transparent 68%);
+}
 
-export const Game187Screen: React.FC<Game187ScreenProps> = ({
-  players,
-  initialState,
-  mode = "single",
-  roomCode,
-  roomSeatInfo,
-  onExit,
-}) => {
-  // الافتراض القديم كان يخلط بين المضيف والمنضم: أولاً players[0] بشري محلي
-  // (وهو المضيف على جهاز المنضم أيضاً) فيعتبر المنضم نفسه مضيفاً ويشغّل محركه الخاص.
-  const isHost = roomSeatInfo
-    ? roomSeatInfo.isHost
-    : mode !== "room" || players[0]?.kind === "HUMAN_LOCAL";
-  const mySeat = roomSeatInfo ? roomSeatInfo.mySeat : mode === "room" && !isHost ? 1 : 0;
-
-  const engineRef = useRef<GameEngine187 | null>(null);
-  const channelRef = useRef<Room187Channel | null>(null);
-
-  if (isHost && !engineRef.current) {
-    if (initialState) {
-      engineRef.current = new GameEngine187({}, initialState);
-    } else {
-      const eng = new GameEngine187({ players });
-      eng.startRound();
-      engineRef.current = eng;
-    }
+.r187-cl {
+  position: absolute;
+  aspect-ratio: 3;
+  opacity: 0.92;
+  animation: r187-drift 22s ease-in-out infinite alternate;
+}
+@keyframes r187-drift {
+  from {
+    transform: translateX(-26px);
   }
+  to {
+    transform: translateX(26px);
+  }
+}
 
-  const [gameState, setGameState] = useState<GameState187>(() => {
-    if (initialState) return initialState;
-    if (engineRef.current) return engineRef.current.state;
-    // Client placeholder before first sync
-    return {
-      roundNo: 1,
-      dealer: 0,
-      currentSeat: 1,
-      hands: [[], [], [], [], []],
-      tableCards: [],
-      bids: [],
-      passedSeats: [false, false, false, false, false],
-      highBid: null,
-      bidderSeat: null,
-      trump: null,
-      currentTrick: [],
-      trickHistory: [],
-      tricksWon: [0, 0, 0, 0, 0],
-      capturedCards: [[], [], [], [], []],
-      hakemPoints: 0,
-      opponentsPoints: 0,
-      earlySettled: false,
-      earlySettledWinner: null,
-      continueAfterEarlySettle: false,
-      phase: "DEAL",
-      players,
-      winner: null,
-      version: 1,
-    };
-  });
+.r187-sun {
+  position: absolute;
+  left: 1103px;
+  top: 283px;
+  width: 194px;
+  height: 194px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+}
 
-  const syncState = useCallback(() => {
-    if (!engineRef.current) return;
-    const newState = { ...engineRef.current.state };
-    setGameState(newState);
+.r187-sk {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
 
-    if (mode === "room" && channelRef.current) {
-      channelRef.current.send({ type: "STATE_UPDATE", state: newState });
-    }
+/* profile HUD */
+.r187-prof {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: min(100% - 32px, 460px);
+  height: 110px;
+  transform: scale(1.5625);
+  transform-origin: 0 0;
+  z-index: 5;
+  cursor: pointer;
+}
+.r187-prof > * {
+  position: absolute;
+}
+.r187-av {
+  left: 82px;
+  top: 6px;
+  width: 78px;
+  height: 88px;
+  border-radius: 50% 50% 46% 46%;
+  background: radial-gradient(#ecd0a8, #b58658);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  display: grid;
+  place-items: center;
+  font-size: 52px;
+  overflow: hidden;
+}
+.r187-ls {
+  left: 166px;
+  top: 2px;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+}
+.r187-ls svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.r187-ls b {
+  position: relative;
+  font-size: 21px;
+  font-weight: 900;
+}
+.r187-xpb {
+  left: 200px;
+  top: 14px;
+  width: 148px;
+  height: 26px;
+  border-radius: 9px;
+  background: #27323b;
+  border: 2px solid #1b242b;
+  overflow: hidden;
+}
+.r187-xpb i {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(#5ed3ff, var(--blue-bot));
+}
+.r187-fb {
+  left: 174px;
+  top: 56px;
+  font-size: 34px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4));
+}
+.r187-un {
+  left: 222px;
+  top: 52px;
+  font-size: 26px;
+  font-weight: 800;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
+}
 
-    try {
-      if (newState.phase !== "ROUND_END") {
-        localStorage.setItem(STORAGE_KEY_187, JSON.stringify(newState));
-      } else {
-        localStorage.removeItem(STORAGE_KEY_187);
-      }
-    } catch {
-      // ignore
-    }
-  }, [mode]);
+/* shared buttons */
+.r187-btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #fff;
+  font-weight: 900;
+  min-width: 0;
+  padding: 0 16px;
+  white-space: nowrap;
+  border: 0;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+.r187-btn::before {
+  content: "";
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 6px;
+  height: 36%;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.28);
+}
+.r187-btn span {
+  position: relative;
+}
+.r187-btn:active {
+  transform: translateY(3px);
+}
+.r187-red {
+  border-radius: 40px;
+  border: 2px solid #ff948a;
+  background: linear-gradient(180deg, var(--red-top), var(--red-bot));
+  box-shadow: 0 6px 0 var(--red-sh);
+  font-size: 38px;
+}
+.r187-red:active {
+  box-shadow: 0 3px 0 var(--red-sh);
+}
+.r187-blue {
+  border-radius: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: linear-gradient(180deg, var(--blue-top), var(--blue-bot));
+  box-shadow: 0 6px 0 var(--blue-sh);
+  font-size: 34px;
+}
+.r187-blue:active {
+  box-shadow: 0 3px 0 var(--blue-sh);
+}
+.r187-pink {
+  border-radius: 40px;
+  border: 2px solid #ff948a;
+  background: linear-gradient(180deg, #d6a642, #9b6b20);
+  box-shadow: 0 6px 0 #9c2e60;
+  font-size: 34px;
+}
+.r187-gray {
+  border-color: #c3c9cc !important;
+  background: linear-gradient(#a2abb0, #737c82) !important;
+  box-shadow: 0 6px 0 #4a5155 !important;
+  color: #e6eaec;
+  cursor: default;
+}
 
-  const [speechBubbles, setSpeechBubbles] = useState<Record<number, string>>({});
-  const playersRef = useRef(gameState.players);
-  playersRef.current = gameState.players;
-  const bubbleTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
-  /** حكم الحاكم البوت المخطط له أثناء الطرد، ليُعلن في مرحلة TRUMP من نفس الاختيار */
-  const botTrumpPlanRef = useRef<Suit187 | null>(null);
-  const showMessage = useCallback((seat: number, message: string) => {
-    if (
-      !Number.isInteger(seat) ||
-      seat < 0 ||
-      seat > 4 ||
-      !isMessage187(message, playersRef.current[seat]?.characterId)
-    )
-      return;
-    playChatVoice187(playersRef.current[seat]?.characterId, message, seat);
-    const previous = bubbleTimers.current.get(seat);
-    if (previous) clearTimeout(previous);
-    setSpeechBubbles((current) => ({ ...current, [seat]: message }));
-    bubbleTimers.current.set(
-      seat,
-      setTimeout(() => {
-        setSpeechBubbles((current) => {
-          const next = { ...current };
-          delete next[seat];
-          return next;
-        });
-        bubbleTimers.current.delete(seat);
-      }, 3400),
-    );
-  }, []);
-  useEffect(
-    () => () => {
-      bubbleTimers.current.forEach(clearTimeout);
-    },
-    [],
-  );
-  const sendMessage = (message: string) => {
-    if (!isMessage187(message, playersRef.current[mySeat]?.characterId)) return;
-    showMessage(mySeat, message);
-    channelRef.current?.send(
-      isHost
-        ? { type: "CHAT_BUBBLE", seat: mySeat, message }
-        : { type: "CHAT", seat: mySeat, message },
-    );
-  };
+.r187-back {
+  position: absolute;
+  left: 115px;
+  top: 228px;
+  width: 108px;
+  height: 96px;
+  border-radius: 30px;
+  border: 4px solid #1b9bf2;
+  background: linear-gradient(var(--blue-top), var(--blue-bot));
+  box-shadow: 0 7px 0 var(--blue-sh);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  z-index: 5;
+}
+.r187-back::before {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 6px;
+  height: 34%;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.22);
+}
+.r187-back svg {
+  position: relative;
+  width: 70px;
+  height: 56px;
+}
+.r187-back:active {
+  transform: translateY(3px);
+  box-shadow: 0 4px 0 var(--blue-sh);
+}
 
-  // Keep the completed trick visible briefly (presentation only; the engine has already scored it).
-  const [heldTrick, setHeldTrick] = useState<{
-    plays: TrickPlay187[];
-    winner: TrickPlay187;
-    text: string;
-  } | null>(null);
-  const seenTricks = useRef(gameState.trickHistory.length);
-  useEffect(() => {
-    const n = gameState.trickHistory.length;
-    if (n < seenTricks.current) seenTricks.current = n;
-    if (n === seenTricks.current) return;
-    seenTricks.current = n;
-    const plays = gameState.trickHistory[n - 1];
-    if (!plays || plays.length === 0) return;
-    const winner = resolveTrickWinner187(plays, gameState.trump);
-    const who = gameState.players[winner.seat]?.name || `لاعب ${winner.seat + 1}`;
-    setHeldTrick({ plays, winner, text: `أكلة ${who} (+${calculateTrickPoints(plays)})` });
-  }, [gameState.trickHistory, gameState.trump, gameState.players]);
-  useEffect(() => {
-    if (!heldTrick) return;
-    const t = window.setTimeout(() => setHeldTrick(null), Math.round(TRICK_HOLD_MS_187 * speedFactor()));
-    return () => window.clearTimeout(t);
-  }, [heldTrick]);
+.r187-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border: 5px solid #fff;
+  border-radius: 28px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--panel-pink-top), var(--panel-pink-bot));
+  box-shadow:
+    0 10px 0 rgba(0, 0, 0, 0.22),
+    0 0 44px rgba(0, 0, 0, 0.25);
+  animation: r187-up 0.5s backwards;
+}
+@keyframes r187-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 40px));
+  }
+}
 
-  // شبكة الغرفة المتزامنة
-  useEffect(() => {
-    if (mode === "room" && roomCode) {
-      const ch = new Room187Channel(roomCode, isHost ? "host" : "client");
-      channelRef.current = ch;
+.r187-hd {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 66px;
+  background: rgba(255, 255, 255, 0.13);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.85);
+  text-align: center;
+  font:
+    900 46px/66px Cairo,
+    sans-serif;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+.r187-bd {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 66px;
+  bottom: 0;
+}
 
-      ch.onMessage((msg: Client187Packet | Host187Packet) => {
-        if (isHost && msg.type === "CHAT" && isMessage187(msg.message)) {
-          showMessage(msg.seat, msg.message);
-          ch.send({ type: "CHAT_BUBBLE", seat: msg.seat, message: msg.message });
-        } else if (!isHost && msg.type === "CHAT_BUBBLE") {
-          showMessage(msg.seat, msg.message);
-        } else if (isHost && engineRef.current) {
-          const eng = engineRef.current;
-          if (msg.type === "BID") {
-            eng.placeBid(msg.seat, msg.bid);
-            syncState();
-          } else if (msg.type === "DISCARD") {
-            eng.giveAwayCards(msg.seat, msg.cardIds);
-            syncState();
-          } else if (msg.type === "TRUMP") {
-            eng.declareTrump(msg.seat, msg.trump);
-            syncState();
-          } else if (msg.type === "PLAY_CARD") {
-            play187Sound("card");
-            eng.playCard(msg.seat, msg.card);
-            syncState();
-          } else if (msg.type === "EARLY_SETTLE") {
-            eng.decideEarlyContinue(msg.continuePlay);
-            syncState();
-          } else if (msg.type === "CHEAT_REPORT") {
-            eng.reportCheat(msg.reporterSeat, msg.accusedSeat, msg.suit);
-            syncState();
-          }
-        } else if (!isHost && msg.type === "STATE_UPDATE") {
-          setGameState(msg.state);
-        }
-      });
+/* main menu cards */
+.r187-mm {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 100px);
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: row;
+  gap: 71px;
+  align-items: flex-start;
+}
+.r187-mm-card {
+  position: relative;
+  width: 660px;
+  height: 556px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 30px;
+  overflow: hidden;
+  box-shadow:
+    0 10px 0 rgba(0, 0, 0, 0.22),
+    0 0 44px rgba(0, 0, 0, 0.25);
+  animation: r187-mmup 0.5s backwards;
+}
+@keyframes r187-mmup {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+}
+.r187-mm-card.pk {
+  background: linear-gradient(180deg, var(--panel-pink-top), var(--panel-pink-bot));
+}
+.r187-mm-card.bl {
+  background: linear-gradient(180deg, #10a6f4, #0376d2);
+}
+.r187-mm-hd {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 63px;
+  text-align: center;
+  font:
+    900 46px/63px Cairo,
+    sans-serif;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+}
+.pk .r187-mm-hd {
+  background: rgba(255, 255, 255, 0.13);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.85);
+}
 
-      return () => {
-        ch.close();
-      };
-    }
-    return undefined;
-  }, [mode, roomCode, isHost, syncState, showMessage]);
+.r187-mm-ring {
+  position: absolute;
+  left: 50%;
+  top: 98px;
+  width: 195px;
+  height: 195px;
+  margin-left: -97.5px;
+  border-radius: 50%;
+  border: 5px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 4px 0 rgba(120, 30, 95, 0.28),
+    inset 0 3px 6px rgba(120, 30, 95, 0.25);
+}
+.r187-mm-ring svg {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 195px;
+  height: 195px;
+  filter: drop-shadow(0 4px 0 rgba(130, 40, 100, 0.45));
+}
 
-  // أتمتة حركات البوتات (على جهاز المضيف فقط)
-  useEffect(() => {
-    if (!isHost || heldTrick) return;
-    const eng = engineRef.current;
-    if (!eng) return;
-    const k = speedFactor();
+.r187-mm-globe {
+  position: absolute;
+  left: 50%;
+  top: 108px;
+  width: 176px;
+  height: 176px;
+  margin-left: -88px;
+}
+.r187-mm-globe svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(3px 4px 0 rgba(0, 60, 130, 0.4));
+}
 
-    const currentSeat = gameState.currentSeat;
-    const currentPlayer = gameState.players[currentSeat];
-    const isBotTurn = currentPlayer?.kind === "AI_BOT";
+.r187-mm-b {
+  position: absolute !important;
+  left: 20px;
+  right: 20px;
+  height: 78px;
+  border-radius: 40px;
+  font-size: 36px;
+}
+.r187-mm-b.b1 {
+  top: 343px;
+}
+.r187-mm-b.b2 {
+  top: 440px;
+}
 
-    let timer: number | null = null;
+.r187-lpink {
+  border: 3px solid #f3b6e6;
+  background: linear-gradient(#dc7cc6, #c351a9);
+  box-shadow: 0 6px 0 #9c3a86;
+}
+.r187-lpink:active {
+  box-shadow: 0 3px 0 #9c3a86;
+}
 
-    if (gameState.phase === "BID" && isBotTurn) {
-      timer = window.setTimeout(() => {
-        const st = engineRef.current?.state;
-        // تجاهل الجدولة القديمة إذا تغيرت الحالة أو الدور منذ لحظة الجدولة
-        if (!st || st.phase !== "BID" || st.currentSeat !== currentSeat) return;
-        const bid = evaluateBotBid(st.hands[currentSeat], st.highBid);
-        try {
-          eng.placeBid(currentSeat, bid);
-          syncState();
-        } catch {
-          eng.placeBid(currentSeat, 0);
-          syncState();
-        }
-      }, 650 * k);
-    } else if (gameState.phase === "DISCARD") {
-      const hakemSeat = gameState.bidderSeat ?? 0;
-      const hakemPlayer = gameState.players[hakemSeat];
-      if (hakemPlayer?.kind === "AI_BOT") {
-        timer = window.setTimeout(() => {
-          const st = engineRef.current?.state;
-          if (!st || st.phase !== "DISCARD") return;
-          // يختار الحكم من يده الكاملة (12 ورقة) ثم يطرد بناءً عليه
-          const plan = planBotDiscardAndTrump(st.hands[hakemSeat]);
-          botTrumpPlanRef.current = plan.trump;
-          eng.giveAwayCards(hakemSeat, plan.discards);
-          syncState();
-        }, 700 * k);
-      }
-    } else if (gameState.phase === "TRUMP") {
-      const hakemSeat = gameState.bidderSeat ?? 0;
-      const hakemPlayer = gameState.players[hakemSeat];
-      if (hakemPlayer?.kind === "AI_BOT") {
-        timer = window.setTimeout(() => {
-          const st = engineRef.current?.state;
-          if (!st || st.phase !== "TRUMP") return;
-          // نفس الحكم المخطط له أثناء الطرد حتى لا تتعارض الخطة مع الإعلان
-          const trump = botTrumpPlanRef.current ?? chooseBotTrump(st.hands[hakemSeat]);
-          botTrumpPlanRef.current = null;
-          eng.declareTrump(hakemSeat, trump);
-          syncState();
-        }, 700 * k);
-      }
-    } else if (gameState.phase === "PLAY" && isBotTurn) {
-      timer = window.setTimeout(() => {
-        try {
-          const st = engineRef.current?.state;
-          // تجاهل الجدولة القديمة إذا تغيرت الحالة أو الدور منذ لحظة الجدولة
-          if (!st || st.phase !== "PLAY" || st.currentSeat !== currentSeat) return;
-          const card = chooseBotCardToPlay(st, currentSeat);
-          play187Sound("card");
-          eng.playCard(currentSeat, card);
-          syncState();
-        } catch (err) {
-          console.error("Bot play error:", err);
-        }
-      }, 750 * k);
-    }
+/* room card */
+.r187-rm-card {
+  width: 1720px;
+  height: 660px;
+}
+.r187-dk {
+  background: rgba(122, 22, 84, 0.38);
+  border-radius: 16px;
+}
+.r187-lp {
+  position: absolute;
+  left: 18px;
+  top: 14px;
+  width: 520px;
+  height: 546px;
+}
+.r187-lp > * {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+.r187-cb {
+  top: 0;
+  height: 150px;
+  text-align: center;
+}
+.r187-cb .t {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  font:
+    800 28px/1.2 Cairo,
+    sans-serif;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.r187-cb .c {
+  position: absolute;
+  left: 24px;
+  top: 52px;
+  direction: ltr;
+  font:
+    900 76px/1 Cairo,
+    sans-serif;
+  letter-spacing: 10px;
+  color: var(--cyan);
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.r187-cb .r187-btn {
+  left: auto;
+  right: 20px;
+  top: 60px;
+  width: 128px;
+  height: 60px;
+  font-size: 28px;
+  border-radius: 30px;
+}
 
-    return () => {
-      if (timer) window.clearTimeout(timer);
-    };
-  }, [isHost, gameState, syncState, heldTrick]);
+.r187-sb {
+  top: 162px;
+  height: 92px;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(122, 22, 84, 0.4);
+}
+.r187-sb div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font:
+    800 30px/1 Cairo,
+    sans-serif;
+}
+.r187-sb em {
+  font-style: normal;
+  font-weight: 900;
+  font-size: 36px;
+  color: var(--cyan);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
 
-  // الإجراءات
-  const handleHumanPlayCard = (card: Card187) => {
-    play187Sound("card");
-    if (isHost && engineRef.current) {
-      engineRef.current.playCard(mySeat, card);
-      syncState();
-    } else if (channelRef.current) {
-      channelRef.current.send({ type: "PLAY_CARD", seat: mySeat, card });
-    }
-  };
+#r187-qrb {
+  top: 284px;
+  height: 80px;
+  border-radius: 40px;
+}
+#r187-go {
+  top: 380px;
+  height: 162px !important;
+  font-size: 42px;
+  white-space: pre-line;
+  line-height: 1.2;
+  border-radius: 40px;
+}
+.r187-stt {
+  top: 284px;
+  height: 258px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font:
+    800 30px/1.5 Cairo,
+    sans-serif;
+  padding: 0 20px;
+}
 
-  const handleHumanBid = (bid: number) => {
-    if (isHost && engineRef.current) {
-      engineRef.current.placeBid(mySeat, bid);
-      syncState();
-    } else if (channelRef.current) {
-      channelRef.current.send({ type: "BID", seat: mySeat, bid });
-    }
-  };
+/* seats grid: 5 seats */
+.r187-sa {
+  position: absolute;
+  left: 566px;
+  top: 14px;
+  width: 1116px;
+  height: 546px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 22px;
+}
+.r187-seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 10px;
+  border-radius: 20px;
+  background: rgba(122, 22, 84, 0.38);
+  border: 4px solid transparent;
+  position: relative;
+}
+.r187-seat.me {
+  background: rgba(96, 15, 66, 0.5);
+}
+.r187-av2 {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(#ecd0a8, #b58658);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  display: grid;
+  place-items: center;
+  font-size: 52px;
+  overflow: hidden;
+}
+.r187-seat.bot .r187-av2 {
+  background: radial-gradient(#b9c6d1, #6f8190);
+}
+.r187-seat.empty .r187-av2 {
+  background: rgba(255, 255, 255, 0.12);
+  border: 4px dashed rgba(255, 255, 255, 0.6);
+  font:
+    900 56px/1 Cairo,
+    sans-serif;
+  color: rgba(255, 255, 255, 0.8);
+}
+.r187-sn {
+  font:
+    900 28px/1.1 Cairo,
+    sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+}
+.r187-bg {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.r187-bg b {
+  font:
+    800 17px/1 Cairo,
+    sans-serif;
+  padding: 5px 11px;
+  border-radius: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+}
+.r187-hu {
+  background: #2fa55a;
+}
+.r187-bt {
+  background: #e0821a;
+}
+.r187-ho {
+  background: #c9a21a;
+  color: #2a2200;
+  border-color: #fff;
+}
 
-  const handleHumanGiveAwayCards = (cardIds: string[]) => {
-    if (isHost && engineRef.current) {
-      engineRef.current.giveAwayCards(mySeat, cardIds);
-      syncState();
-    } else if (channelRef.current) {
-      channelRef.current.send({ type: "DISCARD", seat: mySeat, cardIds });
-    }
-  };
+.r187-chip {
+  cursor: pointer;
+  color: #fff;
+  font-weight: 900;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: linear-gradient(var(--blue-top), var(--blue-bot));
+  box-shadow: 0 4px 0 var(--blue-sh);
+  padding: 0 20px;
+  height: 52px;
+  border-radius: 26px;
+  font-size: 22px;
+}
+.r187-chip:active {
+  transform: translateY(2px);
+}
+.r187-seatnum {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 15px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
 
-  const handleHumanDeclareTrump = (suit: Suit187) => {
-    if (isHost && engineRef.current) {
-      engineRef.current.declareTrump(mySeat, suit);
-      syncState();
-    } else if (channelRef.current) {
-      channelRef.current.send({ type: "TRUMP", seat: mySeat, trump: suit });
-    }
-  };
+/* join screen */
+.r187-jv-card {
+  width: 900px;
+  height: 600px;
+}
+.r187-ci {
+  width: 520px;
+  height: 96px;
+  margin: 36px auto 28px;
+  display: block;
+  border-radius: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: rgba(96, 15, 66, 0.45);
+  color: var(--cyan);
+  font:
+    900 68px/1 Cairo,
+    sans-serif;
+  text-align: center;
+  letter-spacing: 12px;
+  outline: none;
+}
+.r187-or {
+  text-align: center;
+  font:
+    800 28px Cairo,
+    sans-serif;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 20px 0;
+}
 
-  const handleHumanEarlySettleChoice = (continuePlay: boolean) => {
-    if (isHost && engineRef.current) {
-      engineRef.current.decideEarlyContinue(continuePlay);
-      syncState();
-    } else if (channelRef.current) {
-      channelRef.current.send({ type: "EARLY_SETTLE", seat: mySeat, continuePlay });
-    }
-  };
+/* modal & toast */
+.r187-md {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  /* backdrop-filter replaced for mobile performance */
+  background: rgba(0, 0, 0, 0.88);
+}
+.r187-mc {
+  background: var(--sky-mid);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 28px;
+  padding: 28px;
+  text-align: center;
+  max-width: 500px;
+  width: 90%;
+  color: #fff;
+}
 
-  const handleHumanReportCheat = (accusedSeat: number, suit: Suit187) => {
-    if (isHost && engineRef.current) {
-      engineRef.current.reportCheat(mySeat, accusedSeat, suit);
-      syncState();
-    } else if (channelRef.current) {
-      channelRef.current.send({ type: "CHEAT_REPORT", reporterSeat: mySeat, accusedSeat, suit });
-    }
-  };
+/* Unified room palette and flexible Arabic controls. */
+.r187-card, .r187-mm-card, .r187-mc { color: #fff; }
+.r187-hd { color: #fff; border-bottom-color: rgba(255,255,255,.85); background: rgba(255,255,255,.13); }
+.r187-mm-hd { color: #fff; }
+.r187-mm-ring, .r187-sun { border-color: rgba(255,255,255,.5); }
+.r187-mm-ring { background: rgba(255,255,255,.22); }
+.r187-btn, .r187-chip { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; padding-left: 16px; padding-right: 16px; white-space: nowrap; }
+.r187-mm-b { min-width: 0; }
+.r187-ci { max-width: calc(100% - 32px); border-color: rgba(255,255,255,.85); }
+.r187-mc { background: linear-gradient(180deg, var(--panel-pink-top), var(--panel-pink-bot)); }
 
-  const handleNextRound = () => {
-    if (isHost && engineRef.current) {
-      engineRef.current.nextRound();
-      syncState();
-    }
-  };
+.r187-ci { width: min(520px, calc(100% - 32px)); }
+.r187-btn span { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.r187-jv-card .r187-btn { max-width: calc(100% - 32px); }
 
-  const handleRestart = () => {
-    if (!isHost) return;
-    const eng = new GameEngine187({
-      players: gameState.players.length ? gameState.players : players,
-    });
-    eng.startRound();
-    engineRef.current = eng;
-    setHeldTrick(null);
-    seenTricks.current = 0;
-    syncState();
-  };
-
-  const handleExitGame = () => {
-    playTapSound();
-    try {
-      localStorage.removeItem(STORAGE_KEY_187);
-    } catch {
-      // ignore
-    }
-    onExit();
-  };
-
-  return (
-    <div className="w-full h-full relative">
-      <Table187
-        state={gameState}
-        speechBubbles={speechBubbles}
-        onSendMessage={sendMessage}
-        mySeat={mySeat}
-        displayedTrick={heldTrick ? heldTrick.plays : gameState.currentTrick}
-        winningPlay={heldTrick?.winner ?? null}
-        trickAnnouncement={heldTrick?.text ?? null}
-        canAct={!heldTrick}
-        onRestart={isHost && mode !== "room" ? handleRestart : undefined}
-        onPlayCard={handleHumanPlayCard}
-        onBid={handleHumanBid}
-        onGiveAwayCards={handleHumanGiveAwayCards}
-        onDeclareTrump={handleHumanDeclareTrump}
-        onEarlySettleChoice={handleHumanEarlySettleChoice}
-        onReportCheat={handleHumanReportCheat}
-        onNextRound={handleNextRound}
-        onExit={handleExitGame}
-      />
-    </div>
-  );
-};
-
-export default Game187Screen;
+.r187-lpink { border-color: #f3b6e6 !important; background: linear-gradient(#dc7cc6, #c351a9) !important; box-shadow: 0 6px 0 #9c3a86 !important; }
+.r187-dk, .r187-sb, .r187-stt { background: rgba(122,22,84,.38); }
+.r187-chip[style] { background: linear-gradient(180deg,var(--blue-top),var(--blue-bot)) !important; border-color: rgba(126,206,255,.9) !important; }
+.r187-seat { border-color: rgba(255,255,255,.25); }
+.r187-seat.me { border-color: #fff; }
