@@ -25,7 +25,10 @@ export class KoutGameEngine {
     this._currentSeed = options.seed ?? 123456789;
 
     if (initialState) {
-      this._state = { ...initialState };
+      this._state = {
+        ...initialState,
+        players: options.players ?? initialState.players,
+      };
       return;
     }
 
@@ -64,6 +67,22 @@ export class KoutGameEngine {
   }
 
   public get state(): Readonly<GameState> {
+    return this._state;
+  }
+
+  /**
+   * يعدّل مقعد لاعب معيّن ويزيد رقم الإصدار (version)
+   * لإشعار واجهة React وجميع الأجهزة المتصلة بالتحديث.
+   */
+  public patchPlayer(seatIndex: number, patch: Partial<PlayerSlot>): GameState {
+    if (!this._state.players || !this._state.players[seatIndex]) return this._state;
+    const updated = [...this._state.players];
+    updated[seatIndex] = { ...updated[seatIndex], ...patch };
+    this._state = {
+      ...this._state,
+      players: updated,
+      version: (this._state.version ?? 0) + 1,
+    };
     return this._state;
   }
 

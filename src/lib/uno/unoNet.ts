@@ -1,3 +1,4 @@
+import { getPersistentPlayerToken } from "../../network/playerToken";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -66,10 +67,22 @@ function applyIntent(s: GameState, seat: number, intent: UnoIntent): Result {
 interface UnoHostState {
   code: string;
   clientIdToSeat: Map<string, number>;
+  tokenToSeat: Map<string, number>;
+  clientToToken: Map<string, string>;
+  tokenToClient: Map<string, string>;
+  disconnectTimers: Map<number, ReturnType<typeof setTimeout>>;
   seatNames: (string | null)[];
   state: GameState | null;
   seatListeners: Set<(seats: (string | null)[]) => void>;
   stateListeners: Set<(s: GameState) => void>;
+}
+
+function bindUnoClient(clientId: string, token: string): void {
+  if (!host) return;
+  const old = host.tokenToClient.get(token);
+  if (old && old !== clientId) host.clientToToken.delete(old);
+  host.tokenToClient.set(token, clientId);
+  host.clientToToken.set(clientId, token);
 }
 
 let host: UnoHostState | null = null;
@@ -113,6 +126,10 @@ export async function startUnoHost(code: string): Promise<void> {
   host = {
     code,
     clientIdToSeat: new Map(),
+    tokenToSeat: new Map(),
+    clientToToken: new Map(),
+    tokenToClient: new Map(),
+    disconnectTimers: new Map(),
     seatNames: Array.from({ length: 10 }, () => null),
     state: null,
     seatListeners: new Set(),
@@ -122,12 +139,38 @@ export async function startUnoHost(code: string): Promise<void> {
   unregisterChannel = registerHubChannel("uno", {
     onClientDisconnected(clientId) {
       if (!host) return;
-      const seat = host.clientIdToSeat.get(clientId);
-      if (seat !== undefined) {
-        host.clientIdToSeat.delete(clientId);
-        host.seatNames[seat] = null;
-        emitSeats();
-      }
+      const token = host.clientToToken.get(clientId);
+      host.clientToToken.delete(clientId);
+      if (!token) return;
+      if (host.tokenToClient.get(token) !== clientId) return;
+      host.tokenToClient.delete(token);
+
+      const seat = host.tokenToSeat.get(token);
+      if (seat === undefined) return;
+
+      // مهلة 8 ثوانٍ لتمرير الدور أو السحب تلقائياً إذا انقطع اللاعب في دوره
+      const existing = host.disconnectTimers.get(seat);
+      if (existing) clearTimeout(existing);
+      host.disconnectTimers.set(
+        seat,
+        setTimeout(() => {
+          if (!host) return;
+          host.disconnectTimers.delete(seat);
+          if (host.state && host.state.currentSeat === seat) {
+            const passRes = passTurn(host.state, seat, host.state.version);
+            if (passRes.ok) {
+              host.state = passRes.state;
+              publishState();
+            } else {
+              const drawRes = drawCard(host.state, seat, host.state.version);
+              if (drawRes.ok) {
+                host.state = drawRes.state;
+                publishState();
+              }
+            }
+          }
+        }, 8000),
+      );
     },
     onClientMessage(clientId, msg) {
       if (!host) return;
@@ -140,15 +183,27 @@ export async function startUnoHost(code: string): Promise<void> {
           hubSendTo(clientId, { ch: "uno", packet: { type: "INVALID_ROOM" } });
           return;
         }
-        let seat = host.clientIdToSeat.get(clientId);
-        if (seat === undefined) {
+        const token = String(p.payload?.["token"] ?? clientId);
+        bindUnoClient(clientId, token);
+
+        let seat = host.tokenToSeat.get(token);
+        if (seat !== undefined) {
+          // إعادة اتصال: إلغاء مؤقت الانقطاع واستعادة المقعد الأصلي
+          const timer = host.disconnectTimers.get(seat);
+          if (timer) {
+            clearTimeout(timer);
+            host.disconnectTimers.delete(seat);
+          }
+        } else {
           seat = host.seatNames.findIndex((n, i) => i > 0 && n === null);
           if (seat === -1) {
             hubSendTo(clientId, { ch: "uno", packet: { type: "ROOM_FULL" } });
             return;
           }
-          host.clientIdToSeat.set(clientId, seat);
+          host.tokenToSeat.set(token, seat);
         }
+
+        host.clientIdToSeat.set(clientId, seat);
         host.seatNames[seat] = String(p.payload?.["name"] ?? "لاعب");
         hubSendTo(clientId, {
           ch: "uno",
@@ -179,6 +234,12 @@ export async function startUnoHost(code: string): Promise<void> {
 }
 
 export function stopUnoHost(): void {
+  if (host) {
+    for (const timer of host.disconnectTimers.values()) {
+      clearTimeout(timer);
+    }
+    host.disconnectTimers.clear();
+  }
   unregisterChannel?.();
   unregisterChannel = null;
   host = null;
@@ -305,9 +366,10 @@ export async function connectUnoClient(opts: { code: string; name: string }): Pr
 function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise<boolean> {
   return new Promise((resolve) => {
     let settled = false;
+    const token = getPersistentPlayerToken("uno");
     const socket = new LocalClientSocket({
       url: `ws://${ip}:8080`,
-      playerToken: `uno_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      playerToken: token,
       playerName: opts.name || "لاعب",
       maxReconnectAttempts: 0,
       initialBackoffMs: 300,
@@ -329,7 +391,7 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
         socket.send({
           v: 1,
           type: "HELLO",
-          payload: { name: opts.name || "لاعب", roomCode: opts.code },
+          payload: { name: opts.name || "لاعب", roomCode: opts.code, token },
         } as never);
       } else if (st === "HOST_DROPPED" || st === "DISCONNECTED") {
         finish(false);

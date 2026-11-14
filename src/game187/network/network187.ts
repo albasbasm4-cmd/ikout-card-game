@@ -1,3 +1,4 @@
+import { getPersistentPlayerToken } from "../../network/playerToken";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -46,6 +47,8 @@ export class Room187Channel {
   /** رسائل مرسلة قبل جهوزية النقل (اتصال العميل أو تسجيل قناة المضيف). */
   private pending: (Client187Packet | Host187Packet)[] = [];
   private handlers = new Set<(msg: Client187Packet | Host187Packet) => void>();
+  private clientToToken = new Map<string, string>();
+  private tokenToClient = new Map<string, string>();
 
   /**
    * role:
@@ -81,8 +84,13 @@ export class Room187Channel {
     await ensureHubServer();
     if (this.disposed) return;
     this.unregHost = registerHubChannel("g187", {
-      onClientDisconnected() {
-        /* المضيف يكتشف المغادرة عبر توقف رسائل المنضم */
+      onClientDisconnected: (clientId) => {
+        const token = this.clientToToken.get(clientId);
+        this.clientToToken.delete(clientId);
+        if (!token) return;
+        if (this.tokenToClient.get(token) !== clientId) return;
+        this.tokenToClient.delete(token);
+        this.emit({ type: "LEAVE", clientToken: token });
       },
       onClientMessage: (clientId, msg) => {
         const packet = (msg as Record<string, unknown>)["packet"] as
@@ -90,12 +98,19 @@ export class Room187Channel {
           | Host187Packet
           | undefined;
         if (!packet || typeof packet !== "object" || !("type" in packet)) return;
+        const j = packet as Record<string, unknown> as {
+          payload?: Record<string, unknown>;
+          clientToken?: unknown;
+          roomCode?: unknown;
+        };
+        const tokenCandidate = (typeof j.clientToken === "string" && j.clientToken)
+          ? j.clientToken
+          : (typeof j.payload?.["playerToken"] === "string" ? (j.payload["playerToken"] as string) : null);
+        if (tokenCandidate) {
+          this.clientToToken.set(clientId, tokenCandidate);
+          this.tokenToClient.set(tokenCandidate, clientId);
+        }
         if (packet.type === "JOIN") {
-          const j = packet as Record<string, unknown> as {
-            payload?: Record<string, unknown>;
-            clientToken?: unknown;
-            roomCode?: unknown;
-          };
           const reject = () => {
             hubSendTo(clientId, {
               ch: "g187",
@@ -137,9 +152,10 @@ export class Room187Channel {
   private tryConnect(ip: string, code: string): Promise<boolean> {
     return new Promise((resolve) => {
       let settled = false;
+      const token = getPersistentPlayerToken("g187");
       const socket = new LocalClientSocket({
         url: `ws://${ip}:8080`,
-        playerToken: `g187_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+        playerToken: token,
         playerName: "",
         maxReconnectAttempts: 0,
         initialBackoffMs: 300,

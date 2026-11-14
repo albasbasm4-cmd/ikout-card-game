@@ -164,9 +164,16 @@ export function filterStateForSeat(state: GameState, seat: number): ClientGameSt
     }));
   });
 
+  // حماية أمنية: لا يتم إرسال توكنات اللاعبين الآخرين حتى لا يستطيع أحد انتحال مقعد لاعب آخر
+  const filteredPlayers = state.players?.map((p, idx) => ({
+    ...p,
+    playerToken: idx === seat ? p.playerToken : undefined,
+  }));
+
   return {
     ...state,
     hands: filteredHands,
+    players: filteredPlayers,
     mySeat: seat,
   };
 }

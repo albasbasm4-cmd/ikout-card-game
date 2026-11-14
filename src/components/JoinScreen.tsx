@@ -19,6 +19,7 @@ import {
 import { NetworkDiagnosticsPanel } from "./NetworkDiagnosticsPanel";
 import { parseRoomPayload } from "../network/localIp";
 import { LocalClientSocket, ClientSocketStatus } from "../network/LocalClientSocket";
+import { getPersistentPlayerToken } from "../network/playerToken";
 import { getJoinCandidateIps } from "../network/wssBridge";
 import { setActiveKoutClient } from "../network/koutNet";
 import jsQR from "jsqr";
@@ -241,7 +242,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
     setErrorMessage(null);
 
     const targetUrl = `ws://${ip}:${port}`;
-    const token = `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const token = getPersistentPlayerToken("ikout");
 
     try {
       const socket = new LocalClientSocket({
@@ -265,7 +266,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
         }
         setStatus("ERROR");
         setErrorMessage(
-          "فشل الاتصال بمضيف الغرفة (انتهت المهلة). تأكد من أن المضيف فتح غرفة اللعب الجماعي وأن الجهازين متصلان بنفس نقطة الاتصال/الشبكة، أو أدخل عنوان IP الظاهر على شاشة المضيف (زر رمز QR).",
+          "فشل الاتصال بمضيف الغرفة (انتهت المهلة). تأكد من أن المضيف فتح غرفة اللعب الجماعي وأن الجهازين متصلان بنفس الشبكة/نقطة الاتصال، أو أدخل عنوان IP الظاهر على شاشة المضيف.",
         );
       };
 
@@ -273,19 +274,38 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
         if (socket.getStatus() !== "CONNECTED") failOrFallback();
       }, 4000);
 
-      socket.onStatusChange((sockStatus: ClientSocketStatus) => {
-        if (sockStatus === "CONNECTED") {
+      socket.onMessage((packet) => {
+        if (packet.type === "ERROR") {
+          clearTimeout(connectionTimeout);
+          setStatus("ERROR");
+          const errorCode = packet.payload.code;
+          if (errorCode === "INVALID_ROOM") {
+            setErrorMessage("رمز الغرفة غير صحيح. تأكد من إدخال نفس الرمز المعروض على شاشة المضيف.");
+          } else if (errorCode === "ROOM_FULL") {
+            setErrorMessage("الغرفة ممتلئة! اكتمل عدد اللاعبين في هذه الغرفة.");
+          } else {
+            setErrorMessage(packet.payload.message || "حدث خطأ أثناء الانضمام للغرفة.");
+          }
+          socket.disconnect();
+        } else if (packet.type === "SEAT_UPDATE") {
           clearTimeout(connectionTimeout);
           setStatus("SUCCESS");
+          const assignedSeat = packet.payload.seatIndex;
           setActiveKoutClient({
             socket,
-            mySeat: 0,
+            mySeat: assignedSeat,
             playerToken: token,
             roomCode: code,
           });
           if (onConnected) {
             onConnected(socket, { ip, port, roomCode: code });
           }
+        }
+      });
+
+      socket.onStatusChange((sockStatus: ClientSocketStatus) => {
+        if (sockStatus === "CONNECTED") {
+          // تم الاتصال بالخادم، بانتظار استجابة SEAT_UPDATE أو ERROR
         } else if (sockStatus === "HOST_DROPPED") {
           clearTimeout(connectionTimeout);
           setStatus("ERROR");

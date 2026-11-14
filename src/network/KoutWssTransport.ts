@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * KoutWssTransport — جسر بين بروتوكول الكوت (HostSession) وشبكة gameHub.
- * playerToken = clientId الخاص بـ gameHub.
- * الرسائل تُغلف داخل { ch: "kout", packet } لتفريقها عن قنوات الألعاب الأخرى.
+ * يترجم بين معرّف الاتصال المتغير (clientId) والتوكن الثابت (playerToken)
+ * لضمان احتفاظ اللاعب بمقعده عند إعادة الاتصال.
  */
 
 import type { IHostTransport, Unsubscribe } from "./ITransport";
@@ -31,6 +31,16 @@ export class KoutWssTransport implements IHostTransport {
   private unsubscribe: (() => void) | null = null;
   private ready = false;
 
+  private clientToToken = new Map<string, string>();
+  private tokenToClient = new Map<string, string>();
+
+  private bind(clientId: string, token: string) {
+    const old = this.tokenToClient.get(token);
+    if (old && old !== clientId) this.clientToToken.delete(old);
+    this.tokenToClient.set(token, clientId);
+    this.clientToToken.set(clientId, token);
+  }
+
   async start(): Promise<boolean> {
     const ok = await ensureHubServer(HUB_PORT);
     if (!ok) return false;
@@ -39,13 +49,24 @@ export class KoutWssTransport implements IHostTransport {
         const env = msg as unknown as KoutEnvelope;
         if (!env || typeof env !== "object" || !env.packet) return;
         const packet = env.packet as ClientPacket;
-        for (const h of this.messageHandlers) h(clientId, packet);
+        const token =
+          typeof packet.playerToken === "string" && packet.playerToken
+            ? packet.playerToken
+            : clientId;
+        this.bind(clientId, token);
+        for (const h of this.messageHandlers) h(token, packet);
       },
       onClientConnected: (clientId) => {
         for (const h of this.connectHandlers) h(clientId);
       },
       onClientDisconnected: (clientId) => {
-        for (const h of this.disconnectHandlers) h(clientId);
+        const token = this.clientToToken.get(clientId);
+        this.clientToToken.delete(clientId);
+        if (!token) return;
+        // إذا وصل اتصال جديد لنفس التوكن قبل إغلاق القديم، لا نعتبره انقطاعاً
+        if (this.tokenToClient.get(token) !== clientId) return;
+        this.tokenToClient.delete(token);
+        for (const h of this.disconnectHandlers) h(token);
       },
     });
     this.ready = true;
@@ -58,16 +79,15 @@ export class KoutWssTransport implements IHostTransport {
 
   sendToClient(playerToken: string, packet: HostPacket): void {
     this.assertReady();
-    hubSendTo(playerToken, { ch: CH, packet } as unknown as HubMessage);
+    const clientId = this.tokenToClient.get(playerToken) ?? playerToken;
+    hubSendTo(clientId, { ch: CH, packet } as unknown as HubMessage);
   }
 
   broadcast(packet: HostPacket): void {
     this.assertReady();
-    // بث لكل العملاء المتصلين — الإضافة الأصلية تبث للجميع
-    // (الحزم موجهة بـ playerToken داخلها، والمنضم يتجاهل ما ليس له).
-    // ملاحظة: broadcast يرسل نفس الحزمة للجميع؛ بروتوكول الكوت يوجّه بحسب
-    // playerToken على العميل، لذا نستعمل sendToClient دائماً من HostSession.
-    void packet;
+    for (const clientId of this.tokenToClient.values()) {
+      hubSendTo(clientId, { ch: CH, packet } as unknown as HubMessage);
+    }
   }
 
   onClientMessage(handler: (playerToken: string, packet: ClientPacket) => void): Unsubscribe {
@@ -88,5 +108,10 @@ export class KoutWssTransport implements IHostTransport {
   destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    this.clientToToken.clear();
+    this.tokenToClient.clear();
+    this.messageHandlers.clear();
+    this.connectHandlers.clear();
+    this.disconnectHandlers.clear();
   }
 }

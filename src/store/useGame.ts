@@ -81,6 +81,7 @@ export function useGame(options: UseGameOptions = {}) {
           targetScore,
           initialDealer: 0,
           seed: Math.floor(Math.random() * 1000000),
+          players: options.players,
         },
         options.initialState,
       );
@@ -123,9 +124,9 @@ export function useGame(options: UseGameOptions = {}) {
   const lastCheatReportAtRef = useRef<number>(0);
   const isExecutingRef = useRef<boolean>(false);
 
-  // المقاعد البشرية: من تشكيلة الغرفة أو من حالة اللعبة، والافتراض مقعد واحد بشري
+  // المقاعد البشرية: نعتمد حالة اللعبة الحية لتنعكس استجابة الروبوت المؤقتة فور انقطاع اللاعب
   const humanSeats = useMemo<number[]>(() => {
-    const slots = options.players ?? (state.players && state.players.length ? state.players : null);
+    const slots = (state.players && state.players.length > 0) ? state.players : options.players;
     const humans = (slots || []).filter((p) => p.kind !== "AI_BOT").map((p) => p.seatIndex);
     return humans.length > 0 ? humans : [0];
     // options.players يُقرأ مرة واحدة كإعداد أولي

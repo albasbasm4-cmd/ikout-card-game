@@ -47,11 +47,11 @@ const WebSocketServer = registerPlugin<NativeWssPlugin>("WebSocketServer");
 
 export function getNativeWssPlugin(): NativeWssPlugin | null {
   if (typeof window === "undefined") return null;
-
+  // المتصفح والتشغيل المحلي لا يملكان الإضافة
+  if (!Capacitor.isNativePlatform()) return null;
   if (!Capacitor.isPluginAvailable("WebSocketServer")) {
     return null;
   }
-
   return WebSocketServer;
 }
 

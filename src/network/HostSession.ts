@@ -47,6 +47,9 @@ export class HostSession {
   private cheatReportRound = -1;
   private lastCheatReportAt = 0;
   private stateListeners = new Set<(state: GameState) => void>();
+  private disconnectTimers = new Map<number, ReturnType<typeof setTimeout>>();
+  private readonly BOT_TAKEOVER_MS = 8000;
+  private unsubscribeDisconnect?: () => void;
 
   constructor(transport: IHostTransport, options: HostSessionOptions = {}) {
     this.transport = transport;
@@ -119,6 +122,37 @@ export class HostSession {
         this.handleClientPacket(playerToken, packet);
       },
     );
+    this.setupDisconnectListener();
+  }
+
+  private setupDisconnectListener(): void {
+    this.unsubscribeDisconnect = this.transport.onClientDisconnected((token) => {
+      const seat = this.tokenToSeat.get(token);
+      if (seat === undefined) return;
+      this.patchSlot(seat, { connected: false });
+      const timer = this.disconnectTimers.get(seat);
+      if (timer) clearTimeout(timer);
+      this.disconnectTimers.set(
+        seat,
+        setTimeout(() => this.botTakeover(seat), this.BOT_TAKEOVER_MS),
+      );
+    });
+  }
+
+  private botTakeover(seat: number): void {
+    this.disconnectTimers.delete(seat);
+    this.patchSlot(seat, { kind: "AI_BOT", difficulty: "MEDIUM" });
+    this.broadcastState();
+  }
+
+  public patchSlot(seatIndex: number, patch: Partial<PlayerSlot>): void {
+    this.engine.patchPlayer(seatIndex, patch);
+    const updatedPlayers = this.engine.state.players;
+    if (updatedPlayers && updatedPlayers[seatIndex]) {
+      const slot = updatedPlayers[seatIndex];
+      this.optionsRef.onSeatUpdate?.(seatIndex, slot, updatedPlayers);
+      for (const l of this.seatListeners) l(seatIndex, slot, updatedPlayers);
+    }
   }
 
   private continueListeners = new Set<(seat: number, continuePlay: boolean) => void>();
@@ -135,6 +169,14 @@ export class HostSession {
       this.unsubscribeMessages();
       this.unsubscribeMessages = undefined;
     }
+    if (this.unsubscribeDisconnect) {
+      this.unsubscribeDisconnect();
+      this.unsubscribeDisconnect = undefined;
+    }
+    for (const timer of this.disconnectTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.disconnectTimers.clear();
   }
 
   private handleClientPacket(playerToken: string, packet: ClientPacket): void {
@@ -201,7 +243,14 @@ export class HostSession {
     // Check if token already assigned
     let assignedSeat = this.tokenToSeat.get(playerToken);
 
-    if (assignedSeat === undefined) {
+    if (assignedSeat !== undefined) {
+      // إعادة اتصال: إلغاء مؤقت تولي الروبوت للمقعد
+      const timer = this.disconnectTimers.get(assignedSeat);
+      if (timer) {
+        clearTimeout(timer);
+        this.disconnectTimers.delete(assignedSeat);
+      }
+    } else {
       // Find open seat (مقعد المضيف محجوز دائماً)
       if (
         preferred !== undefined &&
@@ -231,31 +280,40 @@ export class HostSession {
     this.seatToToken.set(assignedSeat, playerToken);
 
     // Update player slot in state
-    const currentPlayers = [...(this.engine.state.players || [])];
+    const existingSlot = this.engine.state.players?.[assignedSeat];
     const updatedSlot: PlayerSlot = {
       seatIndex: assignedSeat,
       kind: "HUMAN_REMOTE" as SeatKind,
-      name: packet.payload.playerName || `لاعب ${assignedSeat + 1}`,
+      name: packet.payload.playerName || existingSlot?.name || `لاعب ${assignedSeat + 1}`,
       team: (assignedSeat % 2) as 0 | 1,
       connected: true,
       playerToken,
     };
-    currentPlayers[assignedSeat] = updatedSlot;
+    this.patchSlot(assignedSeat, updatedSlot);
+
+    // حماية أمنية: عدم تسريب توكنات اللاعبين الآخرين في SEAT_UPDATE
+    const sanitizedPlayers = (this.engine.state.players || []).map((p) => ({
+      ...p,
+      playerToken: undefined,
+    }));
+    const sanitizedSlot = {
+      ...updatedSlot,
+      playerToken: undefined,
+    };
 
     // Inform client of assigned seat
     this.sendPacket(playerToken, {
       type: "SEAT_UPDATE",
       payload: {
         seatIndex: assignedSeat,
-        player: updatedSlot,
-        players: currentPlayers,
+        player: sanitizedSlot,
+        players: sanitizedPlayers,
       },
     });
 
     // Send individual filtered state snapshot
     this.sendFilteredStateToSeat(assignedSeat);
-    this.optionsRef.onSeatUpdate?.(assignedSeat, updatedSlot, currentPlayers);
-    for (const l of this.seatListeners) l(assignedSeat, updatedSlot, currentPlayers);
+    this.broadcastState();
   }
 
   private handleBidRequest(

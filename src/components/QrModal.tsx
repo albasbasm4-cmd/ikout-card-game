@@ -211,6 +211,11 @@ export const QrModal: React.FC<QrModalProps> = ({
           )}
         </div>
 
+        {/* Helper tip for Wi-Fi & AP Isolation */}
+        <p className="text-[10px] text-amber-200/60 text-right mb-3 leading-relaxed">
+          نصيحة: تأكد من اتصال جميع الأجهزة بنفس شبكة Wi-Fi أو نقطة اتصال الجوال (Hotspot). إذا تعذر الاتصال عبر راوتر Wi-Fi منزلي، قد تكون خاصية عزل الأجهزة (AP Isolation) مفعلة بالراوتر.
+        </p>
+
         {/* Done / Close Button */}
         <button
           type="button"

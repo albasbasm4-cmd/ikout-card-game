@@ -1,3 +1,4 @@
+import { getPersistentPlayerToken } from "../network/playerToken";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -26,10 +27,22 @@ export function maskJokerState(s: JokerGame, pid: string): JokerGame {
 interface JokerHostState {
   code: string;
   clientIdToPid: Map<string, string>;
+  tokenToPid: Map<string, string>;
+  clientToToken: Map<string, string>;
+  tokenToClient: Map<string, string>;
+  disconnectTimers: Map<string, ReturnType<typeof setTimeout>>;
   pidNames: Record<string, string>;
   state: JokerGame | null;
   seatListeners: Set<(names: Record<string, string>) => void>;
   stateListeners: Set<(s: JokerGame) => void>;
+}
+
+function bindJokerClient(clientId: string, token: string): void {
+  if (!host) return;
+  const old = host.tokenToClient.get(token);
+  if (old && old !== clientId) host.clientToToken.delete(old);
+  host.tokenToClient.set(token, clientId);
+  host.clientToToken.set(clientId, token);
 }
 
 let host: JokerHostState | null = null;
@@ -73,6 +86,10 @@ export async function startJokerHost(code: string): Promise<void> {
   host = {
     code,
     clientIdToPid: new Map(),
+    tokenToPid: new Map(),
+    clientToToken: new Map(),
+    tokenToClient: new Map(),
+    disconnectTimers: new Map(),
     pidNames: {},
     state: null,
     seatListeners: new Set(),
@@ -82,12 +99,24 @@ export async function startJokerHost(code: string): Promise<void> {
   unregisterChannel = registerHubChannel("joker", {
     onClientDisconnected(clientId) {
       if (!host) return;
-      const pid = host.clientIdToPid.get(clientId);
-      if (pid) {
-        host.clientIdToPid.delete(clientId);
-        delete host.pidNames[pid];
-        emitSeats();
-      }
+      const token = host.clientToToken.get(clientId);
+      host.clientToToken.delete(clientId);
+      if (!token) return;
+      if (host.tokenToClient.get(token) !== clientId) return;
+      host.tokenToClient.delete(token);
+
+      const pid = host.tokenToPid.get(token);
+      if (!pid) return;
+
+      const existing = host.disconnectTimers.get(pid);
+      if (existing) clearTimeout(existing);
+      host.disconnectTimers.set(
+        pid,
+        setTimeout(() => {
+          if (!host) return;
+          host.disconnectTimers.delete(pid);
+        }, 8000),
+      );
     },
     onClientMessage(clientId, msg) {
       if (!host) return;
@@ -101,19 +130,33 @@ export async function startJokerHost(code: string): Promise<void> {
           return;
         }
         const name = String(p.payload?.["name"] ?? "لاعب");
-        const used = new Set(host.clientIdToPid.values());
-        let pid: string | null = null;
-        for (let i = 1; i <= 14; i++) {
-          const candidate = `p${i}`;
-          if (!used.has(candidate)) {
-            pid = candidate;
-            break;
+        const token = String(p.payload?.["token"] ?? clientId);
+        bindJokerClient(clientId, token);
+
+        let pid = host.tokenToPid.get(token);
+        if (pid) {
+          // استعادة المقعد وإلغاء مؤقت الانقطاع
+          const timer = host.disconnectTimers.get(pid);
+          if (timer) {
+            clearTimeout(timer);
+            host.disconnectTimers.delete(pid);
           }
+        } else {
+          const used = new Set(host.tokenToPid.values());
+          for (let i = 1; i <= 14; i++) {
+            const candidate = `p${i}`;
+            if (!used.has(candidate)) {
+              pid = candidate;
+              break;
+            }
+          }
+          if (!pid) {
+            hubSendTo(clientId, { ch: "joker", packet: { type: "ROOM_FULL" } });
+            return;
+          }
+          host.tokenToPid.set(token, pid);
         }
-        if (!pid) {
-          hubSendTo(clientId, { ch: "joker", packet: { type: "ROOM_FULL" } });
-          return;
-        }
+
         host.clientIdToPid.set(clientId, pid);
         host.pidNames[pid] = name;
         hubSendTo(clientId, {
@@ -143,6 +186,12 @@ export async function startJokerHost(code: string): Promise<void> {
 }
 
 export function stopJokerHost(): Promise<void> {
+  if (host) {
+    for (const timer of host.disconnectTimers.values()) {
+      clearTimeout(timer);
+    }
+    host.disconnectTimers.clear();
+  }
   unregisterChannel?.();
   unregisterChannel = null;
   host = null;
@@ -239,9 +288,10 @@ export async function connectJokerClient(opts: { code: string; name: string }): 
 function probeJokerHost(ip: string, opts: { code: string; name: string }): Promise<boolean> {
   return new Promise((resolve) => {
     let settled = false;
+    const token = getPersistentPlayerToken("joker");
     const socket = new LocalClientSocket({
       url: `ws://${ip}:8080`,
-      playerToken: `joker_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+      playerToken: token,
       playerName: opts.name || "لاعب",
       maxReconnectAttempts: 0,
       initialBackoffMs: 300,
@@ -263,7 +313,7 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
         socket.send({
           v: 1,
           type: "HELLO",
-          payload: { name: opts.name || "لاعب", roomCode: opts.code },
+          payload: { name: opts.name || "لاعب", roomCode: opts.code, token },
         } as never);
       } else if (st === "HOST_DROPPED" || st === "DISCONNECTED") {
         finish(false);
