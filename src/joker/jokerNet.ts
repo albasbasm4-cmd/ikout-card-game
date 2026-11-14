@@ -8,7 +8,7 @@
  */
 import { ensureHubServer, hubBroadcast, hubSendTo, registerHubChannel } from "../network/gameHub";
 import { getJoinCandidateIps } from "../network/wssBridge";
-import { LocalClientSocket } from "../network/LocalClientSocket";
+import { LocalClientSocket, getOrCreatePlayerToken } from "../network/LocalClientSocket";
 import { actJoker, type JokerGame } from "./engine";
 
 /** يخفي هوية حامل الجوكر وورق الآخرين أثناء اللعب، ويكشف كل شيء في النتائج. */
@@ -243,7 +243,7 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
     let settled = false;
     const socket = new LocalClientSocket({
       url: `ws://${ip}:8080`,
-      playerToken: `joker_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+      playerToken: getOrCreatePlayerToken("joker"),
       playerName: opts.name || "لاعب",
       maxReconnectAttempts: 0,
       initialBackoffMs: 300,
