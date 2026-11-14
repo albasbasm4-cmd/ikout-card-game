@@ -37,6 +37,20 @@ export function findMySeat187(players: Player187[] | undefined, clientToken: str
   return idx === -1 ? 1 : idx;
 }
 
+
+/**
+ * ينشئ نسخة شبكية آمنة: أوراق صاحب المقعد فقط تبقى مكشوفة، وتُحجب أوراق بقية المقاعد.
+ * تستقبل clientSeat كرقم المقعد؛ لا يُرسل المضيف حالة اللعب الخام للمنضمين.
+ */
+export function maskGameState187(state: GameState187, clientSeat: number): GameState187 {
+  const hands = state.hands.map((hand, seat) =>
+    seat === clientSeat
+      ? hand
+      : hand.map((_, index) => ({ id: `masked-${seat}-${index}`, suit: "S" as Suit187, rank: 2 as const })),
+  );
+  return { ...state, hands };
+}
+
 export class Room187Channel {
   private bc: BroadcastChannel | null = null;
   private socket: LocalClientSocket | null = null;
@@ -210,6 +224,23 @@ export class Room187Channel {
       this.socket.send(msg as never);
     } else {
       this.pending.push(msg);
+    }
+  }
+
+  /** Send a seat-masked state directly to each connected player, never broadcasting raw hands. */
+  public sendStateUpdate(state: GameState187): void {
+    if (this.role !== "host") {
+      this.send({ type: "STATE_UPDATE", state });
+      return;
+    }
+    for (const player of state.players) {
+      if (!player.clientToken) continue;
+      const clientId = this.tokenToClient.get(player.clientToken);
+      if (!clientId) continue;
+      hubSendTo(clientId, {
+        ch: "g187",
+        packet: { type: "STATE_UPDATE", state: maskGameState187(state, player.seatIndex) },
+      });
     }
   }
 

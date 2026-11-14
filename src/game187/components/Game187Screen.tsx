@@ -144,7 +144,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
     setGameState(newState);
 
     if (mode === "room" && channelRef.current) {
-      channelRef.current.send({ type: "STATE_UPDATE", state: newState });
+      channelRef.current.sendStateUpdate(newState);
     }
 
     pendingStorageRef.current = newState;
