@@ -2,11 +2,9 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  *
- * KoutWssTransport — جسر بين بروتوكول الكوت (HostSession) وشبكة gameHub.
- * playerToken = clientId الخاص بـ gameHub.
- * الرسائل تُغلف داخل { ch: "kout", packet } لتفريقها عن قنوات الألعاب الأخرى.
+ * KoutWssTransport — maps transient WebSocket connection IDs to stable player tokens.
+ * Messages are wrapped in { ch: "kout", packet } to isolate game channels.
  */
-
 import type { IHostTransport, Unsubscribe } from "./ITransport";
 import type { ClientPacket, HostPacket } from "./protocol";
 import {
@@ -28,6 +26,8 @@ export class KoutWssTransport implements IHostTransport {
   private messageHandlers = new Set<(playerToken: string, packet: ClientPacket) => void>();
   private connectHandlers = new Set<(playerToken: string) => void>();
   private disconnectHandlers = new Set<(playerToken: string) => void>();
+  private clientIdToToken = new Map<string, string>();
+  private tokenToClientId = new Map<string, string>();
   private unsubscribe: (() => void) | null = null;
   private ready = false;
 
@@ -37,15 +37,39 @@ export class KoutWssTransport implements IHostTransport {
     this.unsubscribe = registerHubChannel(CH, {
       onClientMessage: (clientId, msg) => {
         const env = msg as unknown as KoutEnvelope;
-        if (!env || typeof env !== "object" || !env.packet) return;
-        const packet = env.packet as ClientPacket;
-        for (const h of this.messageHandlers) h(clientId, packet);
+        const packet = env?.packet;
+        if (!packet || typeof packet !== "object") return;
+        const token = typeof packet.playerToken === "string" ? packet.playerToken.trim() : "";
+        if (!token || token.length > 128) return;
+
+        // A JOIN binds the new socket ID to the player's persistent identity.
+        if (packet.type === "JOIN") {
+          const previousClientId = this.tokenToClientId.get(token);
+          if (previousClientId && previousClientId !== clientId) {
+            this.clientIdToToken.delete(previousClientId);
+          }
+          this.clientIdToToken.set(clientId, token);
+          this.tokenToClientId.set(token, clientId);
+        } else if (this.clientIdToToken.get(clientId) !== token) {
+          // Do not accept actions from a socket that has not authenticated with JOIN.
+          return;
+        }
+
+        for (const handler of this.messageHandlers) handler(token, packet);
       },
       onClientConnected: (clientId) => {
-        for (const h of this.connectHandlers) h(clientId);
+        // The stable token is not known until the client sends JOIN.
+        void clientId;
       },
       onClientDisconnected: (clientId) => {
-        for (const h of this.disconnectHandlers) h(clientId);
+        const token = this.clientIdToToken.get(clientId);
+        this.clientIdToToken.delete(clientId);
+        if (!token) return;
+        // An old socket closing after a reconnect must not evict the new socket.
+        if (this.tokenToClientId.get(token) === clientId) {
+          this.tokenToClientId.delete(token);
+          for (const handler of this.disconnectHandlers) handler(token);
+        }
       },
     });
     this.ready = true;
@@ -58,16 +82,14 @@ export class KoutWssTransport implements IHostTransport {
 
   sendToClient(playerToken: string, packet: HostPacket): void {
     this.assertReady();
-    hubSendTo(playerToken, { ch: CH, packet } as unknown as HubMessage);
+    const clientId = this.tokenToClientId.get(playerToken);
+    if (!clientId) return;
+    hubSendTo(clientId, { ch: CH, packet } as unknown as HubMessage);
   }
 
-  broadcast(packet: HostPacket): void {
+  broadcast(_packet: HostPacket): void {
     this.assertReady();
-    // بث لكل العملاء المتصلين — الإضافة الأصلية تبث للجميع
-    // (الحزم موجهة بـ playerToken داخلها، والمنضم يتجاهل ما ليس له).
-    // ملاحظة: broadcast يرسل نفس الحزمة للجميع؛ بروتوكول الكوت يوجّه بحسب
-    // playerToken على العميل، لذا نستعمل sendToClient دائماً من HostSession.
-    void packet;
+    // HostSession sends per-seat snapshots; broadcasting would expose private hands.
   }
 
   onClientMessage(handler: (playerToken: string, packet: ClientPacket) => void): Unsubscribe {
@@ -88,5 +110,8 @@ export class KoutWssTransport implements IHostTransport {
   destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    this.clientIdToToken.clear();
+    this.tokenToClientId.clear();
+    this.ready = false;
   }
 }
