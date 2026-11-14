@@ -2039,3 +2039,12 @@
 #scr.wood .gmain {
   width: 1340px;
 }
+
+/* Pause infinite decorative animations during active play */
+#scr.play .cl,
+#scr.play .kcl,
+#scr.play .av,
+#scr.play .ksun,
+#scr.play .glp {
+  animation: none !important;
+}

@@ -1640,11 +1640,12 @@
 }
 .reference-trick-card {
   will-change: transform;
-  filter: drop-shadow(0 10px 8px var(--reference-shadow));
+  box-shadow: 0 10px 8px var(--reference-shadow);
+  border-radius: 6px;
 }
 .reference-trick-card.trick-winning {
-  filter: drop-shadow(0 0 12px var(--reference-gold))
-    drop-shadow(0 12px 10px var(--reference-shadow));
+  box-shadow: 0 0 12px var(--reference-gold), 0 12px 10px var(--reference-shadow);
+  border-radius: 6px;
 }
 .reference-portrait {
   box-shadow:
@@ -4473,14 +4474,17 @@
   position: absolute;
   width: 13.8%;
   aspect-ratio: 52/76;
-  filter: drop-shadow(0 8px 6px rgba(0, 0, 0, 0.5));
+  box-shadow: 0 8px 6px rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  will-change: transform;
 }
 .kt-trick-card .playing-card-sm {
   width: 100% !important;
   height: 100% !important;
 }
 .kt-trick-winning {
-  filter: drop-shadow(0 0 10px var(--reference-gold));
+  box-shadow: 0 0 10px var(--reference-gold), 0 8px 6px rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
 }
 .kt-winner {
   position: absolute;
@@ -5567,3 +5571,19 @@
 .pc-cust-cliptext { width: 100%; min-width: 0; box-sizing: border-box; background: #1b2328; border: 1px solid #2c363c; border-radius: 8px; padding: 8px 10px; color: #fff; font-size: 13px; font-weight: 700; font-family: inherit; }
 .pc-cust-addbtn { background: #eab308; border: none; color: #000; }
 .pc-cust-addbtn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Pause infinite decorative animations during active play to relieve mobile GPU/CPU */
+.reference-board .ik-cl,
+.reference-board .su2-cl,
+.reference-board .ik-av,
+.game-screen .ik-cl,
+.game-screen .su2-cl,
+.game-screen .ik-av,
+.kt-root .ik-cl,
+.kt-root .su2-cl,
+.kt-root .ik-av,
+.kt-table .ik-cl,
+.kt-table .su2-cl,
+.kt-table .ik-av {
+  animation: none !important;
+}

@@ -294,7 +294,7 @@ export const Table187: React.FC<Table187Props> = ({
   };
 
   const tool =
-    "w-7 h-7 sm:w-8 sm:h-8 p-0 rounded-full bg-black/75 border border-amber-400/40 text-amber-300 shadow-lg backdrop-blur-md active:scale-95 cursor-pointer hover:bg-black/90 hover:border-amber-300 [&_svg]:size-3.5 sm:[&_svg]:size-4";
+    "w-7 h-7 sm:w-8 sm:h-8 p-0 rounded-full bg-black/75 border border-amber-400/40 text-amber-300 shadow-lg bg-black/85 active:scale-95 cursor-pointer hover:bg-black/95 hover:border-amber-300 [&_svg]:size-3.5 sm:[&_svg]:size-4";
   const headerControls = (
     <div className="flex items-center gap-1.5 pointer-events-auto">
       <Button
@@ -1115,7 +1115,7 @@ function Modal({
         ? "border-rose-500"
         : "border-amber-500/60";
   return (
-    <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
+    <div className="absolute inset-0 z-50 bg-black/85 flex items-center justify-center p-3">
       <div
         className={`relative bg-neutral-950 border-2 ${border} rounded-3xl p-4 max-w-sm w-full max-h-[94%] overflow-y-auto text-center shadow-2xl text-amber-50`}
       >
@@ -1201,7 +1201,7 @@ function DiscardFan({
                   onToggle(card.id);
                 }
               }}
-              className="hand-card-slot origin-bottom will-change-transform outline-none cursor-pointer"
+              className="hand-card-slot origin-bottom outline-none cursor-pointer"
               style={{
                 marginLeft: index === 0 ? 0 : `${overlap}px`,
                 transform: isSelected

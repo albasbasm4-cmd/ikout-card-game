@@ -285,7 +285,7 @@ export const Hand: React.FC<HandProps> = ({
                 touchAction: "none",
                 visibility: isLaunched ? "hidden" : undefined,
               }}
-              className={`hand-card-slot origin-bottom will-change-transform outline-none ${reducedMotion ? "" : "animate-deal-card"} ${isShaking ? "animate-card-shake" : ""}`}
+              className={`hand-card-slot origin-bottom outline-none ${reducedMotion ? "" : "animate-deal-card"} ${isShaking ? "animate-card-shake" : ""}`}
             >
               <div
                 ref={(el) => {
