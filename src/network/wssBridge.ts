@@ -63,38 +63,42 @@ export function createNativeWssBridge(): WssBridge {
     for (const h of handlers) h(evt);
   };
 
-  if (plugin) {
-    plugin.addListener("wsEvent", (evt: any) => {
-      if (!evt || typeof evt.type !== "string") return;
-      const type = evt.type as WssClientEvent["type"];
-      if (
-        type !== "CLIENT_CONNECTED" &&
-        type !== "CLIENT_DISCONNECTED" &&
-        type !== "CLIENT_MESSAGE"
-      )
-        return;
-      const out: WssClientEvent = { type, clientId: String(evt.clientId ?? "") };
-      if (type === "CLIENT_MESSAGE") {
-        const raw = evt.data;
-        if (typeof raw === "string") {
-          try {
-            out.data = JSON.parse(raw);
-          } catch {
-            out.data = raw;
+  const listenerReady = plugin
+    ? Promise.resolve(
+        plugin.addListener("wsEvent", (evt: any) => {
+          if (!evt || typeof evt.type !== "string") return;
+          const type = evt.type as WssClientEvent["type"];
+          if (
+            type !== "CLIENT_CONNECTED" &&
+            type !== "CLIENT_DISCONNECTED" &&
+            type !== "CLIENT_MESSAGE"
+          )
+            return;
+          const out: WssClientEvent = { type, clientId: String(evt.clientId ?? "") };
+          if (type === "CLIENT_MESSAGE") {
+            const raw = evt.data;
+            if (typeof raw === "string") {
+              try {
+                out.data = JSON.parse(raw);
+              } catch {
+                out.data = raw;
+              }
+            } else {
+              out.data = raw;
+            }
           }
-        } else {
-          out.data = raw;
-        }
-      }
-      emit(out);
-    });
-  }
+          emit(out);
+        }),
+      )
+    : Promise.resolve();
 
   return {
     isNative: !!plugin,
     async start(port) {
       if (!plugin) return false;
       try {
+        // Ensure event subscription is installed before accepting clients.
+        await listenerReady;
         await plugin.start({ port });
         return true;
       } catch (err) {
