@@ -39,8 +39,10 @@ export class HostSession {
   private transport: IHostTransport;
   private tokenToSeat = new Map<string, number>();
   private seatToToken = new Map<number, string>();
+  private seatPlayers = new Map<number, PlayerSlot>();
   private hostSeq = 0;
   private unsubscribeMessages?: () => void;
+  private unsubscribeDisconnect?: () => void;
   private roomCode?: string;
   // مضاد إساءة استخدام البلاغات: حد أقصى للجولة الواحدة وفاصل زمني بين البلاغات
   private cheatReportsThisRound = 0;
@@ -119,6 +121,9 @@ export class HostSession {
         this.handleClientPacket(playerToken, packet);
       },
     );
+    this.unsubscribeDisconnect = this.transport.onClientDisconnected?.((playerToken) => {
+      this.handleClientDisconnected(playerToken);
+    });
   }
 
   private continueListeners = new Set<(seat: number, continuePlay: boolean) => void>();
@@ -135,6 +140,27 @@ export class HostSession {
       this.unsubscribeMessages();
       this.unsubscribeMessages = undefined;
     }
+    this.unsubscribeDisconnect?.();
+    this.unsubscribeDisconnect = undefined;
+  }
+
+  private notifySeatUpdate(seatIndex: number, player: PlayerSlot): void {
+    const players = [...(this.engine.state.players || [])];
+    for (const [seat, slot] of this.seatPlayers) players[seat] = slot;
+    this.optionsRef.onSeatUpdate?.(seatIndex, player, players);
+    for (const listener of this.seatListeners) listener(seatIndex, player, players);
+  }
+
+  private handleClientDisconnected(playerToken: string): void {
+    const seat = this.tokenToSeat.get(playerToken);
+    if (seat === undefined) return;
+
+    const player = this.seatPlayers.get(seat);
+    if (!player || player.playerToken !== playerToken) return;
+
+    const disconnected: PlayerSlot = { ...player, connected: false };
+    this.seatPlayers.set(seat, disconnected);
+    this.notifySeatUpdate(seat, disconnected);
   }
 
   private handleClientPacket(playerToken: string, packet: ClientPacket): void {
@@ -232,30 +258,37 @@ export class HostSession {
 
     // Update player slot in state
     const currentPlayers = [...(this.engine.state.players || [])];
+    const previousSlot = this.seatPlayers.get(assignedSeat);
     const updatedSlot: PlayerSlot = {
       seatIndex: assignedSeat,
       kind: "HUMAN_REMOTE" as SeatKind,
-      name: packet.payload.playerName || `لاعب ${assignedSeat + 1}`,
+      name: packet.payload.playerName || previousSlot?.name || `لاعب ${assignedSeat + 1}`,
       team: (assignedSeat % 2) as 0 | 1,
       connected: true,
       playerToken,
     };
+    this.seatPlayers.set(assignedSeat, updatedSlot);
     currentPlayers[assignedSeat] = updatedSlot;
 
-    // Inform client of assigned seat
+    // The credential is host-only; never include it in data sent to other clients.
+    const publicPlayers = currentPlayers.map((player) => {
+      if (!player) return player;
+      const { playerToken: _playerToken, ...safePlayer } = player;
+      return safePlayer as PlayerSlot;
+    });
+    const { playerToken: _privateToken, ...publicPlayer } = updatedSlot;
+
     this.sendPacket(playerToken, {
       type: "SEAT_UPDATE",
       payload: {
         seatIndex: assignedSeat,
-        player: updatedSlot,
-        players: currentPlayers,
+        player: publicPlayer as PlayerSlot,
+        players: publicPlayers,
       },
     });
 
-    // Send individual filtered state snapshot
     this.sendFilteredStateToSeat(assignedSeat);
-    this.optionsRef.onSeatUpdate?.(assignedSeat, updatedSlot, currentPlayers);
-    for (const l of this.seatListeners) l(assignedSeat, updatedSlot, currentPlayers);
+    this.notifySeatUpdate(assignedSeat, updatedSlot);
   }
 
   private handleBidRequest(
