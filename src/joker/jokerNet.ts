@@ -84,8 +84,7 @@ export async function startJokerHost(code: string): Promise<void> {
       if (!host) return;
       const pid = host.clientIdToPid.get(clientId);
       if (pid) {
-        host.clientIdToPid.delete(clientId);
-        delete host.pidNames[pid];
+        // Keep the stable playerToken-to-seat binding and name for reconnect.
         emitSeats();
       }
     },
@@ -101,13 +100,16 @@ export async function startJokerHost(code: string): Promise<void> {
           return;
         }
         const name = String(p.payload?.["name"] ?? "لاعب");
+        const existingPid = host.clientIdToPid.get(clientId);
         const used = new Set(host.clientIdToPid.values());
-        let pid: string | null = null;
-        for (let i = 1; i <= 14; i++) {
-          const candidate = `p${i}`;
-          if (!used.has(candidate)) {
-            pid = candidate;
-            break;
+        let pid: string | null = existingPid ?? null;
+        if (!pid) {
+          for (let i = 1; i <= 14; i++) {
+            const candidate = `p${i}`;
+            if (!used.has(candidate)) {
+              pid = candidate;
+              break;
+            }
           }
         }
         if (!pid) {
