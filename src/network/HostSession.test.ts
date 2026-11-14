@@ -295,7 +295,7 @@ describe("HostSession & Network Protocol v1", () => {
       type: "JOIN",
       payload: { playerName: "Temporary Player", preferredSeat: 1 },
     });
-    await Promise.resolve();
+    vi.runAllTicks();
 
     firstClient.disconnect();
     expect(updates[updates.length - 1]).toEqual({ kind: "HUMAN_REMOTE", connected: false });
@@ -314,7 +314,7 @@ describe("HostSession & Network Protocol v1", () => {
       type: "JOIN",
       payload: { playerName: "Temporary Player", preferredSeat: 1 },
     });
-    await Promise.resolve();
+    vi.runAllTicks();
     expect(updates[updates.length - 1]).toEqual({ kind: "HUMAN_REMOTE", connected: true });
   });
 
