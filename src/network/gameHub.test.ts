@@ -40,6 +40,13 @@ describe("gameHub stable player routing", () => {
 
     emit!({
       type: "CLIENT_MESSAGE",
+      clientId: "unbound-socket",
+      data: { ch: "uno", packet: { type: "HELLO", payload: { roomCode: "ABCD" } } },
+    });
+    expect(messages).toEqual([]);
+
+    emit!({
+      type: "CLIENT_MESSAGE",
       clientId: "socket-before",
       data: {
         ch: "uno",
