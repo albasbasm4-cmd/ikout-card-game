@@ -137,11 +137,12 @@ export class Room187Channel {
   private tryConnect(ip: string, code: string): Promise<boolean> {
     return new Promise((resolve) => {
       let settled = false;
+      const clientToken = getOrCreatePlayerToken("g187");
       const socket = new LocalClientSocket({
         url: `ws://${ip}:8080`,
-        playerToken: getOrCreatePlayerToken("g187"),
+        playerToken: clientToken,
         playerName: "",
-        maxReconnectAttempts: 0,
+        maxReconnectAttempts: 8,
         initialBackoffMs: 300,
         channel: "g187",
         roomCode: code,
@@ -162,6 +163,14 @@ export class Room187Channel {
       const timeout = window.setTimeout(() => finish(false), 3500);
       socket.onStatusChange((st) => {
         if (st === "CONNECTED") {
+          // The generic JOIN binds the persistent token in gameHub; this game-specific
+          // JOIN restores the same player record after every reconnect.
+          socket.send({
+            type: "JOIN",
+            playerName: "لاعب",
+            clientToken,
+            roomCode: code,
+          } as never);
           if (settled) return;
           settled = true;
           window.clearTimeout(timeout);
