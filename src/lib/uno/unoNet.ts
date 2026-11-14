@@ -124,8 +124,8 @@ export async function startUnoHost(code: string): Promise<void> {
       if (!host) return;
       const seat = host.clientIdToSeat.get(clientId);
       if (seat !== undefined) {
-        host.clientIdToSeat.delete(clientId);
-        host.seatNames[seat] = null;
+        // Keep the stable playerToken-to-seat binding during a temporary drop.
+        // A reconnect with the same token resumes this exact seat.
         emitSeats();
       }
     },
