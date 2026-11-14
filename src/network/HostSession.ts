@@ -311,8 +311,9 @@ export class HostSession {
       },
     });
 
-    this.sendFilteredStateToSeat(assignedSeat);
     this.notifySeatUpdate(assignedSeat, updatedSlot);
+    // Publish the reconnected/updated seat to every remaining connected player.
+    this.broadcastState();
   }
 
   private handleBidRequest(
