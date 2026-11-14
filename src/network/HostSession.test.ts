@@ -280,7 +280,6 @@ describe("HostSession & Network Protocol v1", () => {
   });
 
   it("takes over a disconnected Kout seat with a medium bot after eight seconds", async () => {
-    vi.useFakeTimers();
     const token = "bot-takeover-player-token";
     const updates: { kind: string; connected: boolean }[] = [];
     hostSession.onSeatUpdate((_seat, player) => {
@@ -306,6 +305,7 @@ describe("HostSession & Network Protocol v1", () => {
     vi.advanceTimersByTime(1);
     expect(updates[updates.length - 1]).toEqual({ kind: "AI_BOT", connected: false });
 
+    vi.useRealTimers();
     const reconnectedClient = hub.createClientTransport(token);
     reconnectedClient.send({
       v: 1,
@@ -314,7 +314,7 @@ describe("HostSession & Network Protocol v1", () => {
       type: "JOIN",
       payload: { playerName: "Temporary Player", preferredSeat: 1 },
     });
-    vi.runAllTicks();
+    await new Promise((resolve) => setTimeout(resolve, 15));
     expect(updates[updates.length - 1]).toEqual({ kind: "HUMAN_REMOTE", connected: true });
   });
 
