@@ -309,7 +309,7 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
       url: `ws://${ip}:8080`,
       playerToken: getOrCreatePlayerToken("uno"),
       playerName: opts.name || "لاعب",
-      maxReconnectAttempts: 0,
+      maxReconnectAttempts: 8,
       initialBackoffMs: 300,
       channel: "uno",
       roomCode: opts.code,
