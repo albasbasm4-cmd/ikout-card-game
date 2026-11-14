@@ -6,7 +6,7 @@
 import { Card187, GameState187, Player187, Suit187 } from "../types";
 import { ensureHubServer, hubBroadcast, hubSendTo, registerHubChannel } from "../../network/gameHub";
 import { getJoinCandidateIps } from "../../network/wssBridge";
-import { LocalClientSocket } from "../../network/LocalClientSocket";
+import { LocalClientSocket, getOrCreatePlayerToken } from "../../network/LocalClientSocket";
 
 export type Client187Packet =
   | { type: "CHAT"; seat: number; message: string }
@@ -139,7 +139,7 @@ export class Room187Channel {
       let settled = false;
       const socket = new LocalClientSocket({
         url: `ws://${ip}:8080`,
-        playerToken: `g187_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+        playerToken: getOrCreatePlayerToken("g187"),
         playerName: "",
         maxReconnectAttempts: 0,
         initialBackoffMs: 300,
