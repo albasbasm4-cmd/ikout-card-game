@@ -147,7 +147,7 @@ export class HostSession {
   private notifySeatUpdate(seatIndex: number, player: PlayerSlot): void {
     const players = [...(this.engine.state.players || [])];
     for (const [seat, slot] of this.seatPlayers) players[seat] = slot;
-    this.engine.state.players = players;
+    this.engine.updatePlayers(players);
     this.optionsRef.onSeatUpdate?.(seatIndex, player, players);
     for (const listener of this.seatListeners) listener(seatIndex, player, players);
   }
@@ -271,7 +271,7 @@ export class HostSession {
     };
     this.seatPlayers.set(assignedSeat, updatedSlot);
     currentPlayers[assignedSeat] = updatedSlot;
-    this.engine.state.players = currentPlayers;
+    this.engine.updatePlayers(currentPlayers);
 
     // The credential is host-only; never include it in data sent to other clients.
     const publicPlayers = currentPlayers.map((player) => {
