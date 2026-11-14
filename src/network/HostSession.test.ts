@@ -247,7 +247,7 @@ describe("HostSession & Network Protocol v1", () => {
     }
 
     firstClient.disconnect();
-    expect(seatUpdates.at(-1)).toEqual({ seat: 2, connected: false });
+    expect(seatUpdates[seatUpdates.length - 1]).toEqual({ seat: 2, connected: false });
 
     const reconnectedClient = hub.createClientTransport(token);
     const reconnectedPackets: HostPacket[] = [];
