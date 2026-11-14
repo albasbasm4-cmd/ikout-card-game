@@ -145,6 +145,7 @@ export class HostSession {
     this.unsubscribeDisconnect = undefined;
     for (const timer of this.disconnectTimers.values()) clearTimeout(timer);
     this.disconnectTimers.clear();
+    this.transport.destroy?.();
   }
 
   private notifySeatUpdate(seatIndex: number, player: PlayerSlot): void {
