@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { LoopbackHub } from "./LoopbackTransport";
 import { HostSession } from "./HostSession";
 import { ClientPacket, HostPacket, ClientStateUpdatePacket, ErrorPacket } from "./protocol";
@@ -25,6 +25,7 @@ describe("HostSession & Network Protocol v1", () => {
   afterEach(() => {
     hostSession.destroy();
     hub.reset();
+    vi.useRealTimers();
   });
 
   it("strictly ensures client never receives others hands in CLIENT_STATE_UPDATE", async () => {
@@ -218,4 +219,104 @@ describe("HostSession & Network Protocol v1", () => {
     expect(pongReceived.timestamp).toBe(sendTimestamp);
     expect(pongReceived.serverTime).toBeGreaterThan(0);
   });
+  it("keeps a stable seat after reconnect and never exposes the player token", async () => {
+    const token = "stable-reconnect-token";
+    const firstClient = hub.createClientTransport(token);
+    const received: HostPacket[] = [];
+    firstClient.onMessage((packet) => received.push(packet));
+
+    const seatUpdates: { seat: number; connected: boolean }[] = [];
+    hostSession.onSeatUpdate((seat, player) => {
+      seatUpdates.push({ seat, connected: player.connected });
+    });
+
+    firstClient.send({
+      v: 1,
+      seq: 1,
+      playerToken: token,
+      type: "JOIN",
+      payload: { playerName: "Reconnect Player", preferredSeat: 2 },
+    });
+    await new Promise((r) => setTimeout(r, 15));
+
+    const firstSeatUpdate = received.find((packet) => packet.type === "SEAT_UPDATE");
+    expect(firstSeatUpdate?.type).toBe("SEAT_UPDATE");
+    if (firstSeatUpdate?.type === "SEAT_UPDATE") {
+      expect(firstSeatUpdate.payload.seatIndex).toBe(2);
+      expect(firstSeatUpdate.payload.player.playerToken).toBeUndefined();
+      expect(firstSeatUpdate.payload.players[2]?.playerToken).toBeUndefined();
+    }
+
+    firstClient.disconnect();
+    expect(seatUpdates[seatUpdates.length - 1]).toEqual({ seat: 2, connected: false });
+
+    const reconnectedClient = hub.createClientTransport(token);
+    const reconnectedPackets: HostPacket[] = [];
+    reconnectedClient.onMessage((packet) => reconnectedPackets.push(packet));
+    reconnectedClient.send({
+      v: 1,
+      seq: 1,
+      playerToken: token,
+      type: "JOIN",
+      payload: { playerName: "Reconnect Player", preferredSeat: 2 },
+    });
+    await new Promise((r) => setTimeout(r, 15));
+
+    const reconnectedSeatUpdate = reconnectedPackets.find((packet) => packet.type === "SEAT_UPDATE");
+    expect(reconnectedSeatUpdate?.type).toBe("SEAT_UPDATE");
+    if (reconnectedSeatUpdate?.type === "SEAT_UPDATE") {
+      expect(reconnectedSeatUpdate.payload.seatIndex).toBe(2);
+      expect(reconnectedSeatUpdate.payload.player.connected).toBe(true);
+      expect(reconnectedSeatUpdate.payload.player.playerToken).toBeUndefined();
+    }
+
+    hostSession.startRound(777);
+    await new Promise((r) => setTimeout(r, 15));
+    const stateUpdate = reconnectedPackets.find((packet) => packet.type === "CLIENT_STATE_UPDATE");
+    expect(stateUpdate?.type).toBe("CLIENT_STATE_UPDATE");
+    if (stateUpdate?.type === "CLIENT_STATE_UPDATE") {
+      expect(stateUpdate.payload.state.players?.[2]?.playerToken).toBeUndefined();
+    }
+  });
+
+  it("takes over a disconnected Kout seat with a medium bot after eight seconds", async () => {
+    const token = "bot-takeover-player-token";
+    const updates: { kind: string; connected: boolean }[] = [];
+    hostSession.onSeatUpdate((_seat, player) => {
+      updates.push({ kind: player.kind, connected: player.connected });
+    });
+
+    const firstClient = hub.createClientTransport(token);
+    firstClient.send({
+      v: 1,
+      seq: 1,
+      playerToken: token,
+      type: "JOIN",
+      payload: { playerName: "Temporary Player", preferredSeat: 1 },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 15));
+
+    vi.useFakeTimers();
+    firstClient.disconnect();
+    expect(updates[updates.length - 1]).toEqual({ kind: "HUMAN_REMOTE", connected: false });
+
+    vi.advanceTimersByTime(7999);
+    expect(updates[updates.length - 1]).toEqual({ kind: "HUMAN_REMOTE", connected: false });
+
+    vi.advanceTimersByTime(1);
+    expect(updates[updates.length - 1]).toEqual({ kind: "AI_BOT", connected: false });
+
+    vi.useRealTimers();
+    const reconnectedClient = hub.createClientTransport(token);
+    reconnectedClient.send({
+      v: 1,
+      seq: 1,
+      playerToken: token,
+      type: "JOIN",
+      payload: { playerName: "Temporary Player", preferredSeat: 1 },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    expect(updates[updates.length - 1]).toEqual({ kind: "HUMAN_REMOTE", connected: true });
+  });
+
 });

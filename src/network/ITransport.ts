@@ -26,4 +26,6 @@ export interface IHostTransport {
   onClientMessage(handler: (playerToken: string, packet: ClientPacket) => void): Unsubscribe;
   onClientConnected?(handler: (playerToken: string) => void): Unsubscribe;
   onClientDisconnected?(handler: (playerToken: string) => void): Unsubscribe;
+  /** Optional cleanup for native/channel-backed host transports. */
+  destroy?(): void;
 }

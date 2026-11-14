@@ -8,7 +8,7 @@
  */
 import { ensureHubServer, hubBroadcast, hubSendTo, registerHubChannel } from "../network/gameHub";
 import { getJoinCandidateIps } from "../network/wssBridge";
-import { LocalClientSocket } from "../network/LocalClientSocket";
+import { LocalClientSocket, getOrCreatePlayerToken } from "../network/LocalClientSocket";
 import { actJoker, type JokerGame } from "./engine";
 
 /** يخفي هوية حامل الجوكر وورق الآخرين أثناء اللعب، ويكشف كل شيء في النتائج. */
@@ -84,8 +84,7 @@ export async function startJokerHost(code: string): Promise<void> {
       if (!host) return;
       const pid = host.clientIdToPid.get(clientId);
       if (pid) {
-        host.clientIdToPid.delete(clientId);
-        delete host.pidNames[pid];
+        // Keep the stable playerToken-to-seat binding and name for reconnect.
         emitSeats();
       }
     },
@@ -101,13 +100,16 @@ export async function startJokerHost(code: string): Promise<void> {
           return;
         }
         const name = String(p.payload?.["name"] ?? "لاعب");
+        const existingPid = host.clientIdToPid.get(clientId);
         const used = new Set(host.clientIdToPid.values());
-        let pid: string | null = null;
-        for (let i = 1; i <= 14; i++) {
-          const candidate = `p${i}`;
-          if (!used.has(candidate)) {
-            pid = candidate;
-            break;
+        let pid: string | null = existingPid ?? null;
+        if (!pid) {
+          for (let i = 1; i <= 14; i++) {
+            const candidate = `p${i}`;
+            if (!used.has(candidate)) {
+              pid = candidate;
+              break;
+            }
           }
         }
         if (!pid) {
@@ -241,9 +243,9 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
     let settled = false;
     const socket = new LocalClientSocket({
       url: `ws://${ip}:8080`,
-      playerToken: `joker_${Date.now()}_${Math.floor(Math.random() * 100000)}`,
+      playerToken: getOrCreatePlayerToken("joker"),
       playerName: opts.name || "لاعب",
-      maxReconnectAttempts: 0,
+      maxReconnectAttempts: 8,
       initialBackoffMs: 300,
       channel: "joker",
       roomCode: opts.code,

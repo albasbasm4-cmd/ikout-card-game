@@ -13,7 +13,7 @@ import {
   registerHubChannel,
 } from "../../network/gameHub";
 import { getJoinCandidateIps } from "../../network/wssBridge";
-import { LocalClientSocket } from "../../network/LocalClientSocket";
+import { LocalClientSocket, getOrCreatePlayerToken } from "../../network/LocalClientSocket";
 import {
   catchUno,
   drawCard,
@@ -124,8 +124,8 @@ export async function startUnoHost(code: string): Promise<void> {
       if (!host) return;
       const seat = host.clientIdToSeat.get(clientId);
       if (seat !== undefined) {
-        host.clientIdToSeat.delete(clientId);
-        host.seatNames[seat] = null;
+        // Keep the stable playerToken-to-seat binding during a temporary drop.
+        // A reconnect with the same token resumes this exact seat.
         emitSeats();
       }
     },
@@ -307,9 +307,9 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
     let settled = false;
     const socket = new LocalClientSocket({
       url: `ws://${ip}:8080`,
-      playerToken: `uno_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      playerToken: getOrCreatePlayerToken("uno"),
       playerName: opts.name || "لاعب",
-      maxReconnectAttempts: 0,
+      maxReconnectAttempts: 8,
       initialBackoffMs: 300,
       channel: "uno",
       roomCode: opts.code,

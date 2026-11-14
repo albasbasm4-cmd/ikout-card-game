@@ -67,6 +67,11 @@ export class KoutGameEngine {
     return this._state;
   }
 
+  /** Replace the authoritative seat roster without exposing mutable engine state. */
+  public updatePlayers(players: PlayerSlot[]): void {
+    this._state = { ...this._state, players: [...players] };
+  }
+
   public getState(): Readonly<GameState> {
     return this._state;
   }

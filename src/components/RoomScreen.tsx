@@ -19,7 +19,7 @@ import { ProfileEditor } from "./ProfileEditor";
 import { QrModal } from "./QrModal";
 import { generateRoomCode, parseRoomPayload } from "../network/localIp";
 import { InlineQrScanner } from "./InlineQrScanner";
-import { LocalClientSocket, ClientSocketStatus } from "../network/LocalClientSocket";
+import { LocalClientSocket, ClientSocketStatus, getOrCreatePlayerToken } from "../network/LocalClientSocket";
 import { getJoinCandidateIps } from "../network/wssBridge";
 import {
   startKoutHost,
@@ -248,7 +248,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     setJoinCode(trimmed);
 
     const connectToIp = (ip: string, port: number, candidates: string[]) => {
-      const token = `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const token = getOrCreatePlayerToken("kout");
       const socket = new LocalClientSocket({
         url: `ws://${ip}:${port}`,
         playerToken: token,

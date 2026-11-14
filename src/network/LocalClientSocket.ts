@@ -6,6 +6,29 @@
 import { ITransport, Unsubscribe } from "./ITransport";
 import { ClientPacket, HostPacket, PROTOCOL_VERSION } from "./protocol";
 
+
+/**
+ * Returns a persistent per-game device identity used to reclaim the same seat
+ * after a temporary network loss or an app restart.
+ */
+export function getOrCreatePlayerToken(namespace: string): string {
+  const safeNamespace = namespace.toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 24) || "player";
+  const storageKey = `ikout:player-token:${safeNamespace}`;
+  try {
+    const existing = window.localStorage.getItem(storageKey);
+    if (existing && existing.length >= 16 && existing.length <= 128) return existing;
+    const randomPart =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    const token = `${safeNamespace}_${randomPart}`;
+    window.localStorage.setItem(storageKey, token);
+    return token;
+  } catch {
+    return `${safeNamespace}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+  }
+}
+
 export type ClientSocketStatus =
   "DISCONNECTED" | "CONNECTING" | "CONNECTED" | "RECONNECTING" | "HOST_DROPPED";
 
@@ -111,9 +134,11 @@ export class LocalClientSocket implements ITransport {
 
       this.ws.onopen = () => {
         this.reconnectAttempts = 0;
-        this.setStatus("CONNECTED");
-        // Resend JOIN on every connect / reconnect with playerToken
+        // Send the stable identity before notifying UI listeners. Some screens
+        // immediately send HELLO on CONNECTED; WebSocket ordering then guarantees
+        // the host has bound this socket to playerToken before processing HELLO.
         this.sendJoin();
+        this.setStatus("CONNECTED");
       };
 
       this.ws.onmessage = (event) => {

@@ -74,14 +74,22 @@ if (fs.existsSync(activityPath)) {
   const mainActivity = `package com.ikout.cardgame;
 
 import android.os.Bundle;
+import android.webkit.WebSettings;
 import com.getcapacitor.BridgeActivity;
 import com.ikout.cardgame.ws.WebSocketServerPlugin;
 
 public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
+    // Register the native WebSocket plugin before the Capacitor bridge initializes.
     registerPlugin(WebSocketServerPlugin.class);
+    super.onCreate(savedInstanceState);
+
+    // Allow the local ws:// server from the https://localhost WebView origin.
+    if (getBridge() != null && getBridge().getWebView() != null) {
+      getBridge().getWebView().getSettings()
+          .setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+    }
   }
 }
 `;

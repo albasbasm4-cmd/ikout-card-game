@@ -40,6 +40,10 @@ interface HubServerState {
 
 let hubServer: HubServerState | null = null;
 
+// Map transient socket IDs to the stable playerToken sent in the automatic JOIN.
+const socketToIdentity = new Map<string, string>();
+const identityToSocket = new Map<string, string>();
+
 export async function ensureHubServer(port = HUB_PORT): Promise<boolean> {
   if (hubServer?.started) return true;
   const bridge = tryCreateNativeWssBridge();
@@ -50,11 +54,36 @@ export async function ensureHubServer(port = HUB_PORT): Promise<boolean> {
       if (evt.type === "CLIENT_CONNECTED") {
         for (const h of hubServer!.channels.values()) h.onClientConnected?.(evt.clientId);
       } else if (evt.type === "CLIENT_DISCONNECTED") {
-        for (const h of hubServer!.channels.values()) h.onClientDisconnected?.(evt.clientId);
+        const identity = socketToIdentity.get(evt.clientId);
+        socketToIdentity.delete(evt.clientId);
+        if (identity && identityToSocket.get(identity) === evt.clientId) {
+          identityToSocket.delete(identity);
+          for (const h of hubServer!.channels.values()) h.onClientDisconnected?.(identity);
+        }
       } else if (evt.type === "CLIENT_MESSAGE" && evt.data && typeof evt.data === "object") {
         const msg = evt.data as HubMessage;
+        const packet = msg.packet && typeof msg.packet === "object"
+          ? msg.packet as Record<string, unknown>
+          : msg as Record<string, unknown>;
+        const suppliedToken = typeof packet.playerToken === "string"
+          ? packet.playerToken.trim()
+          : "";
+        if (packet.type === "JOIN" && suppliedToken && suppliedToken.length <= 128) {
+          const previousSocket = identityToSocket.get(suppliedToken);
+          if (previousSocket && previousSocket !== evt.clientId) {
+            socketToIdentity.delete(previousSocket);
+          }
+          socketToIdentity.set(evt.clientId, suppliedToken);
+          identityToSocket.set(suppliedToken, evt.clientId);
+        }
+        const boundIdentity = socketToIdentity.get(evt.clientId);
+        // Every game-channel message must come from a socket that first bound
+        // itself with a valid stable JOIN token.
+        if (!boundIdentity) return;
+        if (suppliedToken && suppliedToken !== boundIdentity) return;
+        const identity = boundIdentity;
         const handler = typeof msg.ch === "string" ? hubServer!.channels.get(msg.ch) : undefined;
-        if (handler) handler.onClientMessage(evt.clientId, msg);
+        if (handler) handler.onClientMessage(identity, msg);
       }
     });
   }
@@ -79,7 +108,8 @@ export function registerHubChannel(ch: HubChannel, handlers: HubChannelHandlers)
 
 export function hubSendTo(clientId: string, msg: HubMessage): void {
   try {
-    hubServer?.bridge.sendTo(clientId, JSON.stringify(msg));
+    const socketId = identityToSocket.get(clientId) ?? clientId;
+    hubServer?.bridge.sendTo(socketId, JSON.stringify(msg));
   } catch {
     /* noop */
   }
@@ -95,7 +125,8 @@ export function hubBroadcast(msg: HubMessage): void {
 
 export function hubCloseClient(clientId: string): void {
   try {
-    hubServer?.bridge.closeClient(clientId);
+    const socketId = identityToSocket.get(clientId) ?? clientId;
+    hubServer?.bridge.closeClient(socketId);
   } catch {
     /* noop */
   }

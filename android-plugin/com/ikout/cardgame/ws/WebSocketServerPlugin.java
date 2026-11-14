@@ -287,6 +287,7 @@ public class WebSocketServerPlugin extends Plugin {
         }
         if (wifiIp != null) return wifiIp;
         if (anyIp != null) return anyIp;
-        return "192.168.43.1";
+        // Do not publish a guessed hotspot address as if it were verified.
+        return null;
     }
 }

@@ -125,12 +125,14 @@ export function useGame(options: UseGameOptions = {}) {
 
   // المقاعد البشرية: من تشكيلة الغرفة أو من حالة اللعبة، والافتراض مقعد واحد بشري
   const humanSeats = useMemo<number[]>(() => {
-    const slots = options.players ?? (state.players && state.players.length ? state.players : null);
+    // In a hosted network game, the authoritative roster changes when a
+    // disconnected remote seat is temporarily taken over by a bot.
+    const slots = options.netHost
+      ? state.players
+      : options.players ?? (state.players && state.players.length ? state.players : null);
     const humans = (slots || []).filter((p) => p.kind !== "AI_BOT").map((p) => p.seatIndex);
     return humans.length > 0 ? humans : [0];
-    // options.players يُقرأ مرة واحدة كإعداد أولي
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.players]);
+  }, [state.players, options.netHost, options.players]);
 
   // اللعب الحر = يوجد بشريان أو أكثر: نزول أي ورقة مسموح، والغش يُحكم به عند البلاغ فقط
   const freePlay = humanSeats.length >= 2;
@@ -554,7 +556,8 @@ export function useGame(options: UseGameOptions = {}) {
 
     const executeBotTurn = async () => {
       try {
-        const decision = await getBotDecision(current, activeSeat, difficulty);
+        const botDifficulty = current.players?.[activeSeat]?.difficulty ?? difficulty;
+        const decision = await getBotDecision(current, activeSeat, botDifficulty);
 
         if (!isMounted) return;
 
