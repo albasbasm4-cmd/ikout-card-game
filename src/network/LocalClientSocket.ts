@@ -111,9 +111,11 @@ export class LocalClientSocket implements ITransport {
 
       this.ws.onopen = () => {
         this.reconnectAttempts = 0;
-        this.setStatus("CONNECTED");
-        // Resend JOIN on every connect / reconnect with playerToken
+        // Send the stable identity before notifying UI listeners. Some screens
+        // immediately send HELLO on CONNECTED; WebSocket ordering then guarantees
+        // the host has bound this socket to playerToken before processing HELLO.
         this.sendJoin();
+        this.setStatus("CONNECTED");
       };
 
       this.ws.onmessage = (event) => {
