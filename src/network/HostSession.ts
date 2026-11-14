@@ -40,6 +40,7 @@ export class HostSession {
   private tokenToSeat = new Map<string, number>();
   private seatToToken = new Map<number, string>();
   private seatPlayers = new Map<number, PlayerSlot>();
+  private disconnectTimers = new Map<number, ReturnType<typeof setTimeout>>();
   private hostSeq = 0;
   private unsubscribeMessages?: () => void;
   private unsubscribeDisconnect?: () => void;
@@ -142,6 +143,8 @@ export class HostSession {
     }
     this.unsubscribeDisconnect?.();
     this.unsubscribeDisconnect = undefined;
+    for (const timer of this.disconnectTimers.values()) clearTimeout(timer);
+    this.disconnectTimers.clear();
   }
 
   private notifySeatUpdate(seatIndex: number, player: PlayerSlot): void {
@@ -163,6 +166,21 @@ export class HostSession {
     this.seatPlayers.set(seat, disconnected);
     this.notifySeatUpdate(seat, disconnected);
     this.broadcastState();
+
+    const previousTimer = this.disconnectTimers.get(seat);
+    if (previousTimer) clearTimeout(previousTimer);
+    const timer = setTimeout(() => {
+      const current = this.seatPlayers.get(seat);
+      if (current?.playerToken === playerToken && !current.connected) {
+        // The host now controls this seat as a medium bot until the same player returns.
+        const botSlot: PlayerSlot = { ...current, kind: "AI_BOT", difficulty: "MEDIUM" };
+        this.seatPlayers.set(seat, botSlot);
+        this.notifySeatUpdate(seat, botSlot);
+        this.broadcastState();
+      }
+      this.disconnectTimers.delete(seat);
+    }, 8000);
+    this.disconnectTimers.set(seat, timer);
   }
 
   private handleClientPacket(playerToken: string, packet: ClientPacket): void {
@@ -261,6 +279,9 @@ export class HostSession {
     // Update player slot in state
     const currentPlayers = [...(this.engine.state.players || [])];
     const previousSlot = this.seatPlayers.get(assignedSeat);
+    const disconnectTimer = this.disconnectTimers.get(assignedSeat);
+    if (disconnectTimer) clearTimeout(disconnectTimer);
+    this.disconnectTimers.delete(assignedSeat);
     const updatedSlot: PlayerSlot = {
       seatIndex: assignedSeat,
       kind: "HUMAN_REMOTE" as SeatKind,
