@@ -13,7 +13,7 @@ import {
   registerHubChannel,
 } from "../../network/gameHub";
 import { getJoinCandidateIps } from "../../network/wssBridge";
-import { LocalClientSocket } from "../../network/LocalClientSocket";
+import { LocalClientSocket, getOrCreatePlayerToken } from "../../network/LocalClientSocket";
 import {
   catchUno,
   drawCard,
@@ -307,7 +307,7 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
     let settled = false;
     const socket = new LocalClientSocket({
       url: `ws://${ip}:8080`,
-      playerToken: `uno_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      playerToken: getOrCreatePlayerToken("uno"),
       playerName: opts.name || "لاعب",
       maxReconnectAttempts: 0,
       initialBackoffMs: 300,
