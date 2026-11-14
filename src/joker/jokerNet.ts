@@ -245,7 +245,7 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
       url: `ws://${ip}:8080`,
       playerToken: getOrCreatePlayerToken("joker"),
       playerName: opts.name || "لاعب",
-      maxReconnectAttempts: 0,
+      maxReconnectAttempts: 8,
       initialBackoffMs: 300,
       channel: "joker",
       roomCode: opts.code,
