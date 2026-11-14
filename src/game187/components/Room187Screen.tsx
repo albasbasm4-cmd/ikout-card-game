@@ -22,6 +22,7 @@ import {
   Host187Packet,
   findMySeat187,
 } from "../network/network187";
+import { getOrCreatePlayerToken } from "../../network/LocalClientSocket";
 import "../styles/room187.css";
 
 export interface Room187ScreenProps {
@@ -80,7 +81,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
   const channelRef = useRef<Room187Channel | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   /** رمز جهاز هذا المنضم؛ يحدد مقعده عند بدء المباراة بدل افتراض مقعد ثابت. */
-  const myTokenRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+  const myTokenRef = useRef<string>(getOrCreatePlayerToken("g187"));
   const seatsRef = useRef(seats);
   seatsRef.current = seats;
   const onStartMatchRef = useRef(onStartMatch);
