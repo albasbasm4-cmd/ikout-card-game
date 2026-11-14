@@ -268,6 +268,14 @@ describe("HostSession & Network Protocol v1", () => {
       expect(reconnectedSeatUpdate.payload.player.connected).toBe(true);
       expect(reconnectedSeatUpdate.payload.player.playerToken).toBeUndefined();
     }
+
+    hostSession.startRound(777);
+    await new Promise((r) => setTimeout(r, 15));
+    const stateUpdate = reconnectedPackets.find((packet) => packet.type === "CLIENT_STATE_UPDATE");
+    expect(stateUpdate?.type).toBe("CLIENT_STATE_UPDATE");
+    if (stateUpdate?.type === "CLIENT_STATE_UPDATE") {
+      expect(stateUpdate.payload.state.players?.[2]?.playerToken).toBeUndefined();
+    }
   });
 
 });
