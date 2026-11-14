@@ -45,11 +45,15 @@ export class KoutWssTransport implements IHostTransport {
         // A JOIN binds the new socket ID to the player's persistent identity.
         if (packet.type === "JOIN") {
           const previousClientId = this.tokenToClientId.get(token);
+          const isNewConnection = this.clientIdToToken.get(clientId) !== token;
           if (previousClientId && previousClientId !== clientId) {
             this.clientIdToToken.delete(previousClientId);
           }
           this.clientIdToToken.set(clientId, token);
           this.tokenToClientId.set(token, clientId);
+          if (isNewConnection) {
+            for (const handler of this.connectHandlers) handler(token);
+          }
         } else if (this.clientIdToToken.get(clientId) !== token) {
           // Do not accept actions from a socket that has not authenticated with JOIN.
           return;
