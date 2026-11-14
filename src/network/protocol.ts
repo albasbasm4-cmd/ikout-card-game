@@ -164,8 +164,16 @@ export function filterStateForSeat(state: GameState, seat: number): ClientGameSt
     }));
   });
 
+  // playerToken is a host-side credential used only for reconnection routing.
+  // Never expose it in snapshots sent to other devices.
+  const safePlayers = state.players?.map((player) => {
+    const { playerToken: _playerToken, ...publicPlayer } = player;
+    return publicPlayer as PlayerSlot;
+  });
+
   return {
     ...state,
+    players: safePlayers,
     hands: filteredHands,
     mySeat: seat,
   };
