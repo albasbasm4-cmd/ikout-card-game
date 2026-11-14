@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { NetworkDiagnosticsPanel } from "./NetworkDiagnosticsPanel";
 import { parseRoomPayload } from "../network/localIp";
-import { LocalClientSocket, ClientSocketStatus } from "../network/LocalClientSocket";
+import { LocalClientSocket, ClientSocketStatus, getOrCreatePlayerToken } from "../network/LocalClientSocket";
 import { getJoinCandidateIps } from "../network/wssBridge";
 import { setActiveKoutClient } from "../network/koutNet";
 import jsQR from "jsqr";
@@ -241,7 +241,7 @@ export const JoinScreen: React.FC<JoinScreenProps> = ({
     setErrorMessage(null);
 
     const targetUrl = `ws://${ip}:${port}`;
-    const token = `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const token = getOrCreatePlayerToken("kout");
 
     try {
       const socket = new LocalClientSocket({
