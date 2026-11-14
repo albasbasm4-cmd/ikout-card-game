@@ -218,4 +218,56 @@ describe("HostSession & Network Protocol v1", () => {
     expect(pongReceived.timestamp).toBe(sendTimestamp);
     expect(pongReceived.serverTime).toBeGreaterThan(0);
   });
+  it("keeps a stable seat after reconnect and never exposes the player token", async () => {
+    const token = "stable-reconnect-token";
+    const firstClient = hub.createClientTransport(token);
+    const received: HostPacket[] = [];
+    firstClient.onMessage((packet) => received.push(packet));
+
+    const seatUpdates: { seat: number; connected: boolean }[] = [];
+    hostSession.onSeatUpdate((seat, player) => {
+      seatUpdates.push({ seat, connected: player.connected });
+    });
+
+    firstClient.send({
+      v: 1,
+      seq: 1,
+      playerToken: token,
+      type: "JOIN",
+      payload: { playerName: "Reconnect Player", preferredSeat: 2 },
+    });
+    await new Promise((r) => setTimeout(r, 15));
+
+    const firstSeatUpdate = received.find((packet) => packet.type === "SEAT_UPDATE");
+    expect(firstSeatUpdate?.type).toBe("SEAT_UPDATE");
+    if (firstSeatUpdate?.type === "SEAT_UPDATE") {
+      expect(firstSeatUpdate.payload.seatIndex).toBe(2);
+      expect(firstSeatUpdate.payload.player.playerToken).toBeUndefined();
+      expect(firstSeatUpdate.payload.players[2]?.playerToken).toBeUndefined();
+    }
+
+    firstClient.disconnect();
+    expect(seatUpdates.at(-1)).toEqual({ seat: 2, connected: false });
+
+    const reconnectedClient = hub.createClientTransport(token);
+    const reconnectedPackets: HostPacket[] = [];
+    reconnectedClient.onMessage((packet) => reconnectedPackets.push(packet));
+    reconnectedClient.send({
+      v: 1,
+      seq: 1,
+      playerToken: token,
+      type: "JOIN",
+      payload: { playerName: "Reconnect Player", preferredSeat: 2 },
+    });
+    await new Promise((r) => setTimeout(r, 15));
+
+    const reconnectedSeatUpdate = reconnectedPackets.find((packet) => packet.type === "SEAT_UPDATE");
+    expect(reconnectedSeatUpdate?.type).toBe("SEAT_UPDATE");
+    if (reconnectedSeatUpdate?.type === "SEAT_UPDATE") {
+      expect(reconnectedSeatUpdate.payload.seatIndex).toBe(2);
+      expect(reconnectedSeatUpdate.payload.player.connected).toBe(true);
+      expect(reconnectedSeatUpdate.payload.player.playerToken).toBeUndefined();
+    }
+  });
+
 });
