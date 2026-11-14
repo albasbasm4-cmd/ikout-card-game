@@ -191,7 +191,7 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
   }, [gameState.trickHistory, gameState.trump, gameState.players]);
   useEffect(() => {
     if (!heldTrick) return;
-    const t = window.setTimeout(() => setHeldTrick(null), TRICK_HOLD_MS_187);
+    const t = window.setTimeout(() => setHeldTrick(null), Math.round(TRICK_HOLD_MS_187 * speedFactor()));
     return () => window.clearTimeout(t);
   }, [heldTrick]);
 

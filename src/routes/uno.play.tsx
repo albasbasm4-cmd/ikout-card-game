@@ -117,7 +117,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
   const [flyingCard, setFlyingCard] = useState<FlyingUnoCard | null>(null);
   const [hiddenHandCardId, setHiddenHandCardId] = useState<string | null>(null);
   const busy = useRef(false);
-  const { settings, toggleSound, toggleOrientationPreference } = useSettings();
+  const { settings, toggleSound, toggleOrientationPreference, setBotSpeed } = useSettings();
   const stageRef = useRef<HTMLDivElement>(null);
   const [dialogHost, setDialogHost] = useState<HTMLDivElement | null>(null);
   const [stageW, setStageW] = useState(800);
@@ -237,7 +237,8 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
         rotateStart,
       });
 
-      const flightDurationMs = reduced ? 80 : 540;
+      const speedFactor = settings.botSpeed === "SLOW" ? 1.5 : settings.botSpeed === "FAST" ? 0.6 : 1;
+      const flightDurationMs = reduced ? 80 : Math.round(350 * speedFactor);
       setTimeout(() => {
         setS(r.state);
         if (!netClient) saveGame(r.state);
@@ -258,13 +259,14 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       if (animate) {
         setFlyingCard({ card: animate, fromSeat: ME, fromX: 50, fromY: 88, rotateStart: 0 });
         setHiddenHandCardId(animate.id);
+        const speedFactor = settings.botSpeed === "SLOW" ? 1.5 : settings.botSpeed === "FAST" ? 0.6 : 1;
         setTimeout(
           () => {
             setFlyingCard(null);
             setHiddenHandCardId(null);
             busy.current = false;
           },
-          reduced ? 80 : 540,
+          reduced ? 80 : Math.round(350 * speedFactor),
         );
       }
     },
@@ -317,7 +319,9 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
           : passTurn(st, st.current, st.version);
       apply(r, true);
     };
-    timer = setTimeout(runBot, 850);
+    const speedFactor = settings.botSpeed === "SLOW" ? 1.5 : settings.botSpeed === "FAST" ? 0.6 : 1;
+    const botThinkingMs = Math.round(400 * speedFactor);
+    timer = setTimeout(runBot, botThinkingMs);
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -450,6 +454,20 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
               title="ملء الشاشة"
             >
               {isFullscreen ? <Minimize /> : <Maximize />}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                playTapSound();
+                const next = settings.botSpeed === "NORMAL" ? "FAST" : settings.botSpeed === "FAST" ? "SLOW" : "NORMAL";
+                setBotSpeed(next);
+              }}
+              aria-label="سرعة اللعب"
+              title={`سرعة اللعب: ${settings.botSpeed === "FAST" ? "سريع" : settings.botSpeed === "SLOW" ? "بطيء" : "عادي"}`}
+            >
+              <span className="text-[11px] font-black leading-none">
+                {settings.botSpeed === "FAST" ? "⚡" : settings.botSpeed === "SLOW" ? "🐢" : "⏱"}
+              </span>
             </Button>
             <Button
               type="button"
