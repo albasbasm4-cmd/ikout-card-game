@@ -76,9 +76,12 @@ export async function ensureHubServer(port = HUB_PORT): Promise<boolean> {
           socketToIdentity.set(evt.clientId, suppliedToken);
           identityToSocket.set(suppliedToken, evt.clientId);
         }
-        const identity = socketToIdentity.get(evt.clientId) ?? evt.clientId;
         const boundIdentity = socketToIdentity.get(evt.clientId);
-        if (boundIdentity && suppliedToken && suppliedToken !== boundIdentity) return;
+        // Every game-channel message must come from a socket that first bound
+        // itself with a valid stable JOIN token.
+        if (!boundIdentity) return;
+        if (suppliedToken && suppliedToken !== boundIdentity) return;
+        const identity = boundIdentity;
         const handler = typeof msg.ch === "string" ? hubServer!.channels.get(msg.ch) : undefined;
         if (handler) handler.onClientMessage(identity, msg);
       }
