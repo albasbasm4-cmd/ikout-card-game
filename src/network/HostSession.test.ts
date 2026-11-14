@@ -294,8 +294,9 @@ describe("HostSession & Network Protocol v1", () => {
       type: "JOIN",
       payload: { playerName: "Temporary Player", preferredSeat: 1 },
     });
-    vi.runAllTicks();
+    await new Promise((resolve) => setTimeout(resolve, 15));
 
+    vi.useFakeTimers();
     firstClient.disconnect();
     expect(updates[updates.length - 1]).toEqual({ kind: "HUMAN_REMOTE", connected: false });
 
