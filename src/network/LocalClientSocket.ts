@@ -7,7 +7,16 @@ import { ITransport, Unsubscribe } from "./ITransport";
 import { ClientPacket, HostPacket, PROTOCOL_VERSION } from "./protocol";
 
 export type ClientSocketStatus =
-  "DISCONNECTED" | "CONNECTING" | "CONNECTED" | "RECONNECTING" | "HOST_DROPPED";
+  | "DISCONNECTED"
+  | "CONNECTING"
+  | "CONNECTED"
+  | "JOINING"
+  | "JOINED"
+  | "RECONNECTING"
+  | "HOST_DROPPED"
+  | "REJECTED"
+  | "ERROR"
+  | "CLOSED";
 
 export interface LocalClientSocketOptions {
   url?: string; // default ws://localhost:8080
@@ -17,6 +26,7 @@ export interface LocalClientSocketOptions {
   maxReconnectAttempts?: number; // default 5
   initialBackoffMs?: number; // default 500ms
   maxBackoffMs?: number; // default 6000ms
+  connectionTimeoutMs?: number; // default 4000ms
   transportOverride?: ITransport;
   /** قناة gameHub: تُغلف الحزم داخل { ch, packet } ويفكها المضيف. */
   channel?: string;
@@ -35,7 +45,9 @@ export class LocalClientSocket implements ITransport {
   private maxReconnectAttempts: number;
   private initialBackoffMs: number;
   private maxBackoffMs: number;
+  private connectionTimeoutMs: number;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
   private messageHandlers = new Set<(packet: HostPacket) => void>();
   private statusHandlers = new Set<(status: ClientSocketStatus) => void>();
@@ -43,6 +55,7 @@ export class LocalClientSocket implements ITransport {
 
   private seqCounter = 0;
   private manualDisconnect = false;
+  private currentEpoch = 0;
   private transportOverride: ITransport | null = null;
   private channel?: string;
   private roomCode?: string;
@@ -55,6 +68,7 @@ export class LocalClientSocket implements ITransport {
     this.maxReconnectAttempts = options.maxReconnectAttempts ?? 5;
     this.initialBackoffMs = options.initialBackoffMs ?? 500;
     this.maxBackoffMs = options.maxBackoffMs ?? 6000;
+    this.connectionTimeoutMs = options.connectionTimeoutMs ?? 4000;
 
     this.channel = options.channel;
     this.roomCode = options.roomCode;
@@ -78,82 +92,189 @@ export class LocalClientSocket implements ITransport {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
 
+  public isJoined(): boolean {
+    return this.status === "JOINED";
+  }
+
   public isHostDropped(): boolean {
     return this.status === "HOST_DROPPED";
+  }
+
+  public getPlayerToken(): string {
+    return this.playerToken;
+  }
+
+  public getRoomCode(): string | undefined {
+    return this.roomCode;
   }
 
   private setStatus(newStatus: ClientSocketStatus): void {
     if (this.status === newStatus) return;
     this.status = newStatus;
-    for (const handler of this.statusHandlers) {
-      handler(newStatus);
+    for (const handler of Array.from(this.statusHandlers)) {
+      try {
+        handler(newStatus);
+      } catch (err) {
+        console.error("[LocalClientSocket] statusHandler error:", err);
+      }
     }
     if (newStatus === "HOST_DROPPED") {
-      for (const handler of this.hostLeftHandlers) {
-        handler();
+      for (const handler of Array.from(this.hostLeftHandlers)) {
+        try {
+          handler();
+        } catch (err) {
+          console.error("[LocalClientSocket] hostLeftHandler error:", err);
+        }
       }
     }
   }
 
   private connect(): void {
-    if (this.manualDisconnect) return;
+    if (this.manualDisconnect) {
+      this.setStatus("CLOSED");
+      return;
+    }
 
     if (typeof WebSocket === "undefined") {
-      // In testing environments without WebSocket, stay disconnected
       this.setStatus("DISCONNECTED");
       return;
     }
 
+    const epoch = ++this.currentEpoch;
     this.setStatus(this.reconnectAttempts > 0 ? "RECONNECTING" : "CONNECTING");
 
-    try {
-      this.ws = new WebSocket(this.url);
+    if (this.connectTimeoutTimer) {
+      clearTimeout(this.connectTimeoutTimer);
+    }
+    this.connectTimeoutTimer = setTimeout(() => {
+      if (this.currentEpoch === epoch && this.status === "CONNECTING") {
+        try {
+          this.ws?.close();
+        } catch {
+          /* noop */
+        }
+        this.handleDisconnectOrError(epoch);
+      }
+    }, this.connectionTimeoutMs);
 
-      this.ws.onopen = () => {
+    try {
+      const socket = new WebSocket(this.url);
+      this.ws = socket;
+
+      socket.onopen = () => {
+        if (this.currentEpoch !== epoch) {
+          try {
+            socket.close();
+          } catch {
+            /* noop */
+          }
+          return;
+        }
+        if (this.connectTimeoutTimer) {
+          clearTimeout(this.connectTimeoutTimer);
+          this.connectTimeoutTimer = null;
+        }
+
         this.reconnectAttempts = 0;
         this.setStatus("CONNECTED");
-        // Resend JOIN on every connect / reconnect with playerToken
+
+        // الانتقال المباشر إلى طلب الانضمام
+        this.setStatus("JOINING");
         this.sendJoin();
       };
 
-      this.ws.onmessage = (event) => {
+      socket.onmessage = (event) => {
+        if (this.currentEpoch !== epoch) return;
+
         try {
           const parsed = JSON.parse(event.data.toString());
-          // دعم تغليف قناة gameHub: { ch, packet } أو { ch, ...payload }
           const packet: HostPacket =
             this.channel && parsed && typeof parsed === "object" && parsed.ch === this.channel
               ? (parsed.packet ?? parsed)
               : parsed;
+
           if (this.channel && (!parsed || parsed.ch !== this.channel)) return;
-          for (const handler of this.messageHandlers) {
-            handler(packet);
+
+          // معالجة حالة القبول / الانضمام للغرفة
+          if (packet && typeof packet === "object" && "type" in packet) {
+            const pType = packet.type as string;
+            if (
+              pType === "SEAT_UPDATE" ||
+              pType === "CLIENT_STATE_UPDATE" ||
+              pType === "WELCOME" ||
+              pType === "ROOM_SEATS_UPDATE" ||
+              pType === "STATE"
+            ) {
+              if (this.status === "JOINING" || this.status === "CONNECTED") {
+                this.setStatus("JOINED");
+              }
+            } else if (pType === "ERROR") {
+              const errPayload = (packet as any).payload;
+              const errMsg = typeof errPayload === "string" ? errPayload : errPayload?.message || (packet as any).message;
+              if (
+                errMsg &&
+                (errMsg.includes("رمز الغرفة") ||
+                  errMsg.includes("INVALID_ROOM") ||
+                  errMsg.includes("ROOM_FULL") ||
+                  errMsg.includes("ممتلئة") ||
+                  errMsg.includes("REJECTED"))
+              ) {
+                this.setStatus("REJECTED");
+              }
+            }
+          }
+
+          for (const handler of Array.from(this.messageHandlers)) {
+            try {
+              handler(packet);
+            } catch (err) {
+              console.error("[LocalClientSocket] messageHandler error:", err);
+            }
           }
         } catch (err) {
           console.error("[LocalClientSocket] Parse error:", err);
         }
       };
 
-      this.ws.onclose = () => {
-        this.handleDisconnectOrError();
+      socket.onclose = () => {
+        if (this.currentEpoch !== epoch) return;
+        this.handleDisconnectOrError(epoch);
       };
 
-      this.ws.onerror = () => {
-        // Handled in onclose
+      socket.onerror = () => {
+        if (this.currentEpoch !== epoch) return;
+        // يتم التعامل مع انقطاع الاتصال عند onclose
       };
     } catch {
-      this.handleDisconnectOrError();
+      this.handleDisconnectOrError(epoch);
     }
   }
 
-  private handleDisconnectOrError(): void {
-    this.ws = null;
+  private handleDisconnectOrError(epoch: number): void {
+    if (this.connectTimeoutTimer) {
+      clearTimeout(this.connectTimeoutTimer);
+      this.connectTimeoutTimer = null;
+    }
+
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch {
+        /* noop */
+      }
+      this.ws = null;
+    }
+
     if (this.manualDisconnect) {
-      this.setStatus("DISCONNECTED");
+      this.setStatus("CLOSED");
+      return;
+    }
+
+    if (this.status === "REJECTED") {
       return;
     }
 
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      // Max attempts exceeded: host has left / dropped
       this.setStatus("HOST_DROPPED");
       return;
     }
@@ -161,14 +282,15 @@ export class LocalClientSocket implements ITransport {
     this.reconnectAttempts++;
     this.setStatus("RECONNECTING");
 
-    // Exponential backoff
     const delay = Math.min(
       this.initialBackoffMs * Math.pow(2, this.reconnectAttempts - 1),
       this.maxBackoffMs,
     );
 
     this.reconnectTimer = setTimeout(() => {
-      this.connect();
+      if (this.currentEpoch === epoch) {
+        this.connect();
+      }
     }, delay);
   }
 
@@ -189,9 +311,17 @@ export class LocalClientSocket implements ITransport {
   private setupTransportOverride(): void {
     if (!this.transportOverride) return;
     this.setStatus("CONNECTED");
+    this.setStatus("JOINING");
 
     this.transportOverride.onMessage((packet) => {
-      for (const handler of this.messageHandlers) {
+      if (
+        packet.type === "SEAT_UPDATE" ||
+        packet.type === "CLIENT_STATE_UPDATE" ||
+        (packet as any).type === "WELCOME"
+      ) {
+        this.setStatus("JOINED");
+      }
+      for (const handler of Array.from(this.messageHandlers)) {
         handler(packet);
       }
     });
@@ -207,9 +337,13 @@ export class LocalClientSocket implements ITransport {
     }
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(
-        this.channel ? JSON.stringify({ ch: this.channel, packet }) : JSON.stringify(packet),
-      );
+      try {
+        this.ws.send(
+          this.channel ? JSON.stringify({ ch: this.channel, packet }) : JSON.stringify(packet),
+        );
+      } catch (err) {
+        console.warn("[LocalClientSocket] send error:", err);
+      }
     }
   }
 
@@ -236,17 +370,27 @@ export class LocalClientSocket implements ITransport {
 
   public disconnect(): void {
     this.manualDisconnect = true;
+    this.currentEpoch++;
+
+    if (this.connectTimeoutTimer) {
+      clearTimeout(this.connectTimeoutTimer);
+      this.connectTimeoutTimer = null;
+    }
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
     if (this.ws) {
-      this.ws.close();
+      try {
+        this.ws.close();
+      } catch {
+        /* noop */
+      }
       this.ws = null;
     }
     if (this.transportOverride) {
       this.transportOverride.disconnect();
     }
-    this.setStatus("DISCONNECTED");
+    this.setStatus("CLOSED");
   }
 }

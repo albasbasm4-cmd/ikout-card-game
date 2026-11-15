@@ -169,7 +169,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
       return next;
     });
   };
-  const doJoin = (v: string) => {
+  const doJoin = (v: string, hostIp?: string) => {
     if (!/^[0-9]{4,6}$/.test(v)) {
       setJoinError("رمز غير صحيح: الرمز يتكون من 4 إلى 6 أرقام");
       return;
@@ -180,6 +180,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
       const ok = await connectJokerClient({
         code: v,
         name: profile.name || "لاعب",
+        hostIp,
       });
       setJoining(false);
       if (!ok) {

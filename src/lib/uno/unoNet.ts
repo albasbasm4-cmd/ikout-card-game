@@ -353,9 +353,9 @@ function listenToClientSocket(socket: LocalClientSocket): void {
 }
 
 /** المنضم: يبحث عن المضيف على نقطة الاتصال وينضم بغرفة الرمز. */
-export async function connectUnoClient(opts: { code: string; name: string }): Promise<boolean> {
+export async function connectUnoClient(opts: { code: string; name: string; hostIp?: string }): Promise<boolean> {
   disconnectUnoClient();
-  const candidates = await getJoinCandidateIps();
+  const candidates = await getJoinCandidateIps(opts.hostIp);
   for (const ip of candidates) {
     const ok = await probeUnoHost(ip, opts);
     if (ok) return true;
@@ -368,7 +368,7 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
     let settled = false;
     const token = getPersistentPlayerToken("uno");
     const socket = new LocalClientSocket({
-      url: `ws://${ip}:8080`,
+      url: ip.includes(":") ? `ws://${ip}` : `ws://${ip}:8080`,
       playerToken: token,
       playerName: opts.name || "لاعب",
       maxReconnectAttempts: 0,
@@ -406,9 +406,10 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
       if (p?.type === "WELCOME" && !settled) {
         settled = true;
         clearTimeout(timeout);
+        const assignedSeat = typeof p.payload?.["seat"] === "number" ? p.payload["seat"] : 0;
         client = {
           socket,
-          mySeat: 0,
+          mySeat: assignedSeat,
           code: opts.code,
           stateListeners: new Set(),
           seatListeners: new Set(),

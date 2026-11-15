@@ -29,84 +29,207 @@ export interface HubChannelHandlers {
 }
 
 // ------------------------------------------------------------------
-// جانب المضيف
+// جانب المضيف (دورة حياة موحدة ومحمية من التزامن)
 // ------------------------------------------------------------------
 
-interface HubServerState {
-  bridge: WssBridge;
-  started: boolean;
-  channels: Map<string, HubChannelHandlers>;
+export type HubServerLifecycle = "STOPPED" | "STARTING" | "RUNNING" | "STOPPING" | "ERROR";
+
+const channels = new Map<string, HubChannelHandlers>();
+let serverState: HubServerLifecycle = "STOPPED";
+let startPromise: Promise<boolean> | null = null;
+let stopPromise: Promise<void> | null = null;
+let activeBridge: WssBridge | null = null;
+let unsubBridgeEvent: (() => void) | null = null;
+
+export function getHubServerState(): HubServerLifecycle {
+  return serverState;
 }
 
-let hubServer: HubServerState | null = null;
-
-export async function ensureHubServer(port = HUB_PORT): Promise<boolean> {
-  if (hubServer?.started) return true;
-  const bridge = tryCreateNativeWssBridge();
-  if (!bridge) return false;
-  if (!hubServer) {
-    hubServer = { bridge, started: false, channels: new Map() };
-    bridge.onEvent((evt) => {
+export function setHubBridgeForTesting(bridge: WssBridge | null): void {
+  activeBridge = bridge;
+  if (bridge) {
+    serverState = "RUNNING";
+    unsubBridgeEvent?.();
+    unsubBridgeEvent = bridge.onEvent((evt: WssClientEvent) => {
+      if (serverState !== "RUNNING") return;
       if (evt.type === "CLIENT_CONNECTED") {
-        for (const h of hubServer!.channels.values()) h.onClientConnected?.(evt.clientId);
+        for (const handlers of Array.from(channels.values())) {
+          handlers.onClientConnected?.(evt.clientId);
+        }
       } else if (evt.type === "CLIENT_DISCONNECTED") {
-        for (const h of hubServer!.channels.values()) h.onClientDisconnected?.(evt.clientId);
-      } else if (evt.type === "CLIENT_MESSAGE" && evt.data && typeof evt.data === "object") {
+        for (const handlers of Array.from(channels.values())) {
+          handlers.onClientDisconnected?.(evt.clientId);
+        }
+      } else if (evt.type === "CLIENT_MESSAGE") {
         const msg = evt.data as HubMessage;
-        const handler = typeof msg.ch === "string" ? hubServer!.channels.get(msg.ch) : undefined;
-        if (handler) handler.onClientMessage(evt.clientId, msg);
+        if (!msg || typeof msg !== "object") return;
+        const target = channels.get(msg.ch);
+        if (target) {
+          target.onClientMessage(evt.clientId, msg);
+        }
       }
     });
+  } else {
+    serverState = "STOPPED";
+    unsubBridgeEvent?.();
+    unsubBridgeEvent = null;
   }
-  const ok = await bridge.start(port);
-  hubServer.started = ok;
-  return ok;
+}
+
+export async function ensureHubServer(port = HUB_PORT): Promise<boolean> {
+  if (serverState === "RUNNING") return true;
+  if (serverState === "STARTING" && startPromise) return startPromise;
+
+  if (serverState === "STOPPING" && stopPromise) {
+    await stopPromise;
+  }
+
+  serverState = "STARTING";
+  startPromise = (async () => {
+    try {
+      const bridge = tryCreateNativeWssBridge();
+      if (!bridge) {
+        serverState = "STOPPED";
+        return false;
+      }
+
+      activeBridge = bridge;
+
+      // تسجيل مستمع أحداث الجسر الموحد
+      unsubBridgeEvent = bridge.onEvent((evt) => {
+        if (serverState !== "RUNNING") return;
+        if (evt.type === "CLIENT_CONNECTED") {
+          for (const h of channels.values()) {
+            try {
+              h.onClientConnected?.(evt.clientId);
+            } catch (err) {
+              console.error("[gameHub] onClientConnected error:", err);
+            }
+          }
+        } else if (evt.type === "CLIENT_DISCONNECTED") {
+          for (const h of channels.values()) {
+            try {
+              h.onClientDisconnected?.(evt.clientId);
+            } catch (err) {
+              console.error("[gameHub] onClientDisconnected error:", err);
+            }
+          }
+        } else if (evt.type === "CLIENT_MESSAGE" && evt.data && typeof evt.data === "object") {
+          const msg = evt.data as HubMessage;
+          const handler = typeof msg.ch === "string" ? channels.get(msg.ch) : undefined;
+          if (handler) {
+            try {
+              handler.onClientMessage(evt.clientId, msg);
+            } catch (err) {
+              console.error("[gameHub] onClientMessage error:", err);
+            }
+          }
+        }
+      });
+
+      const ok = await bridge.start(port);
+      if (ok) {
+        serverState = "RUNNING";
+        return true;
+      } else {
+        serverState = "ERROR";
+        if (unsubBridgeEvent) {
+          unsubBridgeEvent();
+          unsubBridgeEvent = null;
+        }
+        await bridge.stop();
+        activeBridge = null;
+        return false;
+      }
+    } catch (err) {
+      console.error("[gameHub] ensureHubServer failed:", err);
+      serverState = "ERROR";
+      if (unsubBridgeEvent) {
+        unsubBridgeEvent();
+        unsubBridgeEvent = null;
+      }
+      activeBridge = null;
+      return false;
+    } finally {
+      startPromise = null;
+    }
+  })();
+
+  return startPromise;
+}
+
+export async function stopHubServer(): Promise<void> {
+  if (serverState === "STOPPED") return;
+  if (serverState === "STOPPING" && stopPromise) return stopPromise;
+
+  if (serverState === "STARTING" && startPromise) {
+    await startPromise;
+  }
+
+  serverState = "STOPPING";
+  stopPromise = (async () => {
+    try {
+      if (unsubBridgeEvent) {
+        unsubBridgeEvent();
+        unsubBridgeEvent = null;
+      }
+      if (activeBridge) {
+        await activeBridge.stop();
+        activeBridge = null;
+      }
+    } catch (err) {
+      console.warn("[gameHub] stopHubServer error:", err);
+    } finally {
+      serverState = "STOPPED";
+      stopPromise = null;
+    }
+  })();
+
+  return stopPromise;
 }
 
 export function registerHubChannel(ch: HubChannel, handlers: HubChannelHandlers): () => void {
-  if (!hubServer) {
-    hubServer = {
-      bridge: tryCreateNativeWssBridge() ?? ({} as WssBridge),
-      started: false,
-      channels: new Map(),
-    };
-  }
-  hubServer.channels.set(ch, handlers);
+  channels.set(ch, handlers);
   return () => {
-    if (hubServer && hubServer.channels.get(ch) === handlers) hubServer.channels.delete(ch);
+    if (channels.get(ch) === handlers) {
+      channels.delete(ch);
+    }
   };
 }
 
 export function hubSendTo(clientId: string, msg: HubMessage): void {
+  if (serverState !== "RUNNING" || !activeBridge) return;
   try {
-    hubServer?.bridge.sendTo(clientId, JSON.stringify(msg));
-  } catch {
-    /* noop */
+    activeBridge.sendTo(clientId, JSON.stringify(msg));
+  } catch (err) {
+    console.warn("[gameHub] hubSendTo failed:", err);
   }
 }
 
 export function hubBroadcast(msg: HubMessage): void {
+  if (serverState !== "RUNNING" || !activeBridge) return;
   try {
-    hubServer?.bridge.broadcast(JSON.stringify(msg));
-  } catch {
-    /* noop */
+    activeBridge.broadcast(JSON.stringify(msg));
+  } catch (err) {
+    console.warn("[gameHub] hubBroadcast failed:", err);
   }
 }
 
 export function hubCloseClient(clientId: string): void {
+  if (!activeBridge) return;
   try {
-    hubServer?.bridge.closeClient(clientId);
-  } catch {
-    /* noop */
+    activeBridge.closeClient(clientId);
+  } catch (err) {
+    console.warn("[gameHub] hubCloseClient failed:", err);
   }
 }
 
 export function hubIsNative(): boolean {
-  return !!hubServer?.bridge.isNative;
+  return !!activeBridge?.isNative;
 }
 
 export async function hubGetHostIp(): Promise<string | null> {
-  return (await hubServer?.bridge.getIpAddress()) ?? null;
+  return (await activeBridge?.getIpAddress()) ?? null;
 }
 
 // ------------------------------------------------------------------
@@ -240,7 +363,6 @@ export async function connectHubToHost(
     const client = new HubClient(`ws://${clean}:${port}`);
     const ok = await client.connect(perIpTimeoutMs);
     if (ok) {
-      // مصافحة القناة: نرسل رسالة hello حتى يعرف المضيف وجودنا (اختياري لكل لعبة)
       return client;
     }
     client.close();

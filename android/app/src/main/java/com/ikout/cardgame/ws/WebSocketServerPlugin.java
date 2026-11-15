@@ -1,6 +1,5 @@
 package com.ikout.cardgame.ws;
 
-import android.annotation.SuppressLint;
 import android.net.wifi.WifiManager;
 
 import com.getcapacitor.JSObject;
@@ -12,11 +11,13 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import org.json.JSONException;
 
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -42,19 +43,24 @@ import fi.iki.elonen.NanoWSD;
 public class WebSocketServerPlugin extends Plugin {
 
     private static final String EVENT_NAME = "wsEvent";
-    private static final String[] HOTSPOT_IFACES = { "swlan0", "ap0", "softap0", "wlan1", "wlan2" };
+    private static final String[] HOTSPOT_IFACES = { "swlan", "ap", "softap", "wlan1", "wlan2", "rndis" };
     private static final long PING_INTERVAL_SECONDS = 15;
 
     private WsServer server;
     private final Map<String, WsSocket> clients = new ConcurrentHashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(1);
-    private final ScheduledExecutorService pinger = Executors.newSingleThreadScheduledExecutor(
-        r -> {
-            Thread t = new Thread(r, "wss-pinger");
-            t.setDaemon(true);
-            return t;
+    private ScheduledExecutorService pinger;
+
+    private synchronized ScheduledExecutorService getPinger() {
+        if (pinger == null || pinger.isShutdown()) {
+            pinger = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "wss-pinger");
+                t.setDaemon(true);
+                return t;
+            });
         }
-    );
+        return pinger;
+    }
 
     private class WsSocket extends NanoWSD.WebSocket {
         final String id;
@@ -63,7 +69,7 @@ public class WebSocketServerPlugin extends Plugin {
         WsSocket(NanoHTTPD.IHTTPSession handshake, String id) {
             super(handshake);
             this.id = id;
-            this.pingTask = pinger.scheduleAtFixedRate(
+            this.pingTask = getPinger().scheduleAtFixedRate(
                 () -> {
                     try {
                         if (isOpen()) {
@@ -125,7 +131,7 @@ public class WebSocketServerPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void start(PluginCall call) {
+    public synchronized void start(PluginCall call) {
         if (server != null) {
             call.resolve();
             return;
@@ -142,7 +148,7 @@ public class WebSocketServerPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void stop(PluginCall call) {
+    public synchronized void stop(PluginCall call) {
         if (server != null) {
             try {
                 server.stop();
@@ -157,6 +163,10 @@ public class WebSocketServerPlugin extends Plugin {
             }
         }
         clients.clear();
+        if (pinger != null && !pinger.isShutdown()) {
+            pinger.shutdownNow();
+            pinger = null;
+        }
         call.resolve();
     }
 
@@ -226,9 +236,12 @@ public class WebSocketServerPlugin extends Plugin {
                     if (lp != null) {
                         for (android.net.RouteInfo route : lp.getRoutes()) {
                             if (route.isDefaultRoute()
-                                && route.getGateway() instanceof java.net.Inet4Address) {
-                                ip = route.getGateway().getHostAddress();
-                                break;
+                                && route.getGateway() instanceof Inet4Address) {
+                                InetAddress gw = route.getGateway();
+                                if (isValidLocalIpv4(gw)) {
+                                    ip = gw.getHostAddress();
+                                    break;
+                                }
                             }
                         }
                     }
@@ -244,7 +257,10 @@ public class WebSocketServerPlugin extends Plugin {
                 if (wifi != null) {
                     android.net.DhcpInfo dhcp = wifi.getDhcpInfo();
                     if (dhcp != null && dhcp.gateway != 0) {
-                        ip = intToIp(dhcp.gateway);
+                        String candidate = intToIp(dhcp.gateway);
+                        if (isIpv4StringValid(candidate)) {
+                            ip = candidate;
+                        }
                     }
                 }
             } catch (Exception ignored) {
@@ -285,34 +301,71 @@ public class WebSocketServerPlugin extends Plugin {
             + ((value >> 24) & 0xFF);
     }
 
+    private static boolean isValidLocalIpv4(InetAddress addr) {
+        if (!(addr instanceof Inet4Address)) return false;
+        if (addr.isLoopbackAddress() || addr.isAnyLocalAddress()) return false;
+        String host = addr.getHostAddress();
+        if (host == null || host.startsWith("127.") || host.equals("0.0.0.0")) return false;
+        return addr.isSiteLocalAddress() || host.startsWith("192.168.") || host.startsWith("10.") || host.startsWith("172.");
+    }
+
+    private static boolean isIpv4StringValid(String host) {
+        if (host == null || host.isEmpty() || host.startsWith("127.") || host.equals("0.0.0.0")) return false;
+        return host.startsWith("192.168.") || host.startsWith("10.") || host.startsWith("172.");
+    }
+
     private static String detectHostIp() {
+        String hotspotIp = null;
         String wifiIp = null;
-        String anyIp = null;
+        String ethIp = null;
+        String otherValidIp = null;
+
         try {
             Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
             for (NetworkInterface iface : Collections.list(ifaces)) {
                 if (!iface.isUp() || iface.isLoopback()) continue;
-                String name = iface.getName().toLowerCase();
+                String name = iface.getName().toLowerCase(Locale.ROOT);
+
+                // استبعاد واجهات VPN والشبكات الخلوية والافتراضية
+                if (name.contains("tun") || name.contains("ppp") || name.contains("tap")
+                        || name.contains("dummy") || name.contains("rmnet") || name.contains("ccmni")
+                        || name.contains("pdp") || name.contains("docker") || name.contains("veth")) {
+                    continue;
+                }
+
                 for (Enumeration<InetAddress> addrs = iface.getInetAddresses(); addrs.hasMoreElements(); ) {
                     InetAddress addr = addrs.nextElement();
-                    if (addr.isLoopbackAddress() || addr.getHostAddress().indexOf(':') >= 0) continue;
-                    boolean hotspot = false;
+                    if (!isValidLocalIpv4(addr)) continue;
+                    String ipStr = addr.getHostAddress();
+
+                    boolean isHotspot = false;
                     for (String h : HOTSPOT_IFACES) {
                         if (name.equals(h) || name.startsWith(h)) {
-                            hotspot = true;
+                            isHotspot = true;
                             break;
                         }
                     }
-                    if (hotspot) return addr.getHostAddress();
-                    if (name.startsWith("wlan0") && wifiIp == null) wifiIp = addr.getHostAddress();
-                    if (anyIp == null) anyIp = addr.getHostAddress();
+
+                    if (isHotspot && hotspotIp == null) {
+                        hotspotIp = ipStr;
+                    } else if ((name.startsWith("wlan") || name.startsWith("wifi")) && wifiIp == null) {
+                        wifiIp = ipStr;
+                    } else if (name.startsWith("eth") && ethIp == null) {
+                        ethIp = ipStr;
+                    } else if (otherValidIp == null) {
+                        otherValidIp = ipStr;
+                    }
                 }
             }
         } catch (Exception ignored) {
         }
+
+        if (hotspotIp != null) return hotspotIp;
         if (wifiIp != null) return wifiIp;
-        if (anyIp != null) return anyIp;
-        // Do not publish a guessed hotspot address as if it were verified.
+        if (ethIp != null) return ethIp;
+        if (otherValidIp != null) return otherValidIp;
+
+        // لا نعيد أي عنوان وهمي أو غير متحقق منه
         return null;
     }
 }

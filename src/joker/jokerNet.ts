@@ -275,9 +275,9 @@ export function disconnectJokerClient(): void {
 }
 
 /** المنضم: يبحث عن المضيف على نقطة الاتصال وينضم بغرفة الرمز. */
-export async function connectJokerClient(opts: { code: string; name: string }): Promise<boolean> {
+export async function connectJokerClient(opts: { code: string; name: string; hostIp?: string }): Promise<boolean> {
   disconnectJokerClient();
-  const candidates = await getJoinCandidateIps();
+  const candidates = await getJoinCandidateIps(opts.hostIp);
   for (const ip of candidates) {
     const ok = await probeJokerHost(ip, opts);
     if (ok) return true;
@@ -290,7 +290,7 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
     let settled = false;
     const token = getPersistentPlayerToken("joker");
     const socket = new LocalClientSocket({
-      url: `ws://${ip}:8080`,
+      url: ip.includes(":") ? `ws://${ip}` : `ws://${ip}:8080`,
       playerToken: token,
       playerName: opts.name || "لاعب",
       maxReconnectAttempts: 0,

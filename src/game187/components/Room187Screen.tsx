@@ -1,4 +1,6 @@
 import { formatHotspotQrString } from "@/network/multiplayerHub";
+import { getPersistentPlayerToken } from "@/network/playerToken";
+import { parseRoomPayload } from "@/network/localIp";
 import { useSettings } from "../../store/useSettings";
 /**
  * @license
@@ -63,7 +65,8 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
 
   /** عند قراءة رمز QR داخل اللعبة: انضمام مباشر دون أي واجهة إضافية. */
   const handleScannedCode = (raw: string) => {
-    let code = raw.trim();
+    const parsed = parseRoomPayload(raw);
+    let code = (parsed.roomCode || raw).trim();
     if (code.startsWith("g187-room:")) code = code.slice(10);
     else if (code.includes("room=")) {
       try {
@@ -73,14 +76,17 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         // keep code
       }
     }
+    const detectedIp = parsed.isVerifiedIp ? parsed.ip : undefined;
+    setTargetHostIp(detectedIp);
     setScanOpen(false);
-    handleJoinByCode(code);
+    handleJoinByCode(code, detectedIp);
   };
 
   const channelRef = useRef<Room187Channel | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   /** رمز جهاز هذا المنضم؛ يحدد مقعده عند بدء المباراة بدل افتراض مقعد ثابت. */
-  const myTokenRef = useRef<string>(`${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+  const myTokenRef = useRef<string>(getPersistentPlayerToken("g187"));
+  const [targetHostIp, setTargetHostIp] = useState<string | undefined>(undefined);
   const seatsRef = useRef(seats);
   seatsRef.current = seats;
   const onStartMatchRef = useRef(onStartMatch);
@@ -110,7 +116,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     if (!roomCode) return;
 
     channelRef.current?.close();
-    const ch = new Room187Channel(roomCode, roomMode === "host" ? "host" : "client");
+    const ch = new Room187Channel(roomCode, roomMode === "host" ? "host" : "client", targetHostIp);
     channelRef.current = ch;
 
     if (roomMode === "host") {
@@ -171,7 +177,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
       ch.close();
       if (channelRef.current === ch) channelRef.current = null;
     };
-  }, [roomMode, roomCode, joinNonce]);
+  }, [roomMode, roomCode, joinNonce, targetHostIp]);
 
   // بث المقاعد من المضيف عند كل تغيير (إضافة/إزالة بوت أو انضمام)
   useEffect(() => {
@@ -216,7 +222,8 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     setRoomCode("");
   };
 
-  const handleJoinByCode = (code: string) => {
+  const handleJoinByCode = (code: string, hostIp?: string) => {
+    setTargetHostIp(hostIp);
     const trimmed = code.trim().toUpperCase();
     if (trimmed.length < 4) {
       showToast("أدخل رمز الغرفة بشكل صحيح");
