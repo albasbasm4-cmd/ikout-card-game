@@ -235,8 +235,19 @@ export function tryCreateNativeWssBridge(): WssBridge | null {
 export async function getJoinCandidateIps(targetHostIp?: string | null): Promise<string[]> {
   const candidates: string[] = [];
 
-  // إذا تم توفير IP محدد ومتحقق منه (من QR أو إدخال يدوي) نضعه أولاً
-  if (targetHostIp && (isValidLocalIpv4(targetHostIp) || targetHostIp.trim().startsWith("127.0.0.1") || targetHostIp.trim().startsWith("localhost"))) {
+  // إذا تم توفير IP محلي خاص متحقق منه (من QR أو إدخال يدوي) نعتمد عليه
+  if (targetHostIp && isValidLocalIpv4(targetHostIp)) {
+    candidates.push(targetHostIp.trim());
+    return candidates;
+  }
+
+  // بيئة الاختبار والتطوير فقط (127.0.0.1 أو localhost) عند تمريرها صراحة
+  if (
+    targetHostIp &&
+    (targetHostIp.trim() === "127.0.0.1" ||
+      targetHostIp.trim().startsWith("127.0.0.1:") ||
+      targetHostIp.trim() === "localhost")
+  ) {
     candidates.push(targetHostIp.trim());
     return candidates;
   }
@@ -249,7 +260,6 @@ export async function getJoinCandidateIps(targetHostIp?: string | null): Promise
     }
   }
 
-  // لا نستخدم أي عناوين افتراضية أو تخمينية إذا فشل الاكتشاف
-
+  // لا نستخدم أي عناوين افتراضية أو تخمينية إطلاقاً
   return candidates;
 }

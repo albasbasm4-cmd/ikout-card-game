@@ -13,6 +13,7 @@ import {
   ensureHubServer,
   registerHubChannel,
   hubSendTo,
+  hubCloseClient,
   HUB_PORT,
   type HubMessage,
 } from "./gameHub";
@@ -36,7 +37,11 @@ export class KoutWssTransport implements IHostTransport {
 
   private bind(clientId: string, token: string) {
     const old = this.tokenToClient.get(token);
-    if (old && old !== clientId) this.clientToToken.delete(old);
+    if (old && old !== clientId) {
+      this.clientToToken.delete(old);
+      // إغلاق أي اتصال قديم لنفس اللاعب لضمان وجود اتصال نشط واحد فقط
+      hubCloseClient(old);
+    }
     this.tokenToClient.set(token, clientId);
     this.clientToToken.set(clientId, token);
   }

@@ -49,6 +49,7 @@ export class HostSession {
   private lastCheatReportAt = 0;
   private stateListeners = new Set<(state: GameState) => void>();
   private disconnectTimers = new Map<number, ReturnType<typeof setTimeout>>();
+  private lastProcessedSeq = new Map<string, number>();
   private readonly BOT_TAKEOVER_MS = 8000;
   private unsubscribeDisconnect?: () => void;
 
@@ -183,6 +184,23 @@ export class HostSession {
   }
 
   private handleClientPacket(playerToken: string, packet: ClientPacket): void {
+    if (!packet || typeof packet !== "object" || !packet.type) return;
+
+    // معالجة الرسائل المكررة والتسلسل الزمني لمنع تنفيذ الحركة مرتين
+    if (typeof packet.seq === "number") {
+      const lastSeq = this.lastProcessedSeq.get(playerToken) ?? 0;
+      if (packet.type !== "JOIN" && packet.type !== "PING" && packet.seq <= lastSeq) {
+        const senderSeat = this.tokenToSeat.get(playerToken);
+        if (senderSeat !== undefined) {
+          this.sendFilteredStateToSeat(senderSeat, playerToken);
+        }
+        return;
+      }
+      if (packet.type !== "PING") {
+        this.lastProcessedSeq.set(playerToken, packet.seq);
+      }
+    }
+
     switch (packet.type) {
       case "JOIN": {
         this.handleJoin(playerToken, packet);
@@ -250,9 +268,33 @@ export class HostSession {
     if (this.roomCode) {
       const given = (packet.payload as { roomCode?: string }).roomCode?.trim().toUpperCase();
       if (given !== this.roomCode) {
+        this.sendPacket(playerToken, {
+          type: "REJECTED",
+          payload: {
+            reason: "INVALID_ROOM",
+            message: "Room code does not match",
+          },
+        });
         this.sendError(playerToken, "INVALID_ROOM", "Room code does not match", packet.seq);
         return;
       }
+    }
+
+    // منع انضمام لاعب جديد إذا كانت المباراة قد بدأت بالفعل (إلا إذا كان إعادة اتصال للاعب سابق)
+    if (
+      !this.tokenToSeat.has(playerToken) &&
+      this.engine.state.phase !== "LOBBY" &&
+      this.engine.state.roundNo > 1
+    ) {
+      this.sendPacket(playerToken, {
+        type: "REJECTED",
+        payload: {
+          reason: "GAME_ALREADY_STARTED",
+          message: "Match has already started",
+        },
+      });
+      this.sendError(playerToken, "GAME_ALREADY_STARTED", "Match has already started", packet.seq);
+      return;
     }
 
     // Check if token already assigned
@@ -286,6 +328,13 @@ export class HostSession {
     }
 
     if (assignedSeat === undefined) {
+      this.sendPacket(playerToken, {
+        type: "REJECTED",
+        payload: {
+          reason: "ROOM_FULL",
+          message: "No available seats in this room",
+        },
+      });
       this.sendError(playerToken, "ROOM_FULL", "No available seats in this room", packet.seq);
       return;
     }
@@ -315,6 +364,18 @@ export class HostSession {
       ...updatedSlot,
       playerToken: undefined,
     };
+
+    // إرسال تأكيد الانضمام الرسمي والناجح JOIN_ACCEPTED
+    this.sendPacket(playerToken, {
+      type: "JOIN_ACCEPTED",
+      payload: {
+        roomCode: this.roomCode || "",
+        seatIndex: assignedSeat,
+        playerToken,
+        player: sanitizedSlot,
+        players: sanitizedPlayers,
+      },
+    });
 
     // Inform client of assigned seat
     this.sendPacket(playerToken, {

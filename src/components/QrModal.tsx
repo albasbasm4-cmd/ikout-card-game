@@ -100,7 +100,7 @@ export const QrModal: React.FC<QrModalProps> = ({
       setIp(trimmed);
       setIsEditingIp(false);
     } else {
-      alert("يرجى إدخال عنوان IPv4 محلي صالح (مثال: 192.168.43.1 أو 192.168.1.50)");
+      alert("يرجى إدخال عنوان IPv4 محلي صالح (مثال: 192.168.x.x)");
     }
   };
 
@@ -208,7 +208,7 @@ export const QrModal: React.FC<QrModalProps> = ({
                 type="text"
                 value={tempIp}
                 onChange={(e) => setTempIp(e.target.value)}
-                placeholder="192.168.43.1"
+                placeholder="مثال: 192.168.x.x"
                 className="flex-1 bg-black/60 border border-amber-400/40 rounded px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-amber-300"
               />
               <button

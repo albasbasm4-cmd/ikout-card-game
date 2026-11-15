@@ -7,7 +7,10 @@ import { getNativeWssPlugin } from "./wssBridge";
 /**
  * يتحقق من أن العنوان عنوان IPv4 محلي صالح (خاص)، وليس Loopback أو غير صالح.
  */
-export function isValidLocalIpv4(ip: string | null | undefined): boolean {
+export function isValidLocalIpv4(
+  ip: string | null | undefined,
+  allowLinkLocal: boolean = false,
+): boolean {
   if (!ip) return false;
   let trimmed = ip.trim();
   if (trimmed.includes(":")) trimmed = trimmed.split(":")[0].trim();
@@ -17,7 +20,7 @@ export function isValidLocalIpv4(ip: string | null | undefined): boolean {
   const [_, a, b, c, d] = match.map(Number);
   if ([a, b, c, d].some((n) => n < 0 || n > 255)) return false;
 
-  // استبعاد Loopback و Unspecified
+  // استبعاد Loopback (127.x.x.x) و Unspecified (0.0.0.0)
   if (a === 127 || (a === 0 && b === 0 && c === 0 && d === 0)) return false;
 
   // 10.0.0.0/8
@@ -29,8 +32,8 @@ export function isValidLocalIpv4(ip: string | null | undefined): boolean {
   // 192.168.0.0/16
   if (a === 192 && b === 168) return true;
 
-  // 169.254.0.0/16 (Link-local)
-  if (a === 169 && b === 254) return true;
+  // 169.254.0.0/16 (Link-local) - مستبعد افتراضياً لمنع العناوين غير القابلة للتوجيه
+  if (allowLinkLocal && a === 169 && b === 254) return true;
 
   return false;
 }
@@ -161,33 +164,44 @@ export async function getLocalIpAddress(): Promise<string | null> {
     if (RTCPC) {
       const pc = new RTCPC({ iceServers: [] });
       pc.createDataChannel("");
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
 
       const detected = await new Promise<string | null>((resolve) => {
-        const timeout = setTimeout(() => {
+        let finished = false;
+        const cleanup = (val: string | null) => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timeout);
           try {
+            pc.onicecandidate = null;
+            pc.onicecandidateerror = null;
             pc.close();
           } catch {
             /* ignore */
           }
-          resolve(null);
-        }, 1200);
+          resolve(val);
+        };
 
+        const timeout = setTimeout(() => {
+          cleanup(null);
+        }, 1500);
+
+        // تسجيل مستمع ICE قبل بدء جمع المرشحين
         pc.onicecandidate = (event: any) => {
           if (!event?.candidate?.candidate) return;
           const candidate = event.candidate.candidate;
           const match = candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
           if (match && match[1] && isValidLocalIpv4(match[1])) {
-            clearTimeout(timeout);
-            try {
-              pc.close();
-            } catch {
-              /* ignore */
-            }
-            resolve(match[1]);
+            cleanup(match[1]);
           }
         };
+
+        pc.onicecandidateerror = () => {
+          // في حال حدوث خطأ أثناء الجمع
+        };
+
+        pc.createOffer()
+          .then((offer: any) => pc.setLocalDescription(offer))
+          .catch(() => cleanup(null));
       });
 
       if (detected) return detected;

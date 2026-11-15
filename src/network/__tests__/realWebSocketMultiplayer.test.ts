@@ -78,6 +78,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
   });
 
   afterEach(async () => {
+    session.destroy();
     await server.close();
   });
 
@@ -101,7 +102,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
       clientWs.on("message", (raw: any) => {
         const p = JSON.parse(raw.toString()) as HostPacket;
         receivedPackets.push(p);
-        if (receivedPackets.length >= 2) {
+        if (receivedPackets.some((x) => x.type === "CLIENT_STATE_UPDATE")) {
           resolve();
         }
       });
@@ -190,59 +191,75 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
   });
 
   it("strictly enforces privacy: opponents hands are NOT transmitted to other clients", async () => {
-    const p1Ws = new WsClient(`ws://127.0.0.1:${server.port}`);
-    const p2Ws = new WsClient(`ws://127.0.0.1:${server.port}`);
-
     const p1Packets: HostPacket[] = [];
     const p2Packets: HostPacket[] = [];
 
-    await Promise.all([
-      new Promise<void>((resolve) => {
-        p1Ws.on("open", () => {
-          p1Ws.send(
-            JSON.stringify({
-              v: 1,
-              seq: 1,
-              playerToken: "token_private_1",
-              type: "JOIN",
-              payload: { playerName: "سالم", roomCode },
-            }),
-          );
-        });
-        p1Ws.on("message", (raw: any) => {
-          p1Packets.push(JSON.parse(raw.toString()));
-          if (p1Packets.some((p) => p.type === "CLIENT_STATE_UPDATE")) resolve();
-        });
-      }),
-      new Promise<void>((resolve) => {
-        p2Ws.on("open", () => {
-          p2Ws.send(
-            JSON.stringify({
-              v: 1,
-              seq: 1,
-              playerToken: "token_private_2",
-              type: "JOIN",
-              payload: { playerName: "طلال", roomCode },
-            }),
-          );
-        });
-        p2Ws.on("message", (raw: any) => {
-          p2Packets.push(JSON.parse(raw.toString()));
-          if (p2Packets.some((p) => p.type === "CLIENT_STATE_UPDATE")) resolve();
-        });
-      }),
-    ]);
+    const p1Ws = new WsClient(`ws://127.0.0.1:${server.port}`);
+
+    // Connect p1Ws first to deterministically obtain seat 1
+    await new Promise<void>((resolve) => {
+      p1Ws.on("open", () => {
+        p1Ws.send(
+          JSON.stringify({
+            v: 1,
+            seq: 1,
+            playerToken: "token_private_1",
+            type: "JOIN",
+            payload: { playerName: "سالم", roomCode },
+          }),
+        );
+      });
+      p1Ws.on("message", (raw: any) => {
+        p1Packets.push(JSON.parse(raw.toString()));
+        if (p1Packets.some((p) => p.type === "CLIENT_STATE_UPDATE")) resolve();
+      });
+    });
+
+    // Connect p2Ws second to obtain seat 2
+    const p2Ws = new WsClient(`ws://127.0.0.1:${server.port}`);
+    await new Promise<void>((resolve) => {
+      p2Ws.on("open", () => {
+        p2Ws.send(
+          JSON.stringify({
+            v: 1,
+            seq: 1,
+            playerToken: "token_private_2",
+            type: "JOIN",
+            payload: { playerName: "طلال", roomCode },
+          }),
+        );
+      });
+      p2Ws.on("message", (raw: any) => {
+        p2Packets.push(JSON.parse(raw.toString()));
+        if (p2Packets.some((p) => p.type === "CLIENT_STATE_UPDATE")) resolve();
+      });
+    });
 
     // Start round to deal cards
     session.startRound();
 
-    // Wait for dealt state update
-    await new Promise((r) => setTimeout(r, 60));
+    await new Promise<void>((resolve, reject) => {
+      const deadline = Date.now() + 3000;
+      const check = () => {
+        const last = p1Packets
+          .filter((p) => p.type === "CLIENT_STATE_UPDATE")
+          .map((p) => p.payload.state)
+          .pop();
+        if (last && last.phase === "BID" && last.hands[1]?.length > 0) {
+          resolve();
+        } else if (Date.now() > deadline) {
+          reject(new Error("Timeout waiting for dealt cards in p1State"));
+        } else {
+          setTimeout(check, 25);
+        }
+      };
+      check();
+    });
 
     p1Ws.close();
     p2Ws.close();
 
-    const p1States = p1Packets
+        const p1States = p1Packets
       .filter((p) => p.type === "CLIENT_STATE_UPDATE")
       .map((p) => p.payload.state);
     const lastP1State = p1States[p1States.length - 1];

@@ -148,6 +148,9 @@ export class Room187Channel {
             return;
           }
         }
+        // المضيف هو المصدر الحصري للحالة: نتجاهل أي STATE_UPDATE قادم من العميل
+        if (packet.type === "STATE_UPDATE") return;
+
         this.emit(packet);
       },
     });
@@ -232,7 +235,7 @@ export class Room187Channel {
   /** Send a seat-masked state directly to each connected player, never broadcasting raw hands. */
   public sendStateUpdate(state: GameState187): void {
     if (this.role !== "host") {
-      this.send({ type: "STATE_UPDATE", state });
+      // العملاء لا يرسلون تحديثات الحالة النهائية
       return;
     }
     for (const player of state.players) {

@@ -123,8 +123,25 @@ export interface CheatVerdictPayload {
   winningTeam?: 0 | 1;
 }
 
+
+export interface JoinAcceptedPayload {
+  roomCode: string;
+  seatIndex: number;
+  playerToken: string;
+  player?: PlayerSlot;
+  players?: PlayerSlot[];
+}
+
+export interface RejectedPayload {
+  reason: "INVALID_ROOM" | "ROOM_FULL" | "GAME_ALREADY_STARTED" | "INVALID_TOKEN" | "OTHER";
+  message: string;
+}
+
+export type JoinAcceptedPacket = BaseHostPacket<"JOIN_ACCEPTED", JoinAcceptedPayload>;
+export type RejectedPacket = BaseHostPacket<"REJECTED", RejectedPayload>;
+
 export type HostPacketType =
-  "CLIENT_STATE_UPDATE" | "SEAT_UPDATE" | "ERROR" | "PONG" | "CHEAT_VERDICT";
+  "JOIN_ACCEPTED" | "CLIENT_STATE_UPDATE" | "SEAT_UPDATE" | "ERROR" | "PONG" | "CHEAT_VERDICT" | "REJECTED";
 
 export interface BaseHostPacket<TType extends HostPacketType, TPayload> {
   v: number;
@@ -144,7 +161,13 @@ export type PongPacket = BaseHostPacket<"PONG", PongPayload>;
 export type CheatVerdictPacket = BaseHostPacket<"CHEAT_VERDICT", CheatVerdictPayload>;
 
 export type HostPacket =
-  ClientStateUpdatePacket | SeatUpdatePacket | ErrorPacket | PongPacket | CheatVerdictPacket;
+  | JoinAcceptedPacket
+  | ClientStateUpdatePacket
+  | SeatUpdatePacket
+  | ErrorPacket
+  | PongPacket
+  | CheatVerdictPacket
+  | RejectedPacket;
 
 /**
  * Filters a GameState snapshot for a specific seat:
