@@ -35,6 +35,17 @@ if (
   manifest = manifest.replace("<application", '<application android:usesCleartextTraffic="true"');
 }
 
+if (manifest.includes('android:windowSoftInputMode="adjustResize"')) {
+  manifest = manifest.replace(
+    'android:windowSoftInputMode="adjustResize"',
+    'android:windowSoftInputMode="adjustNothing"',
+  );
+} else if (manifest.includes('android:windowSoftInputMode="adjustPan"')) {
+  manifest = manifest.replace(
+    'android:windowSoftInputMode="adjustPan"',
+    'android:windowSoftInputMode="adjustNothing"',
+  );
+}
 fs.writeFileSync(manifestPath, manifest, "utf-8");
 console.log(
   "Patched AndroidManifest.xml with camera/network permissions and hardware acceleration.",

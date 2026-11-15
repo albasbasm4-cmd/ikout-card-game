@@ -38,12 +38,12 @@ describe("Screen Orientation & System Bars Fix Verification", () => {
     expect(content).toContain("MIXED_CONTENT_ALWAYS_ALLOW");
   });
 
-  it("verifies AndroidManifest.xml maintains sensorLandscape and adjustResize", () => {
+  it("verifies AndroidManifest.xml maintains sensorLandscape and adjustNothing for keyboard overlay", () => {
     const manifestPath = path.resolve(process.cwd(), "android/app/src/main/AndroidManifest.xml");
     const content = fs.readFileSync(manifestPath, "utf-8");
 
     expect(content).toContain('android:screenOrientation="sensorLandscape"');
-    expect(content).toContain('android:windowSoftInputMode="adjustResize"');
+    expect(content).toContain('android:windowSoftInputMode="adjustNothing"');
   });
 
   it("verifies use-stage-fit.ts does not apply CSS rotate(90deg) on native platform", () => {

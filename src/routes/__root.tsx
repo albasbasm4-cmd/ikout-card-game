@@ -1,3 +1,4 @@
+import { initKeyboardOverlay } from "@/utils/keyboardOverlay";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -81,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "viewport",
         content:
-          "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover",
+          "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content",
       },
       { name: "theme-color", content: "#072a1e" },
       { title: "iKout - كوت بوستة" },
@@ -121,6 +122,10 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    return initKeyboardOverlay();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

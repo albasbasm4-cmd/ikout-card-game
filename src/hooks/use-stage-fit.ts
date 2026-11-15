@@ -1,5 +1,6 @@
 import { useEffect, type RefObject } from "react";
 import { Capacitor } from "@capacitor/core";
+import { isKeyboardActive } from "@/utils/keyboardOverlay";
 
 /** Read the device safe-area insets (notch / home indicator / system bars) in px. */
 function readSafeInsets() {
@@ -24,6 +25,8 @@ function readSafeInsets() {
  * Fit a fixed-size stage into the visible, notch-safe area of the viewport.
  * - On native Android (Capacitor APK): orientation is handled entirely by the Android
  *   Activity (sensorLandscape), so CSS rotation (rotate 90deg) is never applied.
+ * - When the Android soft keyboard appears as an overlay, stage dimensions and scaling
+ *   are preserved without shrinking or compressing the game layout.
  * - On Web (browsers): if viewed in portrait, it can rotate 90° and scale to fit
  *   so the game can still be played horizontally in a mobile browser.
  * - Respects safe area insets so system status bar and navigation bar never clip content.
@@ -38,14 +41,20 @@ export function useStageFit(
     const fit = () => {
       const el = stageRef.current;
       if (!el) return;
+
+      const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
+      const kbActive = isKeyboardActive();
+
+      // On native platform with adjustNothing, or when keyboard is active,
+      // preserve stable window dimensions so the stage does not compress or shrink.
       const vv = window.visualViewport;
-      const vw = vv?.width ?? window.innerWidth;
-      const vh = vv?.height ?? window.innerHeight;
+      const vw = isNative || kbActive || !vv ? window.innerWidth : vv.width;
+      const vh = isNative || kbActive || !vv ? window.innerHeight : vv.height;
+
       const ins = readSafeInsets();
       const w = Math.max(1, vw - ins.l - ins.r);
       const h = Math.max(1, vh - ins.t - ins.b);
 
-      const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
       const isDevicePortrait = h > w;
 
       // On native Android, Activity owns orientation — do NOT rotate with CSS.
@@ -60,6 +69,12 @@ export function useStageFit(
       } scale(${s})`;
     };
 
+    const handleVisualViewportResize = () => {
+      // Ignore visualViewport resizing triggered by software keyboard overlay
+      if (isKeyboardActive()) return;
+      fit();
+    };
+
     fit();
     const t1 = window.setTimeout(fit, 80);
     const t2 = window.setTimeout(fit, 250);
@@ -67,8 +82,8 @@ export function useStageFit(
 
     window.addEventListener("resize", fit);
     window.addEventListener("orientationchange", fit);
-    window.visualViewport?.addEventListener("resize", fit);
-    window.visualViewport?.addEventListener("scroll", fit);
+    window.visualViewport?.addEventListener("resize", handleVisualViewportResize);
+    window.visualViewport?.addEventListener("scroll", handleVisualViewportResize);
 
     return () => {
       window.clearTimeout(t1);
@@ -76,8 +91,8 @@ export function useStageFit(
       window.clearTimeout(t3);
       window.removeEventListener("resize", fit);
       window.removeEventListener("orientationchange", fit);
-      window.visualViewport?.removeEventListener("resize", fit);
-      window.visualViewport?.removeEventListener("scroll", fit);
+      window.visualViewport?.removeEventListener("resize", handleVisualViewportResize);
+      window.visualViewport?.removeEventListener("scroll", handleVisualViewportResize);
     };
   }, [stageRef, stageW, stageH, orientation]);
 }

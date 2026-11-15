@@ -1,3 +1,4 @@
+import { isKeyboardActive } from "@/utils/keyboardOverlay";
 import { Capacitor } from "@capacitor/core";
 import { NetworkLatencyBadge } from "@/components/NetworkLatencyBadge";
 import { ClientOnly, createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -125,21 +126,26 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {
     const calc = () => {
-      const vw = window.visualViewport?.width ?? window.innerWidth;
-      const vh = window.visualViewport?.height ?? window.innerHeight;
       const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
+      const kbActive = isKeyboardActive();
+      const vv = window.visualViewport;
+      const vw = isNative || kbActive || !vv ? window.innerWidth : vv.width;
+      const vh = isNative || kbActive || !vv ? window.innerHeight : vv.height;
       const rotated = !isNative && settings.orientationPreference === "landscape" && vh > vw;
       const ratio = rotated ? vh / vw : vw / vh;
       setStageW(Math.round(Math.min(2400, Math.max(900, STAGE_H * ratio))));
     };
     const fs = () => setIsFullscreen(!!document.fullscreenElement);
     calc();
+    const handleVvResize = () => {
+      if (!isKeyboardActive()) calc();
+    };
     window.addEventListener("resize", calc);
-    window.visualViewport?.addEventListener("resize", calc);
+    window.visualViewport?.addEventListener("resize", handleVvResize);
     document.addEventListener("fullscreenchange", fs);
     return () => {
       window.removeEventListener("resize", calc);
-      window.visualViewport?.removeEventListener("resize", calc);
+      window.visualViewport?.removeEventListener("resize", handleVvResize);
       document.removeEventListener("fullscreenchange", fs);
     };
   }, [settings.orientationPreference]);

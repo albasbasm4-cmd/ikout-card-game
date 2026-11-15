@@ -5587,3 +5587,28 @@
 .kt-table .ik-av {
   animation: none !important;
 }
+
+/* --- Keyboard Overlay & Input Visibility Protection --- */
+:root {
+  --keyboard-height: 0px;
+}
+
+body.keyboard-open {
+  overscroll-behavior: none;
+}
+
+/* Catalog modal: ensure bottom area has clearance above keyboard overlay */
+body.keyboard-open .pc-catalog {
+  padding-bottom: calc(var(--keyboard-height, 0px) + 12px);
+}
+
+/* Modals and dialogs: shift up smoothly so they remain centered in the visible area above the keyboard overlay */
+body.keyboard-open [role="dialog"]:not(.pc-catalog) {
+  transform: translate(-50%, calc(-50% - (var(--keyboard-height, 200px) / 2))) !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Ensure scrollable containers provide scroll clearance for focused inputs */
+body.keyboard-open .overflow-y-auto {
+  scroll-padding-bottom: calc(var(--keyboard-height, 200px) + 24px);
+}

@@ -48,7 +48,7 @@ async function run() {
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content" />
   <meta name="theme-color" content="#072a1e" />
   <title>iKout - كوت بوستة</title>
   ${stylesCss ? `<link rel="stylesheet" href="/assets/${stylesCss}" />` : ""}
