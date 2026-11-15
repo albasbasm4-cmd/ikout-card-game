@@ -20,6 +20,7 @@ import { ProfileEditor } from "@/components/ProfileEditor";
 import { CitySkyline, Clouds } from "@/components/HomeScreen";
 import { playTapSound } from "@/utils/audio";
 import { InlineQrScanner } from "@/components/InlineQrScanner";
+import { parseRoomPayload } from "@/network/localIp";
 import { NetworkDiagnosticsPanel } from "@/components/NetworkDiagnosticsPanel";
 import {
   connectUnoClient,

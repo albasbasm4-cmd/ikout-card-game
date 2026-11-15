@@ -11,7 +11,7 @@
  * كل الرسائل JSON على شكل: { ch: "kout"|"uno"|"g187"|"joker", ...payload }
  */
 
-import { tryCreateNativeWssBridge, type WssBridge } from "./wssBridge";
+import { tryCreateNativeWssBridge, type WssBridge, type WssClientEvent } from "./wssBridge";
 
 export type HubChannel = "kout" | "uno" | "g187" | "joker";
 

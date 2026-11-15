@@ -98,7 +98,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
         );
       });
 
-      clientWs.on("message", (raw) => {
+      clientWs.on("message", (raw: any) => {
         const p = JSON.parse(raw.toString()) as HostPacket;
         receivedPackets.push(p);
         if (receivedPackets.length >= 2) {
@@ -146,7 +146,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
           );
         });
 
-        ws.on("message", (raw) => {
+        ws.on("message", (raw: any) => {
           const p = JSON.parse(raw.toString()) as HostPacket;
           if (p.type === "SEAT_UPDATE") {
             expect(p.payload.seatIndex).toBe(i);
@@ -175,7 +175,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
         );
       });
 
-      extraWs.on("message", (raw) => {
+      extraWs.on("message", (raw: any) => {
         const p = JSON.parse(raw.toString()) as HostPacket;
         if (p.type === "ERROR") {
           resolve(p);
@@ -184,7 +184,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
     });
 
     expect(errorPacket.type).toBe("ERROR");
-    expect(errorPacket.payload.code).toBe("ROOM_FULL");
+    expect((errorPacket.payload as any).code).toBe("ROOM_FULL");
 
     for (const ws of clients) ws.close();
   });
@@ -209,7 +209,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
             }),
           );
         });
-        p1Ws.on("message", (raw) => {
+        p1Ws.on("message", (raw: any) => {
           p1Packets.push(JSON.parse(raw.toString()));
           if (p1Packets.some((p) => p.type === "CLIENT_STATE_UPDATE")) resolve();
         });
@@ -226,7 +226,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
             }),
           );
         });
-        p2Ws.on("message", (raw) => {
+        p2Ws.on("message", (raw: any) => {
           p2Packets.push(JSON.parse(raw.toString()));
           if (p2Packets.some((p) => p.type === "CLIENT_STATE_UPDATE")) resolve();
         });
@@ -286,7 +286,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
           }),
         );
       });
-      client1.on("message", (raw) => {
+      client1.on("message", (raw: any) => {
         const p = JSON.parse(raw.toString()) as HostPacket;
         if (p.type === "SEAT_UPDATE") {
           seatAssigned = p.payload.seatIndex;
@@ -317,7 +317,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
           }),
         );
       });
-      client2.on("message", (raw) => {
+      client2.on("message", (raw: any) => {
         const p = JSON.parse(raw.toString()) as HostPacket;
         if (p.type === "SEAT_UPDATE") {
           reconnectedSeat = p.payload.seatIndex;
@@ -349,7 +349,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
         );
       });
 
-      clientWs.on("message", (raw) => {
+      clientWs.on("message", (raw: any) => {
         const p = JSON.parse(raw.toString()) as HostPacket;
         if (p.type === "SEAT_UPDATE") {
           // Send card play during BID phase (illegal)
@@ -372,6 +372,6 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
     clientWs.close();
 
     expect(errors.length).toBeGreaterThan(0);
-    expect(errors[0].payload.code).toBe("INVALID_PHASE");
+    expect((errors[0].payload as any).code).toBe("INVALID_PHASE");
   });
 });

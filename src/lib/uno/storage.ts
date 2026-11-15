@@ -47,7 +47,7 @@ if (typeof window !== "undefined") {
   window.addEventListener("pagehide", flushSaveGame);
 }
 
-const isTest = typeof process !== "undefined" && (process.env.NODE_ENV === "test" || Boolean(process.env.VITEST));
+const isTest = typeof process !== "undefined" && (process.env["NODE_ENV"] === "test" || Boolean(process.env["VITEST"]));
 
 export function saveGame(s: GameState, immediate: boolean = false) {
   pendingState = s;

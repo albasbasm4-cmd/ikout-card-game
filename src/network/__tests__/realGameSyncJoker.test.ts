@@ -61,19 +61,19 @@ describe("Joker Real WebSocket Sync Integration", () => {
       phase: "play",
       round: 1,
       joker: "p2", // Player 2 has the Joker
-      turn: "p1",
       cards: {
         p0: "2C",
         p1: "AH", // Player 1
         p2: "JK", // Player 2 has Joker
       },
       players: [
-        { id: "p0", name: "المضيف", isBot: false, score: 0 },
-        { id: "p1", name: "فيصل", isBot: false, score: 0 },
-        { id: "p2", name: "خالد", isBot: false, score: 0 },
+        { id: "p0", name: "المضيف", char: "face1", bot: false, score: 0 },
+        { id: "p1", name: "فيصل", char: "face2", bot: false, score: 0 },
+        { id: "p2", name: "خالد", char: "face3", bot: false, score: 0 },
       ],
-      history: [],
-      eliminated: [],
+      out: {},
+      log: [],
+      results: [],
     };
 
     // Mask for player 1:

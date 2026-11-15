@@ -249,12 +249,7 @@ export async function getJoinCandidateIps(targetHostIp?: string | null): Promise
     }
   }
 
-  // عناوين Hotspot الافتراضية الشائعة على أندرويد فقط كاحتمال ثانوي عند غياب الاكتشاف
-  for (const fallback of ["192.168.43.1", "192.168.49.1", "192.168.1.1"]) {
-    if (!candidates.includes(fallback)) {
-      candidates.push(fallback);
-    }
-  }
+  // لا نستخدم أي عناوين افتراضية أو تخمينية إذا فشل الاكتشاف
 
   return candidates;
 }

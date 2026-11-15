@@ -11,7 +11,7 @@ import {
   onUnoHostSeats,
   maskUnoState,
 } from "../../lib/uno/unoNet";
-import type { GameState } from "../../lib/uno/types";
+import { newGame, type GameState } from "../../lib/uno/engine";
 
 if (typeof globalThis.WebSocket === "undefined") {
   (globalThis as any).WebSocket = WsClient;
@@ -58,42 +58,28 @@ describe("UNO Production Multiplayer over Real TCP WebSocket", () => {
   });
 
   it("strictly enforces UNO privacy: opponents hand cards are masked", () => {
-    const dummyState: GameState = {
-      players: [
-        {
-          id: "host",
-          name: "المضيف",
-          hand: [{ id: "c1", color: "blue", value: "5", isFlipped: false }],
-          isBot: false,
-          score: 0,
-        },
-        {
-          id: "p1",
-          name: "أحمد",
-          hand: [{ id: "c2", color: "green", value: "3", isFlipped: false }],
-          isBot: false,
-          score: 0,
-        },
+    const dummyState = newGame(
+      [
+        { name: "المضيف", isBot: false, difficulty: "medium" },
+        { name: "أحمد", isBot: false, difficulty: "medium" },
       ],
-      drawPile: [],
-      discardPile: [{ id: "c0", color: "red", value: "7", isFlipped: false }],
-      currentSeat: 1,
-      direction: 1,
-      turn: 1,
-      version: 1,
-      winner: null,
-    };
+      "room"
+    );
+    dummyState.players[0].hand = [{ id: "c1", color: "blue", kind: "number", value: 5 }];
+    dummyState.players[1].hand = [{ id: "c2", color: "green", kind: "number", value: 3 }];
+    dummyState.drawPile = [{ id: "d1", color: "yellow", kind: "number", value: 1 }];
 
     // When masked for client seat 1:
     const masked = maskUnoState(dummyState, 1);
 
     // Client's own cards (seat 1) must be preserved
     expect(masked.players[1].hand[0].color).toBe("green");
-    expect(masked.players[1].hand[0].value).toBe("3");
+    expect(masked.players[1].hand[0].value).toBe(3);
 
     // Opponent cards (seat 0) must be masked
     expect(masked.players[0].hand[0].id).toBe("__masked__");
     expect(masked.players[1].hand[0].id).toBe("c2");
+    expect(masked.drawPile[0].id).toBe("__masked__");
   });
 
   it("preserves seat on disconnect and reconnect", async () => {

@@ -156,7 +156,7 @@ export async function startUnoHost(code: string): Promise<void> {
         setTimeout(() => {
           if (!host) return;
           host.disconnectTimers.delete(seat);
-          if (host.state && host.state.currentSeat === seat) {
+          if (host.state && host.state.current === seat) {
             const passRes = passTurn(host.state, seat, host.state.version);
             if (passRes.ok) {
               host.state = passRes.state;
@@ -398,7 +398,7 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
       }
     });
     socket.onMessage((packet) => {
-      const p = packet as unknown as { type?: string };
+      const p = packet as unknown as { type?: string; payload?: Record<string, unknown> };
       if (p.type === "INVALID_ROOM") {
         finish(false);
         return;

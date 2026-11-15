@@ -24,7 +24,7 @@ export async function createRealTestServer(): Promise<RealTestServer> {
   let nextId = 1;
   let isDestroyed = false;
 
-  wss.on("connection", (ws) => {
+  wss.on("connection", (ws: any) => {
     if (isDestroyed) {
       ws.close();
       return;
@@ -35,7 +35,7 @@ export async function createRealTestServer(): Promise<RealTestServer> {
       h({ type: "CLIENT_CONNECTED", clientId: id });
     }
 
-    ws.on("message", (raw) => {
+    ws.on("message", (raw: any) => {
       if (isDestroyed) return;
       let data: any = raw.toString();
       try {

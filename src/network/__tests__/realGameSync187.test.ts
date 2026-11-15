@@ -9,6 +9,7 @@ import {
   type Host187Packet,
 } from "../../game187/network/network187";
 import type { GameState187 } from "../../game187/types";
+import { GameEngine187 } from "../../game187/engine";
 
 if (typeof globalThis.WebSocket === "undefined") {
   (globalThis as any).WebSocket = WsClient;
@@ -87,33 +88,16 @@ describe("187 Real WebSocket Sync Integration", () => {
   });
 
   it("strictly masks opponent hands in 187 game state updates", () => {
-    const rawState: GameState187 = {
-      roundNumber: 1,
-      phase: "PLAYING",
-      dealerSeat: 0,
-      bidWinnerSeat: 1,
-      highestBid: 70,
-      trumpSuit: "H",
-      currentSeat: 1,
-      leadSuit: null,
-      players: [],
-      hands: [
-        [{ id: "h0-1", suit: "D", rank: 14 }], // Seat 0 (Opponent)
-        [{ id: "h1-1", suit: "H", rank: 10 }], // Seat 1 (Client)
-        [{ id: "h2-1", suit: "C", rank: 12 }], // Seat 2 (Opponent)
-        [],
-        [],
-      ],
-      currentTrick: [],
-      tricksWon: [0, 0, 0, 0, 0],
-      teamPoints: [0, 0],
-      roundScores: [],
-      matchScore: [0, 0],
-      matchTarget: 187,
-      history: [],
-      cheatLog: [],
-      statusText: "",
-    };
+    const engine = new GameEngine187();
+    const rawState: GameState187 = { ...engine.state };
+    rawState.phase = "PLAY";
+    rawState.hands = [
+      [{ id: "h0-1", suit: "D", rank: 14 }], // Seat 0 (Opponent)
+      [{ id: "h1-1", suit: "H", rank: 10 }], // Seat 1 (Client)
+      [{ id: "h2-1", suit: "C", rank: 12 }], // Seat 2 (Opponent)
+      [],
+      [],
+    ];
 
     const masked = maskGameState187(rawState, 1);
 

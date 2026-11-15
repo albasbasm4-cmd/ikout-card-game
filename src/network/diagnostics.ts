@@ -63,7 +63,7 @@ export function probeWebSocket(
 }
 
 /** تشغيل تقرير تشخيص كامل: البيئة + محاولة لكل عنوان مرشح. */
-export async function runJoinDiagnostics(): Promise<JoinDiagnosticsReport> {
+export async function runJoinDiagnostics(targetHostIp?: string): Promise<JoinDiagnosticsReport> {
   const bridge = tryCreateNativeWssBridge();
   let gatewayIp: string | null = null;
   if (bridge) {
@@ -73,7 +73,7 @@ export async function runJoinDiagnostics(): Promise<JoinDiagnosticsReport> {
       gatewayIp = null;
     }
   }
-  const candidates = await getJoinCandidateIps();
+  const candidates = await getJoinCandidateIps(targetHostIp);
   const probes: CandidateProbe[] = [];
   for (const ip of candidates) {
     probes.push(await probeWebSocket(ip, 8080));
