@@ -32,7 +32,7 @@ public class MainActivity extends BridgeActivity {
   }
 
   @Override
-  protected void onResume() {
+  public void onResume() {
     super.onResume();
     // تأكيد الاتجاه الأفقي الحقيقي للنشاط عند العودة للتطبيق
     setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);

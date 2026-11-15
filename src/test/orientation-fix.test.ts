@@ -24,7 +24,7 @@ describe("Screen Orientation & System Bars Fix Verification", () => {
     expect(content).toContain("MIXED_CONTENT_ALWAYS_ALLOW");
 
     // 5. Must re-affirm orientation in onResume
-    expect(content).toContain("protected void onResume()");
+    expect(content).toContain("public void onResume()");
   });
 
   it("verifies scripts/patch-capacitor-android.mjs keeps orientation and plugin order", () => {
