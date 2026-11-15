@@ -6,7 +6,7 @@
 import { GameState, Card, Bid, Suit, Phase, SeatBid, PlayerSlot } from "../types/kout";
 import { RULES } from "../rules/config";
 import { deal } from "../rules/deck";
-import { declareTrump as koutDeclareTrump, playCard as koutPlayCard } from "./KoutTricks";
+import { declareTrump as koutDeclareTrump, playCard as koutPlayCard, isSingleHumanVsBots } from "./KoutTricks";
 import { scoreRound } from "./KoutScoring";
 
 export interface EngineOptions {
@@ -15,6 +15,7 @@ export interface EngineOptions {
   initialDealer?: number;
   seed?: number;
   players?: PlayerSlot[];
+  enableEarlyResolution?: boolean;
 }
 
 export class KoutGameEngine {
@@ -28,6 +29,7 @@ export class KoutGameEngine {
       this._state = {
         ...initialState,
         players: options.players ?? initialState.players,
+        enableEarlyResolution: options.enableEarlyResolution ?? initialState.enableEarlyResolution,
       };
       return;
     }
@@ -63,6 +65,12 @@ export class KoutGameEngine {
       targetScore,
       version: 1,
       players: options.players ?? defaultPlayers,
+      enableEarlyResolution:
+        options.enableEarlyResolution !== undefined
+          ? options.enableEarlyResolution
+          : options.players !== undefined
+          ? isSingleHumanVsBots({ players: options.players ?? defaultPlayers })
+          : false,
     };
   }
 
@@ -127,6 +135,7 @@ export class KoutGameEngine {
       roundNo: this._state.roundNo + 1,
       version: this._state.version + 1,
       matchStopped: false,
+      earlyResolved: undefined,
     };
 
     this._state = nextState;

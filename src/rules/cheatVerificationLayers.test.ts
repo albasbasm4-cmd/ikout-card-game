@@ -11,7 +11,7 @@ import { LoopbackHub } from "../network/LoopbackTransport";
 import { HostSession } from "../network/HostSession";
 import type { HostPacket } from "../network/protocol";
 
-const makeMixedPlayers = (kinds: Array<"HUMAN_LOCAL" | "HUMAN_NETWORK" | "AI_BOT">): PlayerSlot[] =>
+const makeMixedPlayers = (kinds: Array<"HUMAN_LOCAL" | "HUMAN_REMOTE" | "AI_BOT">): PlayerSlot[] =>
   kinds.map((kind, i) => ({
     seatIndex: i,
     kind,
@@ -106,7 +106,7 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
   it("3. ظهور زر الإبلاغ عند وجود لاعبين بشريين أو أكثر في اللعب الجماعي", () => {
     const players = makeMixedPlayers([
       "HUMAN_LOCAL",
-      "HUMAN_NETWORK",
+      "HUMAN_REMOTE",
       "AI_BOT",
       "AI_BOT",
       "AI_BOT",
@@ -127,7 +127,7 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
     // 3: Bot team 1 (opponent bot)
     const players: PlayerSlot[] = [
       { seatIndex: 0, kind: "HUMAN_LOCAL", name: "مُبلِّغ", team: 0, connected: true },
-      { seatIndex: 1, kind: "HUMAN_NETWORK", name: "خصم بشري", team: 1, connected: true },
+      { seatIndex: 1, kind: "HUMAN_REMOTE", name: "خصم بشري", team: 1, connected: true },
       { seatIndex: 2, kind: "HUMAN_LOCAL", name: "زميل بشري", team: 0, connected: true },
       { seatIndex: 3, kind: "AI_BOT", name: "بوت خصم", team: 1, connected: true },
     ];
@@ -153,7 +153,7 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
     const players = makeMixedPlayers([
       "HUMAN_LOCAL",
       "AI_BOT",
-      "HUMAN_NETWORK",
+      "HUMAN_REMOTE",
       "AI_BOT",
     ]);
     const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
@@ -169,9 +169,9 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
   it("7. رفض البلاغ ضد مقعد غير صالح (أقل من صفر أو أكبر من عدد المقاعد)", () => {
     const players = makeMixedPlayers([
       "HUMAN_LOCAL",
-      "HUMAN_NETWORK",
+      "HUMAN_REMOTE",
       "HUMAN_LOCAL",
-      "HUMAN_NETWORK",
+      "HUMAN_REMOTE",
     ]);
     const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
       leadSeat: 2,
@@ -186,9 +186,9 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
   it("8. رفض البلاغ ضد النفس", () => {
     const players = makeMixedPlayers([
       "HUMAN_LOCAL",
-      "HUMAN_NETWORK",
+      "HUMAN_REMOTE",
       "HUMAN_LOCAL",
-      "HUMAN_NETWORK",
+      "HUMAN_REMOTE",
     ]);
     const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
       leadSeat: 2,
@@ -201,9 +201,9 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
   it("9. رفض البلاغ ضد لاعب من الفريق نفسه", () => {
     const players = makeMixedPlayers([
       "HUMAN_LOCAL",
-      "HUMAN_NETWORK",
+      "HUMAN_REMOTE",
       "HUMAN_LOCAL", // زميل في فريق 0
-      "HUMAN_NETWORK",
+      "HUMAN_REMOTE",
     ]);
     const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
       leadSeat: 2,
@@ -217,9 +217,9 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
   it("10. قبول البلاغ الصحيح ضد لاعب بشري من الفريق المنافس وتدبيل النقاط وفق القواعد الحالية", () => {
     const players = makeMixedPlayers([
       "HUMAN_LOCAL",   // فريق 0
-      "HUMAN_NETWORK", // فريق 1 (متهم)
+      "HUMAN_REMOTE", // فريق 1 (متهم)
       "HUMAN_LOCAL",   // فريق 0
-      "HUMAN_NETWORK", // فريق 1 (مُبلِّغ) -> leadSeat=2, cheatSeat=1
+      "HUMAN_REMOTE", // فريق 1 (مُبلِّغ) -> leadSeat=2, cheatSeat=1
     ]);
     const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
       leadSeat: 2,
@@ -240,7 +240,7 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
     const players = makeMixedPlayers([
       "HUMAN_LOCAL",
       "AI_BOT", // بوت
-      "HUMAN_NETWORK",
+      "HUMAN_REMOTE",
       "AI_BOT",
     ]);
     const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
@@ -309,9 +309,9 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
   it("12. التحقق من هوية المُبلِّغ من المضيف في اللعب الشبكي عبر tokenToSeat", async () => {
     const players = makeMixedPlayers([
       "HUMAN_LOCAL",   // seat 0
-      "HUMAN_NETWORK", // seat 1
-      "HUMAN_NETWORK", // seat 2
-      "HUMAN_NETWORK", // seat 3
+      "HUMAN_REMOTE", // seat 1
+      "HUMAN_REMOTE", // seat 2
+      "HUMAN_REMOTE", // seat 3
     ]);
     const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
       leadSeat: 2,
@@ -368,9 +368,9 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
   it("13. التأكد من وصول نتيجة البلاغ CHEAT_VERDICT لجميع اللاعبين المتصلين", async () => {
     const players = makeMixedPlayers([
       "HUMAN_LOCAL",   // seat 0
-      "HUMAN_NETWORK", // seat 1
-      "HUMAN_NETWORK", // seat 2
-      "HUMAN_NETWORK", // seat 3
+      "HUMAN_REMOTE", // seat 1
+      "HUMAN_REMOTE", // seat 2
+      "HUMAN_REMOTE", // seat 3
     ]);
     const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
       leadSeat: 2,
@@ -390,8 +390,8 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
     const c1Transport = hub.createClientTransport(c1Token);
     const c2Transport = hub.createClientTransport(c2Token);
 
-    c1Transport.send({ v: 1, seq: 1, playerToken: c1Token, type: "JOIN", payload: { preferredSeat: 1 } });
-    c2Transport.send({ v: 1, seq: 1, playerToken: c2Token, type: "JOIN", payload: { preferredSeat: 2 } });
+    c1Transport.send({ v: 1, seq: 1, playerToken: c1Token, type: "JOIN", payload: { playerName: "C1", preferredSeat: 1 } });
+    c2Transport.send({ v: 1, seq: 1, playerToken: c2Token, type: "JOIN", payload: { playerName: "C2", preferredSeat: 2 } });
 
     await new Promise((r) => setTimeout(r, 15));
 
@@ -421,9 +421,9 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
   it("14. عدم تكرار احتساب النقاط عند تداخل البلاغ مع نهاية الجولة أو المباراة", () => {
     const players = makeMixedPlayers([
       "HUMAN_LOCAL",   // team 0
-      "HUMAN_NETWORK", // team 1
+      "HUMAN_REMOTE", // team 1
       "HUMAN_LOCAL",   // team 0
-      "HUMAN_NETWORK", // team 1
+      "HUMAN_REMOTE", // team 1
     ]);
     const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
       leadSeat: 2,
@@ -436,5 +436,85 @@ describe("اختبارات نظام الإبلاغ عن الغش على جميع
 
     // يجب أن تكون scoredRoundNo مسجلة في nextState لمنع إعادة احتساب الجولة
     expect(result!.nextState.scoredRoundNo).toBe(state.roundNo);
+  });
+
+  it("15. الحفاظ على حالة GAME_END وعدم إعادة فتح المباراة بعد البلاغ عند انتهائها بسبب بوان أو غيره دون بلوغ حد القيد", () => {
+    const players = makeMixedPlayers([
+      "HUMAN_LOCAL",
+      "HUMAN_REMOTE",
+      "HUMAN_LOCAL",
+      "HUMAN_REMOTE",
+    ]);
+    const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
+      leadSeat: 2,
+      cheatSeat: 1,
+    });
+
+    // محاكاة مباراة انتهت كـ GAME_END (مثلاً بوان أو BO4 مع نقاط منخفضة مثل [18, 0] وحد القيد 51)
+    const endedState: GameState = {
+      ...state,
+      phase: "GAME_END",
+      scores: [18, 0],
+      targetScore: 51,
+    };
+
+    const result = applyCheatVerdict(endedState, 0, 1, ledSuit as ReportedCardType);
+    expect(result).not.toBeNull();
+    // يجب ألا ترجع الحالة إلى ROUND_END أو PLAY بل تظل GAME_END
+    expect(result!.nextState.phase).toBe("GAME_END");
+  });
+
+  it("16. منع تكرار احتساب النقاط عند تطبيق البلاغ بعد احتساب الجولة العادية مسبقاً", () => {
+    const players = makeMixedPlayers([
+      "HUMAN_LOCAL",
+      "HUMAN_REMOTE",
+      "HUMAN_LOCAL",
+      "HUMAN_REMOTE",
+    ]);
+    const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
+      leadSeat: 2,
+      cheatSeat: 1,
+    });
+
+    // محاكاة جولة تم احتسابها بالفعل (scoredRoundNo === roundNo) برصيد عادي 6 نقاط
+    const scoredState: GameState = {
+      ...state,
+      phase: "ROUND_END",
+      scores: [6, 0],
+      scoredRoundNo: state.roundNo,
+      bidderSeat: 0,
+      highBid: 6,
+      tricksWon: [6, 3],
+    };
+
+    // تطبيق البلاغ الناجح (حكم 6 نقاط * 2 = 12 نقطة)
+    const result = applyCheatVerdict(scoredState, 0, 1, ledSuit as ReportedCardType);
+    expect(result).not.toBeNull();
+
+    // يجب ألا تكون النقاط 6 + 12 = 18، بل تم استبدال النقاط العادية بنقاط البلاغ المدبلة = 12
+    expect(result!.nextState.scores[0]).toBe(12);
+    expect(result!.nextState.scores[1]).toBe(0);
+  });
+
+  it("17. عدم السماح بمعالجة أي بلاغ بعد إغلاق المباراة نهائياً (matchStopped)", () => {
+    const players = makeMixedPlayers([
+      "HUMAN_LOCAL",
+      "HUMAN_REMOTE",
+      "HUMAN_LOCAL",
+      "HUMAN_REMOTE",
+    ]);
+    const { state, ledSuit } = makeMidTrickStateWithPlayers(players, {
+      leadSeat: 2,
+      cheatSeat: 1,
+    });
+
+    const stoppedState: GameState = {
+      ...state,
+      phase: "GAME_END",
+      matchStopped: true,
+    };
+
+    const result = applyCheatVerdict(stoppedState, 0, 1, ledSuit as ReportedCardType);
+    expect(result).toBeNull();
   });
 });

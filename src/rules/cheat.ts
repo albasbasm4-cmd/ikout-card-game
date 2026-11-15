@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { GameState, Suit, TrickPlay, Card } from "../types/kout";
+import type { GameState, Suit, TrickPlay, Card, Phase } from "../types/kout";
+import { computeRoundResult } from "../engine/KoutScoring";
 import { RULES } from "./config";
 
 export type ReportedCardType = Suit | "JOKER" | "MAKER";
@@ -149,22 +150,40 @@ export function applyCheatVerdict(
   const winningTeam: 0 | 1 = confirmed ? reporterTeam : accusedTeam;
   const losingTeam: 0 | 1 = (1 - winningTeam) as 0 | 1;
 
-  const currentScores: [number, number] = [state.scores[0], state.scores[1]];
+  let baseScores: [number, number] = [state.scores[0], state.scores[1]];
+
+  // منع تكرار احتساب النقاط: إذا كانت الجولة قد احتُسبت مسبقاً، نخصم نقاطها العادية ونعتمد نقاط البلاغ
+  if (state.scoredRoundNo === state.roundNo) {
+    const priorRoundResult = computeRoundResult(state);
+    baseScores = [
+      baseScores[0] - (priorRoundResult.awardedTeam === 0 ? priorRoundResult.pointsAdded : 0),
+      baseScores[1] - (priorRoundResult.awardedTeam === 1 ? priorRoundResult.pointsAdded : 0),
+    ];
+  }
+
   const newScores: [number, number] = [
-    currentScores[0] + (winningTeam === 0 ? pointsAdded : 0),
-    currentScores[1] + (winningTeam === 1 ? pointsAdded : 0),
+    baseScores[0] + (winningTeam === 0 ? pointsAdded : 0),
+    baseScores[1] + (winningTeam === 1 ? pointsAdded : 0),
   ];
 
   const targetScore = state.targetScore ?? 51;
-  const isGameOver = newScores[0] >= targetScore || newScores[1] >= targetScore;
+  // الحفاظ على حالة GAME_END إذا كانت المباراة قد انتهت بالفعل (بسبب BO4 أو البوان أو غيرهما)
+  const isAlreadyGameOver = state.phase === "GAME_END";
+  const isGameOver =
+    isAlreadyGameOver ||
+    newScores[0] >= targetScore ||
+    newScores[1] >= targetScore;
   const nextDealer = (state.dealer + 1) % numSeats;
+
+  // لا تسمح بإعادة فتح جولة أو مباراة انتهت بالفعل
+  const nextPhase: Phase = isAlreadyGameOver ? "GAME_END" : (isGameOver ? "GAME_END" : "ROUND_END");
 
   const nextState: GameState = {
     ...state,
     scores: newScores,
     dealer: nextDealer,
     scoredRoundNo: state.roundNo,
-    phase: isGameOver ? "GAME_END" : "ROUND_END",
+    phase: nextPhase,
     version: state.version + 1,
   };
 

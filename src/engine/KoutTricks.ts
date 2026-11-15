@@ -150,10 +150,30 @@ export function playCard(
   const nextTrickHistory = [...state.trickHistory, nextTrick];
   const isRoundOver = nextTrickHistory.length === cardsPerPlayer;
 
+  const bidderSeat = state.bidderSeat;
+  const bidderTeam: 0 | 1 =
+    bidderSeat !== null && bidderSeat !== undefined
+      ? state.players && state.players[bidderSeat]
+        ? state.players[bidderSeat].team
+        : (((bidderSeat % 2) as 0 | 1))
+      : 0;
+  const highBid = state.highBid ?? 0;
+
+  // الحسم المبكر عند تحقيق طلب الحاكم (اللعب الفردي ضد البوتات فقط)
+  const singleHuman =
+    state.enableEarlyResolution !== undefined
+      ? state.enableEarlyResolution && isSingleHumanVsBots(state)
+      : isSingleHumanVsBots(state);
+  const isEarlyResolved =
+    singleHuman &&
+    highBid > 0 &&
+    nextTricksWon[bidderTeam] >= highBid &&
+    !isRoundOver;
+
   let nextPhase: Phase = "PLAY";
   const nextSeat = winnerSeat; // الفائز بالأكلة يبدأ الأكلة التالية
 
-  if (isRoundOver) {
+  if (isRoundOver || isEarlyResolved) {
     nextPhase = "ROUND_END";
   }
 
@@ -165,6 +185,22 @@ export function playCard(
     tricksWon: nextTricksWon,
     currentSeat: nextSeat,
     phase: nextPhase,
+    earlyResolved: isEarlyResolved ? true : undefined,
     version: state.version + 1,
   };
+}
+
+/**
+ * Checks if the game is a single human player against bots only:
+ * - Exactly one non-AI_BOT player
+ * - All other seats are AI_BOT
+ */
+export function isSingleHumanVsBots(state: Pick<GameState, "players">): boolean {
+  const players = state.players || [];
+  if (players.length < 2) return false;
+  const humans = players.filter((p) => p.kind !== "AI_BOT");
+  return (
+    humans.length === 1 &&
+    players.every((p) => p.kind === "AI_BOT" || p.seatIndex === humans[0].seatIndex)
+  );
 }

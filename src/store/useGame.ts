@@ -83,6 +83,9 @@ export function useGame(options: UseGameOptions = {}) {
           initialDealer: 0,
           seed: Math.floor(Math.random() * 1000000),
           players: options.players,
+          enableEarlyResolution: options.players
+            ? options.players.filter((p) => p.kind !== "AI_BOT").length <= 1
+            : true,
         },
         options.initialState,
       );
@@ -321,13 +324,22 @@ export function useGame(options: UseGameOptions = {}) {
           pendingTrickRef.current = null;
           try {
             const nextState = engine.playCard(seat, card, playOptions);
-            commit(nextState);
 
-            if (nextState.phase === "ROUND_END" || nextState.phase === "GAME_END") {
-              if (nextState.scores[0] >= nextState.scores[1]) {
-                playWinSound();
-              } else {
-                playLoseSound();
+            if (nextState.phase === "ROUND_END" && nextState.earlyResolved) {
+              // الحسم المبكر عند تحقيق طلب الحاكم (اللعب الفردي ضد البوتات فقط):
+              // الانتقال تلقائياً إلى الجولة التالية دون انتظار أو نافذة تأكيد أو قرار استمرار
+              playWinSound();
+              const nextRound = engine.startRound();
+              commit(nextRound);
+            } else {
+              commit(nextState);
+
+              if (nextState.phase === "ROUND_END" || nextState.phase === "GAME_END") {
+                if (nextState.scores[0] >= nextState.scores[1]) {
+                  playWinSound();
+                } else {
+                  playLoseSound();
+                }
               }
             }
           } finally {
@@ -476,6 +488,7 @@ export function useGame(options: UseGameOptions = {}) {
         initialDealer: 0,
         seed: Math.floor(Math.random() * 1000000),
         players: engineRef.current?.state.players ?? options.players,
+        enableEarlyResolution: !freePlay,
       });
       engineRef.current = newEngine;
       const firstState = newEngine.startRound();
@@ -601,9 +614,15 @@ export function useGame(options: UseGameOptions = {}) {
     };
   }, [state, difficulty, executePlayCardWithPacing]);
 
-  // ---- نظام البلاغ (ضد لاعبين بشريين فقط في اللعب الجماعي) ----
+  const myReporterSeat = options.netClient
+    ? options.netClient.mySeat
+    : (activeHumanSeat ?? localSeats[0] ?? 0);
+
+  // ---- نظام البلاغ (يظهر للاعبين البشريين فقط، وفي اللعب الجماعي مع بشريين اثنين أو أكثر) ----
   const canReportCheat =
     freePlay &&
+    humanSeats.length >= 2 &&
+    humanSeats.includes(myReporterSeat) &&
     (state.phase === "PLAY" ||
       state.phase === "ROUND_END" ||
       (state.phase === "GAME_END" && !state.matchStopped)) &&

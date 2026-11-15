@@ -66,6 +66,10 @@ export interface GameState {
   players?: PlayerSlot[];
   /** Losing team chose not to continue after GAME_END. */
   matchStopped?: boolean;
+  /** Round ended early because bidder team achieved their bid (single human vs bots). */
+  earlyResolved?: boolean;
+  /** Enable early resolution when bidder achieves bid in single human vs bots. */
+  enableEarlyResolution?: boolean;
 }
 
 export interface SyncStatePacket {

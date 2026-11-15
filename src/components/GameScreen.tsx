@@ -94,6 +94,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     canDecide,
     handleHumanTimeout,
     humanSeats,
+    localSeats,
     freePlay,
     activeHumanSeat,
     canReportCheat,

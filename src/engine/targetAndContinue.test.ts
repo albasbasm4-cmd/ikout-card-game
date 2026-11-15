@@ -183,6 +183,46 @@ describe("اختبارات حد القيد ونهاية المباراة وال�
     expect(canDecideContinue(stoppedState, 0, humanSeats)).toBe(false);
   });
 
+  it("7b. صلاحيات قرار الاستمرار بوجود بوتات: إذا كان الفريق الخاسر مكوّناً من بوتات فقط، لا يُمنح الفائز صلاحية القرار", () => {
+    // فريق 0 فاز، فريق 1 خسر وكل مقاعد فريق 1 بوتات
+    const state: GameState = {
+      ...baseGameState([55, 20]),
+      phase: "GAME_END",
+      players: [
+        { seatIndex: 0, kind: "HUMAN_LOCAL", name: "Human Winner", team: 0, connected: true },
+        { seatIndex: 1, kind: "AI_BOT", name: "Bot Loser 1", team: 1, connected: true },
+        { seatIndex: 2, kind: "HUMAN_REMOTE", name: "Human Winner 2", team: 0, connected: true },
+        { seatIndex: 3, kind: "AI_BOT", name: "Bot Loser 2", team: 1, connected: true },
+        { seatIndex: 4, kind: "AI_BOT", name: "Bot Winner 3", team: 0, connected: true },
+        { seatIndex: 5, kind: "AI_BOT", name: "Bot Loser 3", team: 1, connected: true },
+      ],
+    };
+    const humanSeats = [0, 2]; // كلاهما في الفريق الفائز 0
+
+    // لا يوجد أي لاعب بشري في الفريق الخاسر 1، وتوجد بوتات في المباراة
+    // لا يجوز منح الفريق الفائز صلاحية اتخاذ قرار الاستمرار
+    expect(canDecideContinue(state, 0, humanSeats)).toBe(false);
+    expect(canDecideContinue(state, 2, humanSeats)).toBe(false);
+    // البوتات لا يحق لها اتخاذ القرار أبداً
+    expect(canDecideContinue(state, 1, humanSeats)).toBe(false);
+    expect(canDecideContinue(state, 3, humanSeats)).toBe(false);
+  });
+
+  it("7c. صلاحيات قرار الاستمرار في عدم وجود بوتات: إذا خلت المباراة من البوتات، يحق للفريق الفائز اتخاذ القرار عند غياب الخاسر البشري", () => {
+    // مباراة جميع مقاعدها بشرية (لا توجد أي بوتات)
+    const state: GameState = {
+      ...baseGameState([55, 20]),
+      phase: "GAME_END",
+      players: [
+        { seatIndex: 0, kind: "HUMAN_LOCAL", name: "Human 1", team: 0, connected: true },
+        { seatIndex: 1, kind: "HUMAN_REMOTE", name: "Human 2", team: 1, connected: true },
+      ],
+    };
+    // إذا كان المقعد البشري المسجل حالياً فقط في الفريق الفائز (ولا توجد بوتات على الإطلاق في المباراة)
+    const onlyWinnerHumanSeats = [0];
+    expect(canDecideContinue(state, 0, onlyWinnerHumanSeats)).toBe(true);
+  });
+
   it("8. التأكد من عدم احتساب الجولة نفسها مرتين (حماية scoredRoundNo)", () => {
     const state: GameState = {
       ...baseGameState([40, 20]),
@@ -207,8 +247,8 @@ describe("اختبارات حد القيد ونهاية المباراة وال�
       phase: "GAME_END",
       players: [
         { seatIndex: 0, kind: "HUMAN_LOCAL", name: "Host Team0", team: 0, connected: true },
-        { seatIndex: 1, kind: "HUMAN_NETWORK", name: "Client Team1", team: 1, connected: true },
-        { seatIndex: 2, kind: "HUMAN_NETWORK", name: "Client Team0", team: 0, connected: true },
+        { seatIndex: 1, kind: "HUMAN_REMOTE", name: "Client Team1", team: 1, connected: true },
+        { seatIndex: 2, kind: "HUMAN_REMOTE", name: "Client Team0", team: 0, connected: true },
         { seatIndex: 3, kind: "AI_BOT", name: "Bot 2", team: 1, connected: true },
         { seatIndex: 4, kind: "AI_BOT", name: "Bot 3", team: 0, connected: true },
         { seatIndex: 5, kind: "AI_BOT", name: "Bot 4", team: 1, connected: true },
