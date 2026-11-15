@@ -7,6 +7,7 @@ import { canDecideContinue } from "../engine/matchContinue";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { GameState, Card, Bid, Suit, Difficulty, TrickPlay, PlayerSlot } from "../types/kout";
 import { verifyCheatReport, applyCheatVerdict, type ReportedCardType } from "../rules/cheat";
+import { RULES } from "../rules/config";
 import { KoutGameEngine } from "../engine/KoutGameEngine";
 import { getLegalCards, trickWinner } from "../rules/cards";
 import { getPlayedCards } from "../engine/KoutTricks";
@@ -128,7 +129,7 @@ export function useGame(options: UseGameOptions = {}) {
   const humanSeats = useMemo<number[]>(() => {
     const slots = (state.players && state.players.length > 0) ? state.players : options.players;
     const humans = (slots || []).filter((p) => p.kind !== "AI_BOT").map((p) => p.seatIndex);
-    return humans.length > 0 ? humans : [0];
+    return humans;
     // options.players يُقرأ مرة واحدة كإعداد أولي
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.players]);
@@ -600,76 +601,125 @@ export function useGame(options: UseGameOptions = {}) {
     };
   }, [state, difficulty, executePlayCardWithPacing]);
 
-  // ---- نظام البلاغ (ضد لاعبين بشريين فقط) ----
+  // ---- نظام البلاغ (ضد لاعبين بشريين فقط في اللعب الجماعي) ----
   const canReportCheat =
     freePlay &&
-    (state.phase === "PLAY" || state.phase === "ROUND_END") &&
+    (state.phase === "PLAY" ||
+      state.phase === "ROUND_END" ||
+      (state.phase === "GAME_END" && !state.matchStopped)) &&
     cheatReportsThisRoundRef.current < MAX_CHEAT_REPORTS_PER_ROUND;
 
-  const reportCheat = useCallback((accusedSeat: number, cardType: ReportedCardType): boolean => {
-    if (options.netClient) {
-      // المنضم: يبلّغ المضيف والحكم يصل عبر CHEAT_VERDICT
-      sendClientPacket("CHEAT_REPORT", { accusedSeat, cardType });
-      return true;
-    }
-    // إذا ضُغط البلاغ أثناء نافذة عرض الأكلة (1500ms) نُكمل الأكلة المعلقة فوراً
-    // قبل الحكم، وإلا فالمؤقت القديم سيلعب الورقة لاحقاً على محركٍ قديم ويستبدل حكم البلاغ.
-    if (isResolvingTrickRef.current && pendingTrickRef.current) {
-      const pending = pendingTrickRef.current;
-      pendingTrickRef.current = null;
-      window.clearTimeout(pending.timer);
-      try {
-        pending.run();
-      } catch (err) {
-        console.error("Pending trick flush error:", err);
+  const reportCheat = useCallback(
+    (accusedSeat: number, cardType: ReportedCardType): boolean => {
+      const engine = engineRef.current;
+      if (!engine) return false;
+
+      // الإبلاغ متاح فقط في اللعب الجماعي مع بشريين اثنين أو أكثر
+      if ((humanSeatsRef.current || []).length < 2) return false;
+
+      // المرحلة المسموح بها: اللعب أو نهاية الجولة أو نهاية المباراة قبل تثبيت الإنهاء
+      const currentPhase = engine.state.phase;
+      if (
+        currentPhase !== "PLAY" &&
+        currentPhase !== "ROUND_END" &&
+        !(currentPhase === "GAME_END" && !engine.state.matchStopped)
+      ) {
+        return false;
       }
-    }
+      if (engine.state.matchStopped) return false;
 
-    const engine = engineRef.current;
-    if (!engine) return false;
-    if ((humanSeatsRef.current || []).length < 2) return false; // ضد البوتات لا معنى للبلاغ
-    if (engine.state.phase !== "PLAY" && engine.state.phase !== "ROUND_END") return false;
-    if (cheatReportsThisRoundRef.current >= MAX_CHEAT_REPORTS_PER_ROUND) return false;
-    const now = Date.now();
-    if (now - lastCheatReportAtRef.current < CHEAT_REPORT_COOLDOWN_MS) return false;
+      const myReporterSeat = options.netClient
+        ? options.netClient.mySeat
+        : (activeHumanSeatRef.current ?? localSeatsRef.current[0] ?? 0);
 
-    const reporterSeat = activeHumanSeatRef.current ?? 0;
-    const result = applyCheatVerdict(engine.state, reporterSeat, accusedSeat, cardType);
+      const numSeats = RULES[engine.state.variant].seats;
+      if (
+        typeof accusedSeat !== "number" ||
+        accusedSeat < 0 ||
+        accusedSeat >= numSeats ||
+        accusedSeat === myReporterSeat
+      ) {
+        return false;
+      }
 
-    // بلاغ مرفوض (عن زميل في الفريق نفسه أو عن النفس): لا يستهلك محاولة ولا يبدأ التبريد.
-    if (!result) return false;
+      const players = engine.state.players ?? [];
+      const reporterPlayer =
+        players.find((p) => p.seatIndex === myReporterSeat) ?? players[myReporterSeat];
+      const accusedPlayer =
+        players.find((p) => p.seatIndex === accusedSeat) ?? players[accusedSeat];
 
-    lastCheatReportAtRef.current = now;
-    cheatReportsThisRoundRef.current += 1;
+      // تحقق من أن المُبلِّغ لاعب بشري
+      if (!reporterPlayer || reporterPlayer.kind === "AI_BOT") return false;
 
-    const nextEngine = new KoutGameEngine(
-      { variant, targetScore: engine.state.targetScore, seed: 0, players: engine.state.players },
-      result.nextState,
-    );
-    engineRef.current = nextEngine;
-    if (options.netHost) options.netHost.session.replaceEngine(nextEngine);
-    setState(result.nextState);
+      // تحقق من أن المتهم لاعب بشري وليس بوتاً
+      if (!accusedPlayer || accusedPlayer.kind === "AI_BOT") return false;
 
-    setCheatVerdict({
-      confirmed: result.confirmed,
-      accusedSeat,
-      cardType,
-      reporterSeat,
-      roundNo: engine.state.roundNo,
-      announcement: result.announcement,
-      pointsAdded: result.pointsAdded,
-      winningTeam: result.winningTeam,
-    });
+      // لا يمكن الإبلاغ عن لاعب في الفريق نفسه
+      if (reporterPlayer.team === accusedPlayer.team) return false;
 
-    if (result.confirmed) {
-      playWinSound();
-    } else {
-      playLoseSound();
-    }
+      // حدود البلاغات وفترة التهدئة (عدم استهلاك المحاولة أو التبريد عند رفض البلاغ)
+      if (cheatReportsThisRoundRef.current >= MAX_CHEAT_REPORTS_PER_ROUND) return false;
+      const now = Date.now();
+      if (now - lastCheatReportAtRef.current < CHEAT_REPORT_COOLDOWN_MS) return false;
 
-    // true = حُسم البلاغ (مؤكد أو خاطئ)، false = لم يُقبل أصلاً.
-    return true;
-  }, []);
+      if (options.netClient) {
+        // المنضم: يبلّغ المضيف والحكم يصل عبر CHEAT_VERDICT
+        sendClientPacket("CHEAT_REPORT", { accusedSeat, cardType });
+        return true;
+      }
+
+      // إذا ضُغط البلاغ أثناء نافذة عرض الأكلة (1500ms) نُكمل الأكلة المعلقة فوراً
+      // قبل الحكم، وإلا فالمؤقت القديم سيلعب الورقة لاحقاً على محركٍ قديم ويستبدل حكم البلاغ.
+      if (isResolvingTrickRef.current && pendingTrickRef.current) {
+        const pending = pendingTrickRef.current;
+        pendingTrickRef.current = null;
+        window.clearTimeout(pending.timer);
+        try {
+          pending.run();
+        } catch (err) {
+          console.error("Pending trick flush error:", err);
+        }
+      }
+
+      const result = applyCheatVerdict(engine.state, myReporterSeat, accusedSeat, cardType);
+
+      // بلاغ مرفوض: لا يستهلك محاولة ولا يبدأ التبريد.
+      if (!result) return false;
+
+      lastCheatReportAtRef.current = now;
+      cheatReportsThisRoundRef.current += 1;
+
+      const nextEngine = new KoutGameEngine(
+        { variant, targetScore: engine.state.targetScore, seed: 0, players: engine.state.players },
+        result.nextState,
+      );
+      engineRef.current = nextEngine;
+      if (options.netHost) options.netHost.session.replaceEngine(nextEngine);
+      commit(result.nextState);
+
+      setCheatVerdict({
+        confirmed: result.confirmed,
+        accusedSeat,
+        cardType,
+        reporterSeat: myReporterSeat,
+        roundNo: engine.state.roundNo,
+        announcement: result.announcement,
+        pointsAdded: result.pointsAdded,
+        winningTeam: result.winningTeam,
+      });
+
+      if (result.confirmed) {
+        playWinSound();
+      } else {
+        playLoseSound();
+      }
+
+      // true = حُسم البلاغ (مؤكد أو خاطئ)، false = لم يُقبل أصلاً.
+      return true;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [commit, sendClientPacket, variant],
+  );
 
   // ---- قرار الفريق الخاسر بعد نهاية المباراة: استمرار أو إنهاء ----
   const applyContinueDecision = useCallback(
@@ -678,17 +728,28 @@ export function useGame(options: UseGameOptions = {}) {
       if (!engine) return;
       if (!canDecideContinue(engine.state as GameState, seat, humanSeatsRef.current)) return;
       if (continuePlay) {
-        startNewGame();
+        setSpeechBubbles({});
+        setWinningTrickPlay(null);
+        setTrickWinnerAnnouncement(null);
+        const nextState = engine.startRound();
+        commit(nextState);
         return;
       }
-      const stopped: GameState = { ...(engine.state as GameState), matchStopped: true, version: engine.state.version + 1 };
-      const nextEngine = new KoutGameEngine({ variant: stopped.variant, targetScore: stopped.targetScore, players: stopped.players }, stopped);
+      const stopped: GameState = {
+        ...(engine.state as GameState),
+        matchStopped: true,
+        version: engine.state.version + 1,
+      };
+      const nextEngine = new KoutGameEngine(
+        { variant: stopped.variant, targetScore: stopped.targetScore, players: stopped.players },
+        stopped,
+      );
       engineRef.current = nextEngine;
       if (options.netHost) options.netHost.session.replaceEngine(nextEngine);
       commit(stopped);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [startNewGame, commit],
+    [commit],
   );
 
   const decideContinue = useCallback(

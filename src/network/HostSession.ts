@@ -15,6 +15,7 @@ import {
 import { GameState, PlayerSlot, SeatKind } from "../types/kout";
 import { RULES } from "../rules/config";
 import { verifyCheatReport, applyCheatVerdict } from "../rules/cheat";
+import { canDecideContinue } from "../engine/matchContinue";
 
 export interface HostSessionOptions {
   engine?: KoutGameEngine;
@@ -126,17 +127,19 @@ export class HostSession {
   }
 
   private setupDisconnectListener(): void {
-    this.unsubscribeDisconnect = this.transport.onClientDisconnected((token) => {
-      const seat = this.tokenToSeat.get(token);
-      if (seat === undefined) return;
-      this.patchSlot(seat, { connected: false });
-      const timer = this.disconnectTimers.get(seat);
-      if (timer) clearTimeout(timer);
-      this.disconnectTimers.set(
-        seat,
-        setTimeout(() => this.botTakeover(seat), this.BOT_TAKEOVER_MS),
-      );
-    });
+    this.unsubscribeDisconnect = this.transport.onClientDisconnected
+      ? this.transport.onClientDisconnected((token) => {
+          const seat = this.tokenToSeat.get(token);
+          if (seat === undefined) return;
+          this.patchSlot(seat, { connected: false });
+          const timer = this.disconnectTimers.get(seat);
+          if (timer) clearTimeout(timer);
+          this.disconnectTimers.set(
+            seat,
+            setTimeout(() => this.botTakeover(seat), this.BOT_TAKEOVER_MS),
+          );
+        })
+      : () => {};
   }
 
   private botTakeover(seat: number): void {
@@ -204,6 +207,18 @@ export class HostSession {
       case "CONTINUE_DECISION": {
         const seat = this.tokenToSeat.get(playerToken);
         if (seat === undefined) break;
+        const humanSeats = (this.engine.state.players || [])
+          .filter((p) => p.kind !== "AI_BOT")
+          .map((p) => p.seatIndex);
+        if (!canDecideContinue(this.engine.state, seat, humanSeats)) {
+          this.sendError(
+            playerToken,
+            "UNAUTHORIZED_DECISION",
+            "Only human players on the losing team may decide continue or stop",
+            packet.seq,
+          );
+          break;
+        }
         for (const l of this.continueListeners) l(seat, !!packet.payload?.continuePlay);
         break;
       }
@@ -447,7 +462,7 @@ export class HostSession {
   private humanSeatCount(): number {
     const players = this.engine.state.players || [];
     const humans = players.filter((p) => p.kind !== "AI_BOT").length;
-    return humans > 0 ? humans : 1;
+    return humans;
   }
 
   /**
@@ -464,11 +479,93 @@ export class HostSession {
       return;
     }
 
-    if (this.engine.state.phase !== "PLAY" && this.engine.state.phase !== "ROUND_END") {
+    // مسموح فقط في اللعب الجماعي مع بشريين اثنين أو أكثر
+    if (!this.isFreePlay()) {
+      this.sendError(
+        playerToken,
+        "REPORT_REJECTED",
+        "Cheat reports are only allowed in multiplayer with 2 or more human players",
+        packet.seq,
+      );
+      return;
+    }
+
+    const currentPhase = this.engine.state.phase;
+    if (
+      currentPhase !== "PLAY" &&
+      currentPhase !== "ROUND_END" &&
+      !(currentPhase === "GAME_END" && !this.engine.state.matchStopped)
+    ) {
       this.sendError(
         playerToken,
         "INVALID_PHASE",
-        "Reports are only allowed during play",
+        "Reports are only allowed during play, round end, or game end before final stop",
+        packet.seq,
+      );
+      return;
+    }
+
+    if (this.engine.state.matchStopped) {
+      this.sendError(
+        playerToken,
+        "MATCH_STOPPED",
+        "Match has concluded",
+        packet.seq,
+      );
+      return;
+    }
+
+    const { accusedSeat, cardType } = packet.payload;
+    const numSeats = RULES[this.engine.state.variant].seats;
+    if (
+      typeof accusedSeat !== "number" ||
+      accusedSeat < 0 ||
+      accusedSeat >= numSeats ||
+      accusedSeat === senderSeat
+    ) {
+      this.sendError(
+        playerToken,
+        "INVALID_ACCUSED",
+        "Invalid accused seat",
+        packet.seq,
+      );
+      return;
+    }
+
+    const players = this.engine.state.players || [];
+    const senderPlayer =
+      players.find((p) => p.seatIndex === senderSeat) ?? players[senderSeat];
+    const accusedPlayer =
+      players.find((p) => p.seatIndex === accusedSeat) ?? players[accusedSeat];
+
+    // تحقق من أن المُبلِّغ لاعب بشري
+    if (!senderPlayer || senderPlayer.kind === "AI_BOT") {
+      this.sendError(
+        playerToken,
+        "REPORT_REJECTED",
+        "Reporter must be a human player",
+        packet.seq,
+      );
+      return;
+    }
+
+    // تحقق من أن المتهم لاعب بشري وليس بوتاً
+    if (!accusedPlayer || accusedPlayer.kind === "AI_BOT") {
+      this.sendError(
+        playerToken,
+        "REPORT_REJECTED",
+        "Cannot report an AI bot",
+        packet.seq,
+      );
+      return;
+    }
+
+    // رفض البلاغ ضد زميل الفريق
+    if (senderPlayer.team === accusedPlayer.team) {
+      this.sendError(
+        playerToken,
+        "REPORT_REJECTED",
+        "لا يمكن الإبلاغ عن لاعب في فريقك",
         packet.seq,
       );
       return;
@@ -498,15 +595,14 @@ export class HostSession {
       return;
     }
 
-    const { accusedSeat, cardType } = packet.payload;
     const result = applyCheatVerdict(this.engine.state, senderSeat, accusedSeat, cardType);
 
-    // بلاغ مرفوض (عن زميل في الفريق نفسه أو عن النفس): لا يستهلك الحد ولا يبدأ التبريد.
+    // بلاغ مرفوض: لا يستهلك الحد ولا يبدأ التبريد
     if (!result) {
       this.sendError(
         playerToken,
         "REPORT_REJECTED",
-        "لا يمكن الإبلاغ عن لاعب في فريقك",
+        "البلاغ غير صالح",
         packet.seq,
       );
       return;

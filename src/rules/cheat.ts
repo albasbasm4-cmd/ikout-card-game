@@ -118,22 +118,33 @@ export function applyCheatVerdict(
   accusedSeat: number,
   cardType: ReportedCardType,
 ): CheatResolutionResult | null {
-  const confirmed = verifyCheatReport(state, accusedSeat, cardType);
-  const highBid = state.highBid ?? 5;
-  const pointsAdded = highBid * 2; // تدبيل النقاط: 5->10, 6->12, 7->14, 8->16, 9->18
+  const numSeats = RULES[state.variant]?.seats ?? 6;
+  if (reporterSeat < 0 || reporterSeat >= numSeats) return null;
+  if (accusedSeat < 0 || accusedSeat >= numSeats) return null;
+  if (reporterSeat === accusedSeat) return null;
+  if (state.matchStopped) return null;
+
+  const players = state.players ?? [];
+  const reporterPlayer =
+    players.find((p) => p.seatIndex === reporterSeat) ?? players[reporterSeat];
+  const accusedPlayer =
+    players.find((p) => p.seatIndex === accusedSeat) ?? players[accusedSeat];
+
+  // كلا المقعدين يجب أن يكونا مسجلين وبشريين (ليسا AI_BOT)
+  if (!reporterPlayer || reporterPlayer.kind === "AI_BOT") return null;
+  if (!accusedPlayer || accusedPlayer.kind === "AI_BOT") return null;
 
   const reporterTeam: 0 | 1 =
-    state.players && state.players[reporterSeat]
-      ? state.players[reporterSeat].team
-      : ((reporterSeat % 2) as 0 | 1);
-
+    reporterPlayer.team ?? ((reporterSeat % 2) as 0 | 1);
   const accusedTeam: 0 | 1 =
-    state.players && state.players[accusedSeat]
-      ? state.players[accusedSeat].team
-      : ((accusedSeat % 2) as 0 | 1);
+    accusedPlayer.team ?? ((accusedSeat % 2) as 0 | 1);
 
   // رفض البلاغ بين أعضاء الفريق نفسه (أو على النفس): لا معنى لحكمه ويفتح باب إهداء النقاط.
   if (reporterTeam === accusedTeam) return null;
+
+  const confirmed = verifyCheatReport(state, accusedSeat, cardType);
+  const highBid = state.highBid ?? 5;
+  const pointsAdded = highBid * 2; // تدبيل النقاط: 5->10, 6->12, 7->14, 8->16, 9->18
 
   const winningTeam: 0 | 1 = confirmed ? reporterTeam : accusedTeam;
   const losingTeam: 0 | 1 = (1 - winningTeam) as 0 | 1;
@@ -146,13 +157,13 @@ export function applyCheatVerdict(
 
   const targetScore = state.targetScore ?? 51;
   const isGameOver = newScores[0] >= targetScore || newScores[1] >= targetScore;
-  const numSeats = RULES[state.variant].seats;
   const nextDealer = (state.dealer + 1) % numSeats;
 
   const nextState: GameState = {
     ...state,
     scores: newScores,
     dealer: nextDealer,
+    scoredRoundNo: state.roundNo,
     phase: isGameOver ? "GAME_END" : "ROUND_END",
     version: state.version + 1,
   };

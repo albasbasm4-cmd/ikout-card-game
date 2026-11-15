@@ -45,6 +45,7 @@ import { RulesModal } from "./RulesModal";
 import { Button } from "./ui/button";
 import { stopReferenceAudio } from "../utils/referenceAudio";
 import { CheatReportModal } from "./CheatReportModal";
+import { koutWinnerTeam, seatTeam } from "../engine/matchContinue";
 
 export interface GameScreenProps {
   initialDifficulty?: Difficulty;
@@ -204,23 +205,23 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     state.bids.every((b) => b.bid === 0);
 
   // Winning team in GAME_END
-  const targetScore = state.targetScore;
-  const isTeam0Winner =
-    state.scores[0] >= targetScore ||
-    (state.roundNo === 1 && state.highBid === 9 && state.tricksWon[0] === 9);
+  const mySeat = netClient ? netClient.mySeat : (activeHumanSeat ?? localSeats[0] ?? 0);
+  const myTeam = seatTeam(state, mySeat);
+  const winnerTeam = koutWinnerTeam(state);
+  const isMyTeamWinner = winnerTeam === myTeam;
 
   // Play audio on round end and game end
   useEffect(() => {
     if (state.phase === "ROUND_END") {
       playTrickWinSound(settings.soundEnabled);
     } else if (state.phase === "GAME_END") {
-      if (isTeam0Winner) {
+      if (isMyTeamWinner) {
         playWinSound(settings.soundEnabled);
       } else {
         playLoseSound(settings.soundEnabled);
       }
     }
-  }, [state.phase, isTeam0Winner, settings.soundEnabled]);
+  }, [state.phase, isMyTeamWinner, settings.soundEnabled]);
 
   // Integrated Top Controls for Table Header
   const headerControls = (
@@ -465,7 +466,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
           {showCheatModal && (
             <CheatReportModal
               players={state.players || []}
-              reporterSeat={activeHumanSeat ?? 0}
+              reporterSeat={mySeat}
               seatsCount={numSeats}
               error={reportError}
               onClose={() => setShowCheatModal(false)}
@@ -561,7 +562,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
               <div className="w-full max-w-sm max-h-[90vh] overflow-y-auto bg-neutral-950 border-2 border-amber-400 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
                 <div
                   className={`w-14 h-14 sm:w-16 sm:h-16 rounded-3xl flex items-center justify-center mb-2.5 shadow-2xl ${
-                    isTeam0Winner
+                    isMyTeamWinner
                       ? "bg-gradient-to-br from-amber-400 to-amber-600 text-black border-2 border-amber-200"
                       : "bg-gradient-to-br from-rose-700 to-rose-900 text-white border-2 border-rose-400"
                   }`}
@@ -570,10 +571,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                 </div>
 
                 <h2 className="text-xl sm:text-2xl font-black text-amber-300">
-                  {isTeam0Winner ? "كفو يا ذيب! مبروك الفوز 🏆" : "حظ أوفر للجولة القادمة!"}
+                  {isMyTeamWinner ? "كفو يا ذيب! مبروك الفوز 🏆" : "حظ أوفر للجولة القادمة!"}
                 </h2>
                 <p className="text-xs text-amber-200/80 mt-1 font-medium">
-                  {isTeam0Winner
+                  {isMyTeamWinner
                     ? "فاز فريقك بالمباراة وبلغ الهدف بنجاح!"
                     : "فاز الفريق الخصم بهذه المباراة."}
                 </p>
@@ -582,7 +583,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                 <div className="w-full bg-black/60 border border-amber-400/30 rounded-2xl p-3 my-3 flex items-center justify-around">
                   <div className="text-center">
                     <span className="text-[11px] text-emerald-300 block font-bold">
-                      لنا (فريقك)
+                      لنا {myTeam === 0 ? "(فريقك)" : "(الخصم)"}
                     </span>
                     <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">
                       {state.scores[0]}
@@ -590,7 +591,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                   </div>
                   <span className="text-xl font-black text-amber-400/60">:</span>
                   <div className="text-center">
-                    <span className="text-[11px] text-rose-300 block font-bold">لهم (الخصم)</span>
+                    <span className="text-[11px] text-rose-300 block font-bold">
+                      لهم {myTeam === 1 ? "(فريقك)" : "(الخصم)"}
+                    </span>
                     <span className="text-2xl sm:text-3xl font-black text-white tabular-nums">
                       {state.scores[1]}
                     </span>
@@ -603,7 +606,14 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                       قرر الفريق الخاسر إنهاء اللعب
                     </div>
                     {onGoHome && (
-                      <Button type="button" onClick={() => { playTapSound(); onGoHome(); }} className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-amber-200">
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          playTapSound();
+                          onGoHome();
+                        }}
+                        className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-amber-200 cursor-pointer shadow-lg active:scale-98"
+                      >
                         <Home className="w-4 h-4" />
                         <span>الرئيسية</span>
                       </Button>
@@ -612,18 +622,49 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                 ) : canDecide ? (
                   <div className="w-full flex flex-col gap-2">
                     <p className="text-xs font-bold text-amber-100">هل تريد الاستمرار في اللعب؟</p>
-                    <Button type="button" onClick={() => { playTapSound(); decideContinue(true); }} className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-amber-200">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        playTapSound();
+                        decideContinue(true);
+                      }}
+                      className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 text-black font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-amber-200 cursor-pointer shadow-lg active:scale-98"
+                    >
                       <RotateCcw className="w-4 h-4" />
-                      <span>نعم، استمر</span>
+                      <span>نعم، استمر في اللعب</span>
                     </Button>
-                    <Button type="button" onClick={() => { playTapSound(); decideContinue(false); }} className="w-full py-3 rounded-2xl bg-black/60 text-amber-100 font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-amber-400/40">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        playTapSound();
+                        decideContinue(false);
+                      }}
+                      className="w-full py-3 rounded-2xl bg-black/60 text-amber-100 font-black text-xs sm:text-sm flex items-center justify-center gap-2 border border-amber-400/40 cursor-pointer active:scale-98"
+                    >
                       <X className="w-4 h-4" />
-                      <span>لا، إنهاء</span>
+                      <span>لا، إنهاء المباراة</span>
                     </Button>
                   </div>
                 ) : (
                   <div className="w-full py-2.5 rounded-2xl bg-black/60 border border-amber-400/30 text-amber-200 text-xs font-bold text-center">
                     بانتظار قرار الفريق الخاسر: الاستمرار أو الإنهاء…
+                  </div>
+                )}
+
+                {canReportCheat && !state.matchStopped && (
+                  <div className="w-full mt-2 pt-2 border-t border-amber-400/20">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        playTapSound();
+                        setReportError(null);
+                        setShowCheatModal(true);
+                      }}
+                      className="w-full py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-400/30 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                      <span>الإبلاغ عن غش</span>
+                    </Button>
                   </div>
                 )}
               </div>

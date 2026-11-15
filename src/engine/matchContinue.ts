@@ -1,12 +1,21 @@
 import type { GameState } from "../types/kout";
 
 /** Team that won the finished Kout match (target reached or Bawan). */
-export function koutWinnerTeam(state: Pick<GameState, "scores" | "targetScore" | "roundNo" | "highBid" | "tricksWon">): 0 | 1 {
-  const team0 =
-    state.scores[0] >= state.targetScore ||
-    (state.roundNo === 1 && state.highBid === 9 && state.tricksWon[0] === 9);
-  if (team0) return 0;
-  if (state.scores[1] >= state.targetScore) return 1;
+export function koutWinnerTeam(
+  state: Pick<GameState, "scores" | "targetScore" | "roundNo" | "highBid" | "tricksWon">,
+): 0 | 1 {
+  if (state.roundNo === 1 && state.highBid === 9) {
+    if (state.tricksWon[0] === 9) return 0;
+    if (state.tricksWon[1] === 9) return 1;
+  }
+  const target = state.targetScore ?? 51;
+  const t0 = state.scores[0] >= target;
+  const t1 = state.scores[1] >= target;
+  if (t0 && t1) {
+    return state.scores[0] >= state.scores[1] ? 0 : 1;
+  }
+  if (t0) return 0;
+  if (t1) return 1;
   return state.scores[0] >= state.scores[1] ? 0 : 1;
 }
 
@@ -25,8 +34,9 @@ export function seatTeam(state: Pick<GameState, "players">, seat: number): 0 | 1
  */
 export function canDecideContinue(state: GameState, seat: number, humanSeats: number[]): boolean {
   if (state.phase !== "GAME_END" || state.matchStopped) return false;
+  if (!humanSeats.includes(seat)) return false;
   const loser = koutLoserTeam(state);
   const humanLosers = humanSeats.filter((s) => seatTeam(state, s) === loser);
-  if (humanLosers.length === 0) return humanSeats.includes(seat);
+  if (humanLosers.length === 0) return true;
   return seatTeam(state, seat) === loser;
 }

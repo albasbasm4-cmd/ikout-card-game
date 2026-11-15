@@ -28,8 +28,14 @@ const humanPlayers = (seats: number): PlayerSlot[] =>
 function midTrickState(
   seed: number,
   opts: { leadSeat: number; cheatSeat: number },
+  players?: PlayerSlot[],
 ): { state: GameState; ledSuit: Suit; cheatSeat: number } {
-  const engine = new KoutGameEngine({ variant: "BO4", initialDealer: 0, seed });
+  const engine = new KoutGameEngine({
+    variant: "BO4",
+    initialDealer: 0,
+    seed,
+    players: players ?? humanPlayers(4),
+  });
   engine.startRound();
   engine.placeBid(1, 6);
   for (const s of [2, 3, 0]) engine.placeBid(s, 0);

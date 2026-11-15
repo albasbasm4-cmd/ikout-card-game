@@ -44,12 +44,26 @@ export const CheatReportModal: React.FC<CheatReportModalProps> = ({
   const [accusedSeat, setAccusedSeat] = useState<number | null>(null);
   const [cardType, setCardType] = useState<ReportedCardType | null>(null);
 
-  // إظهار اللاعبين الحقيقيين فقط الذين دخلوا الغرفة
+  // إظهار اللاعبين الحقيقيين فقط من الفريق الخصم (بدون البوتات وبدون مقعد المُبلِّغ وبدون أعضاء فريقه)
+  const reporterTeam =
+    reporterSeat !== undefined
+      ? players?.find((p) => p.seatIndex === reporterSeat)?.team ??
+        (((reporterSeat % 2) as 0 | 1))
+      : undefined;
+
   const eligiblePlayers = (players || []).filter(
-    (p) => p.kind !== "AI_BOT" && p.seatIndex !== reporterSeat,
+    (p) =>
+      p.kind !== "AI_BOT" &&
+      p.seatIndex !== reporterSeat &&
+      (reporterTeam === undefined || p.team !== reporterTeam),
   );
 
-  const canSubmit = accusedSeat !== null && cardType !== null;
+  const selectedPlayer = eligiblePlayers.find((p) => p.seatIndex === accusedSeat);
+  const canSubmit =
+    accusedSeat !== null &&
+    cardType !== null &&
+    selectedPlayer !== undefined &&
+    selectedPlayer.kind !== "AI_BOT";
 
   return (
     <div className="absolute inset-0 z-[70] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
@@ -154,7 +168,7 @@ export const CheatReportModal: React.FC<CheatReportModalProps> = ({
           type="button"
           disabled={!canSubmit}
           onClick={() => {
-            if (!canSubmit) return;
+            if (!canSubmit || !selectedPlayer || selectedPlayer.kind === "AI_BOT") return;
             playTapSound();
             onSubmit(accusedSeat as number, cardType as ReportedCardType);
           }}

@@ -126,6 +126,7 @@ export class KoutGameEngine {
       phase: "BID",
       roundNo: this._state.roundNo + 1,
       version: this._state.version + 1,
+      matchStopped: false,
     };
 
     this._state = nextState;
