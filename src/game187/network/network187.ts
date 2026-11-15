@@ -70,17 +70,17 @@ export class Room187Channel {
    * - "client": المنضم يبحث عن المضيف على نقطة الاتصال ويرسل/يستقبل عبره.
    * - "auto": تكرار بين تبويبات نفس الجهاز فقط (للاختبار والتجربة المحلية).
    */
-  constructor(roomCode: string, role: "host" | "client" | "auto" = "auto") {
+  constructor(roomCode: string, role: "host" | "client" | "auto" = "auto", hostIp?: string) {
     const code = roomCode.trim().toUpperCase();
     this.code = code;
     this.role = role;
-    if (typeof BroadcastChannel !== "undefined") {
+    if (role === "auto" && typeof BroadcastChannel !== "undefined") {
       this.bc = new BroadcastChannel(`ikout187_room_${code}`);
     }
     if (role === "host") {
       void this.startHost();
     } else if (role === "client") {
-      void this.startClient(code);
+      void this.startClient(code, hostIp);
     }
   }
 
@@ -154,8 +154,8 @@ export class Room187Channel {
     this.flushPending();
   }
 
-  private async startClient(code: string): Promise<void> {
-    const candidates = await getJoinCandidateIps();
+  private async startClient(code: string, hostIp?: string): Promise<void> {
+    const candidates = await getJoinCandidateIps(hostIp);
     for (const ip of candidates) {
       if (this.disposed) return;
       const ok = await this.tryConnect(ip, code);
@@ -168,7 +168,7 @@ export class Room187Channel {
       let settled = false;
       const token = getPersistentPlayerToken("g187");
       const socket = new LocalClientSocket({
-        url: `ws://${ip}:8080`,
+        url: ip.includes(":") ? `ws://${ip}` : `ws://${ip}:8080`,
         playerToken: token,
         playerName: "",
         maxReconnectAttempts: 0,
@@ -210,8 +210,10 @@ export class Room187Channel {
   }
 
   public send(msg: Client187Packet | Host187Packet): void {
-    this.bc?.postMessage(msg);
-    if (this.role === "auto") return;
+    if (this.role === "auto") {
+      this.bc?.postMessage(msg);
+      return;
+    }
     if (this.role === "host") {
       if (this.unregHost) {
         hubBroadcast({ ch: "g187", packet: msg });
@@ -246,7 +248,7 @@ export class Room187Channel {
 
   public onMessage(handler: (msg: Client187Packet | Host187Packet) => void): () => void {
     this.handlers.add(handler);
-    if (this.bc) {
+    if (this.role === "auto" && this.bc) {
       const listener = (event: MessageEvent) => handler(event.data as never);
       this.bc.addEventListener("message", listener);
       return () => {

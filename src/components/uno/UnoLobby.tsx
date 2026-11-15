@@ -10,6 +10,7 @@ import { characterFace, useProfile } from "@/utils/profile";
 import { useSettings } from "@/store/useSettings";
 import { useStageFit } from "@/hooks/use-stage-fit";
 import { connectUnoClient, disconnectUnoClient } from "@/lib/uno/unoNet";
+import { parseRoomPayload } from "@/network/localIp";
 import { toast } from "sonner";
 import jsQR from "jsqr";
 import { CitySkyline, Clouds } from "@/components/HomeScreen";
@@ -43,7 +44,7 @@ export default function UnoLobby({
   const [joinCode, setJoinCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const joinRoomRef = useRef<((code: string) => Promise<void>) | null>(null);
+  const joinRoomRef = useRef<((code: string, hostIp?: string) => Promise<void>) | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   useEffect(() => () => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -103,14 +104,14 @@ export default function UnoLobby({
     streamRef.current = null;
     setScanning(false);
   };
-  const joinRoom = async (rawCode = joinCode) => {
+  const joinRoom = async (rawCode = joinCode, hostIp?: string) => {
     const code = rawCode.trim().toUpperCase();
     if (!/^[A-Z0-9]{4,6}$/.test(code)) {
       toast.error("رمز غير صحيح: أدخل من 4 إلى 6 أحرف أو أرقام");
       return;
     }
     toast.info("جارِ الاتصال بالغرفة…");
-    const connected = await connectUnoClient({ code, name: profile.name || "لاعب" });
+    const connected = await connectUnoClient({ code, name: profile.name || "لاعب", hostIp });
     if (!connected) {
       toast.error("تعذر الاتصال بالمضيف؛ تأكد من فتح الغرفة والاتصال بالشبكة نفسها");
       return;

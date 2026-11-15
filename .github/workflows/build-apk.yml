@@ -2,7 +2,9 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main, fix/android-apk-asset-packaging]
+    branches: [main, fix/android-apk-asset-packaging, fix/multiplayer-full-system-overhaul]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

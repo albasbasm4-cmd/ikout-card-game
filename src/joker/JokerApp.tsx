@@ -14,7 +14,7 @@ import {
   stopJokerHost,
 } from "./jokerNet";
 import { NetworkLatencyBadge } from "@/components/NetworkLatencyBadge";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppBack } from "@/utils/appBackNav";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -79,22 +79,22 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   const { game, holdingId, modal } = jokerSession;
 
   const setGame = useCallback((updater: JokerGame | null | ((prev: JokerGame | null) => JokerGame | null)) => {
-    setJokerSession((prev) => ({
+    setJokerSession((prev: JokerSessionState) => ({
       ...prev,
       game: typeof updater === "function" ? updater(prev.game) : updater,
     }));
   }, []);
 
   const setHoldingId = useCallback((id: string | null) => {
-    setJokerSession((prev) => ({ ...prev, holdingId: id }));
+    setJokerSession((prev: JokerSessionState) => ({ ...prev, holdingId: id }));
   }, []);
 
   const setModal = useCallback((m: JokerModal) => {
-    setJokerSession((prev) => ({ ...prev, modal: m }));
+    setJokerSession((prev: JokerSessionState) => ({ ...prev, modal: m }));
   }, []);
 
   const updateJokerSession = useCallback((updates: Partial<JokerSessionState>) => {
-    setJokerSession((prev) => ({ ...prev, ...updates }));
+    setJokerSession((prev: JokerSessionState) => ({ ...prev, ...updates }));
   }, []);
   const [target, setTarget] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -163,13 +163,13 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
       jokerClientSendAct(id, to);
       return;
     }
-    setGame((prev) => {
+    setGame((prev: JokerGame | null) => {
       const next = prev ? actJoker(prev, id, to) : prev;
       if (next && netHostActive && next !== prev) jokerHostPublish(next);
       return next;
     });
   };
-  const doJoin = (v: string) => {
+  const doJoin = (v: string, hostIp?: string) => {
     if (!/^[0-9]{4,6}$/.test(v)) {
       setJoinError("رمز غير صحيح: الرمز يتكون من 4 إلى 6 أرقام");
       return;
@@ -180,6 +180,7 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
       const ok = await connectJokerClient({
         code: v,
         name: profile.name || "لاعب",
+        hostIp,
       });
       setJoining(false);
       if (!ok) {

@@ -109,7 +109,7 @@ interface Seat187Props {
   isBidder: boolean;
   phase: string;
   held: number;
-  badge: string | null;
+  badge: React.ReactNode;
   speechBubble?: string;
   cardBackUrl: string;
 }

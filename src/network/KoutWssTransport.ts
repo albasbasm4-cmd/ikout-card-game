@@ -42,8 +42,7 @@ export class KoutWssTransport implements IHostTransport {
   }
 
   async start(): Promise<boolean> {
-    const ok = await ensureHubServer(HUB_PORT);
-    if (!ok) return false;
+    // 1. تسجيل قناة اللعبة أولاً حتى لا تضيع أي رسائل مبكرة
     this.unsubscribe = registerHubChannel(CH, {
       onClientMessage: (clientId, msg) => {
         const env = msg as unknown as KoutEnvelope;
@@ -54,10 +53,22 @@ export class KoutWssTransport implements IHostTransport {
             ? packet.playerToken
             : clientId;
         this.bind(clientId, token);
-        for (const h of this.messageHandlers) h(token, packet);
+        for (const h of Array.from(this.messageHandlers)) {
+          try {
+            h(token, packet);
+          } catch (err) {
+            console.error("[KoutWssTransport] onClientMessage error:", err);
+          }
+        }
       },
       onClientConnected: (clientId) => {
-        for (const h of this.connectHandlers) h(clientId);
+        for (const h of Array.from(this.connectHandlers)) {
+          try {
+            h(clientId);
+          } catch (err) {
+            console.error("[KoutWssTransport] onClientConnected error:", err);
+          }
+        }
       },
       onClientDisconnected: (clientId) => {
         const token = this.clientToToken.get(clientId);
@@ -66,9 +77,22 @@ export class KoutWssTransport implements IHostTransport {
         // إذا وصل اتصال جديد لنفس التوكن قبل إغلاق القديم، لا نعتبره انقطاعاً
         if (this.tokenToClient.get(token) !== clientId) return;
         this.tokenToClient.delete(token);
-        for (const h of this.disconnectHandlers) h(token);
+        for (const h of Array.from(this.disconnectHandlers)) {
+          try {
+            h(token);
+          } catch (err) {
+            console.error("[KoutWssTransport] onClientDisconnected error:", err);
+          }
+        }
       },
     });
+
+    // 2. تشغيل خادم gameHub المشترك
+    const ok = await ensureHubServer(HUB_PORT);
+    if (!ok) {
+      this.destroy();
+      return false;
+    }
     this.ready = true;
     return true;
   }
@@ -113,5 +137,6 @@ export class KoutWssTransport implements IHostTransport {
     this.messageHandlers.clear();
     this.connectHandlers.clear();
     this.disconnectHandlers.clear();
+    this.ready = false;
   }
 }

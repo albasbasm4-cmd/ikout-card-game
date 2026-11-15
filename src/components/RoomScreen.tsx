@@ -21,6 +21,7 @@ import { generateRoomCode, parseRoomPayload } from "../network/localIp";
 import { InlineQrScanner } from "./InlineQrScanner";
 import { LocalClientSocket, ClientSocketStatus } from "../network/LocalClientSocket";
 import { getJoinCandidateIps } from "../network/wssBridge";
+import { getPersistentPlayerToken } from "../network/playerToken";
 import {
   startKoutHost,
   koutHostStartMatch,
@@ -120,6 +121,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
   const joinSocketRef = useRef<LocalClientSocket | null>(null);
+  const [activeSocket, setActiveSocket] = useState<LocalClientSocket | null>(null);
   /** join: 'code' = إدخال الرمز، 'room' = داخل الغرفة بانتظار المضيف */
   const [joined, setJoined] = useState(false);
   /** لوبي المضيف كما يرصده المنضم (من حزم SEAT_UPDATE) */
@@ -170,12 +172,11 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // المنضم: مراقبة حزم المضيف — تحديث اللوبي واكتشاف بدء المباراة
+  // المنضم: مراقبة حزم المضيف وحالة الاتصال بمجرد توفر المقبس النشط
   useEffect(() => {
-    if (isHost) return;
-    const client = getActiveKoutClient();
-    if (!client) return;
-    return client.socket.onMessage((packet) => {
+    if (isHost || !activeSocket) return;
+
+    const unsubMsg = activeSocket.onMessage((packet) => {
       switch (packet.type) {
         case "SEAT_UPDATE": {
           const pl = packet.payload;
@@ -185,29 +186,69 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
           if (typeof pl.seatIndex === "number" && pl.seatIndex >= 0) {
             setMySeat(pl.seatIndex);
             setActiveKoutClient({
-              socket: client.socket,
+              socket: activeSocket,
               mySeat: pl.seatIndex,
-              playerToken: client.playerToken,
+              playerToken: activeSocket.getPlayerToken(),
+              roomCode: joinCode,
             });
           }
+          setJoined(true);
+          setConnecting(false);
+          setConnectError(null);
           break;
         }
         case "CLIENT_STATE_UPDATE": {
           const st = packet.payload.state;
           if (!st) break;
           koutClientSetInitialState(st);
+          setJoined(true);
+          setConnecting(false);
+          setConnectError(null);
           if (st.phase && st.phase !== "LOBBY" && !lobbyStartedRef.current) {
             lobbyStartedRef.current = true;
             onStartGame();
           }
           break;
         }
+        case "ERROR": {
+          const payload = packet.payload as any;
+          const msg =
+            typeof payload === "string"
+              ? payload
+              : payload?.message || "حدث خطأ أثناء الانضمام للغرفة";
+          toast(msg);
+          setConnectError(msg);
+          setConnecting(false);
+          break;
+        }
         default:
           break;
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost]);
+
+    const unsubStatus = activeSocket.onStatusChange((st: ClientSocketStatus) => {
+      if (st === "JOINED") {
+        setJoined(true);
+        setConnecting(false);
+        setConnectError(null);
+      } else if (st === "HOST_DROPPED") {
+        setJoined(false);
+        setConnecting(false);
+        setConnectError("انقطع الاتصال بمضيف الغرفة.");
+        toast("انقطع الاتصال بالمضيف");
+      } else if (st === "REJECTED") {
+        setJoined(false);
+        setConnecting(false);
+        setConnectError("تم رفض الانضمام (الغرفة ممتلئة أو الرمز غير صحيح).");
+        toast("تم رفض الانضمام");
+      }
+    });
+
+    return () => {
+      unsubMsg();
+      unsubStatus();
+    };
+  }, [isHost, activeSocket, joinCode, onStartGame]);
 
   // تنظيف الاتصال عند الخروج من شاشة الغرفة (المنضم)
   useEffect(
@@ -248,7 +289,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     setJoinCode(trimmed);
 
     const connectToIp = (ip: string, port: number, candidates: string[]) => {
-      const token = `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      const token = getPersistentPlayerToken("ikout");
       const socket = new LocalClientSocket({
         url: `ws://${ip}:${port}`,
         playerToken: token,
@@ -259,9 +300,11 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
         roomCode: trimmed,
       });
       joinSocketRef.current = socket;
+      setActiveSocket(socket);
 
       const failOrFallback = () => {
         socket.disconnect();
+        if (joinSocketRef.current === socket) setActiveSocket(null);
         const rest = candidates.filter((c) => c !== ip);
         if (rest.length > 0) {
           connectToIp(rest[0], port, rest);
@@ -275,7 +318,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
       };
 
       const connectionTimeout = setTimeout(() => {
-        if (socket.getStatus() !== "CONNECTED") failOrFallback();
+        const s = socket.getStatus(); if (s !== "CONNECTED" && s !== "JOINING" && s !== "JOINED") failOrFallback();
       }, 4000);
 
       socket.onStatusChange((st: ClientSocketStatus) => {
@@ -805,9 +848,11 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
         <InlineQrScanner
           hint="وجّه الكاميرا نحو رمز غرفة الكوت"
           onCode={(raw) => {
-            if (raw.startsWith("ws://") || raw.startsWith("wss://")) {
-              const { ip, port, roomCode: parsedRoom } = parseRoomPayload(raw);
-              connectDirect(parsedRoom ?? "", `ws://${ip}:${port}`);
+            const parsed = parseRoomPayload(raw);
+            if (parsed.roomCode) {
+              connectDirect(parsed.roomCode, parsed.isVerifiedIp ? `ws://${parsed.ip}:${parsed.port}` : undefined);
+            } else if (parsed.isVerifiedIp) {
+              connectDirect(joinCode || "", `ws://${parsed.ip}:${parsed.port}`);
             } else {
               connectDirect(raw);
             }

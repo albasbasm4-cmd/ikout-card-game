@@ -54,15 +54,16 @@ describe("network diagnostics", () => {
     expect(res.error).toBeTruthy();
   });
 
-  it("runs a full report with fallback candidates outside Capacitor", async () => {
-    const report = await runJoinDiagnostics();
-    expect(report.pluginDetected).toBe(false);
-    expect(report.gatewayIp).toBeNull();
-    expect(report.candidates.map((c) => c.ip)).toEqual([
-      "192.168.43.1",
-      "192.168.49.1",
-      "192.168.1.1",
-    ]);
+  it("runs a diagnostic report without guessing IPs when none provided, and probes target IP when provided", async () => {
+    // بدون عنوان مدخل ودون جسر أصلي: لا يتم تخمين أي عناوين عشوائية
+    const emptyReport = await runJoinDiagnostics();
+    expect(emptyReport.pluginDetected).toBe(false);
+    expect(emptyReport.gatewayIp).toBeNull();
+    expect(emptyReport.candidates).toHaveLength(0);
+
+    // عند توفير عنوان مستهدف: يتم فحصه بدقة
+    const report = await runJoinDiagnostics("192.168.43.1");
+    expect(report.candidates.map((c) => c.ip)).toEqual(["192.168.43.1"]);
     expect(report.candidates[0].result).toBe("open");
   });
 });

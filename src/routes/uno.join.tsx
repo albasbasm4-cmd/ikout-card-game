@@ -20,6 +20,7 @@ import { ProfileEditor } from "@/components/ProfileEditor";
 import { CitySkyline, Clouds } from "@/components/HomeScreen";
 import { playTapSound } from "@/utils/audio";
 import { InlineQrScanner } from "@/components/InlineQrScanner";
+import { parseRoomPayload } from "@/network/localIp";
 import { NetworkDiagnosticsPanel } from "@/components/NetworkDiagnosticsPanel";
 import {
   connectUnoClient,
@@ -122,7 +123,7 @@ export function Join({ onBack }: JoinProps = {}) {
     else nav({ to: "/uno" });
   };
 
-  const join = async (c = code) => {
+  const join = async (c = code, hostIp?: string) => {
     const v = c.trim().toUpperCase();
     if (!/^[A-Z0-9]{4,6}$/.test(v)) {
       toast.error("رمز غير صحيح: الرمز يتكون من 4 إلى 6 أحرف أو أرقام");
@@ -130,7 +131,7 @@ export function Join({ onBack }: JoinProps = {}) {
     }
     setJoining(true);
     toast.info("جارِ الاتصال بالمضيف…");
-    const ok = await connectUnoClient({ code: v, name: profile.name || "لاعب" });
+    const ok = await connectUnoClient({ code: v, name: profile.name || "لاعب", hostIp });
     setJoining(false);
     if (!ok) {
       toast.error(
@@ -144,7 +145,8 @@ export function Join({ onBack }: JoinProps = {}) {
   };
 
   const handleScanned = (raw: string) => {
-    const c = normalizeScannedCode(raw);
+    const parsed = parseRoomPayload(raw);
+    const c = parsed.roomCode || normalizeScannedCode(raw);
     if (!c) {
       toast.error("رمز غير صالح في رمز QR");
       setScannerOpen(false);
@@ -152,7 +154,7 @@ export function Join({ onBack }: JoinProps = {}) {
     }
     setCode(c);
     setScannerOpen(false);
-    void join(c);
+    void join(c, parsed.isVerifiedIp ? parsed.ip : undefined);
   };
 
   return (

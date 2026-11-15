@@ -1,4 +1,5 @@
-import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Capacitor, PluginListenerHandle, registerPlugin } from "@capacitor/core";
+import { isValidLocalIpv4 } from "./localIp";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -19,9 +20,10 @@ export interface WssClientEvent {
 }
 
 export interface WssBridge {
-  isNative: boolean;
+  readonly isNative: boolean;
+  readonly isDestroyed: boolean;
   start(port: number): Promise<boolean>;
-  stop(): void;
+  stop(): Promise<void>;
   sendTo(clientId: string, message: string): void;
   broadcast(message: string): void;
   closeClient(clientId: string): void;
@@ -38,9 +40,9 @@ interface NativeWssPlugin {
   send(o: { clientId: string; message: string }): Promise<unknown>;
   broadcast(o: { message: string }): Promise<unknown>;
   closeClient?(o: { clientId: string }): Promise<unknown>;
-  getIpAddress?(): Promise<{ ip?: string }>;
-  getGatewayIp?(): Promise<{ ip?: string }>;
-  addListener(eventName: string, cb: (evt: any) => void): Promise<unknown> | void;
+  getIpAddress?(): Promise<{ ip?: string | null }>;
+  getGatewayIp?(): Promise<{ ip?: string | null }>;
+  addListener(eventName: string, cb: (evt: any) => void): Promise<PluginListenerHandle>;
 }
 
 const WebSocketServer = registerPlugin<NativeWssPlugin>("WebSocketServer");
@@ -58,98 +60,165 @@ export function getNativeWssPlugin(): NativeWssPlugin | null {
 export function createNativeWssBridge(): WssBridge {
   const plugin = getNativeWssPlugin();
   const handlers = new Set<(evt: WssClientEvent) => void>();
+  let listenerHandle: PluginListenerHandle | null = null;
+  let isDestroyed = false;
+  let isStarted = false;
 
   const emit = (evt: WssClientEvent) => {
-    for (const h of handlers) h(evt);
+    if (isDestroyed) return;
+    for (const h of handlers) {
+      try {
+        h(evt);
+      } catch (err) {
+        console.error("[WssBridge] handler error:", err);
+      }
+    }
   };
 
-  if (plugin) {
-    plugin.addListener("wsEvent", (evt: any) => {
-      if (!evt || typeof evt.type !== "string") return;
-      const type = evt.type as WssClientEvent["type"];
-      if (
-        type !== "CLIENT_CONNECTED" &&
-        type !== "CLIENT_DISCONNECTED" &&
-        type !== "CLIENT_MESSAGE"
-      )
-        return;
-      const out: WssClientEvent = { type, clientId: String(evt.clientId ?? "") };
-      if (type === "CLIENT_MESSAGE") {
-        const raw = evt.data;
-        if (typeof raw === "string") {
-          try {
-            out.data = JSON.parse(raw);
-          } catch {
+  const setupListener = async (): Promise<boolean> => {
+    if (!plugin) return false;
+    if (listenerHandle) return true;
+
+    try {
+      listenerHandle = await plugin.addListener("wsEvent", (evt: any) => {
+        if (isDestroyed || !evt || typeof evt.type !== "string") return;
+        const type = evt.type as WssClientEvent["type"];
+        if (
+          type !== "CLIENT_CONNECTED" &&
+          type !== "CLIENT_DISCONNECTED" &&
+          type !== "CLIENT_MESSAGE"
+        ) {
+          return;
+        }
+
+        const out: WssClientEvent = { type, clientId: String(evt.clientId ?? "") };
+        if (type === "CLIENT_MESSAGE") {
+          const raw = evt.data;
+          if (typeof raw === "string") {
+            try {
+              out.data = JSON.parse(raw);
+            } catch {
+              out.data = raw;
+            }
+          } else {
             out.data = raw;
           }
-        } else {
-          out.data = raw;
         }
-      }
-      emit(out);
-    });
-  }
+        emit(out);
+      });
+      return true;
+    } catch (err) {
+      console.error("[WssBridge] Failed to register wsEvent listener:", err);
+      listenerHandle = null;
+      return false;
+    }
+  };
 
   return {
-    isNative: !!plugin,
-    async start(port) {
+    get isNative() {
+      return !!plugin;
+    },
+    get isDestroyed() {
+      return isDestroyed;
+    },
+    async start(port: number): Promise<boolean> {
+      if (isDestroyed) {
+        console.warn("[WssBridge] Cannot start destroyed bridge");
+        return false;
+      }
       if (!plugin) return false;
+      if (isStarted) return true;
+
+      // 1. تسجيل مستمع wsEvent قبل تشغيل الخادم وانتظار اكتماله
+      const listenerReady = await setupListener();
+      if (!listenerReady) {
+        console.error("[WssBridge] Cannot start server: wsEvent listener setup failed");
+        return false;
+      }
+
+      // 2. تشغيل الخادم الأصلي
       try {
         await plugin.start({ port });
+        isStarted = true;
         return true;
       } catch (err) {
-        console.error("[WssBridge] start failed:", err);
+        console.error("[WssBridge] plugin.start failed:", err);
         return false;
       }
     },
-    stop() {
+    async stop(): Promise<void> {
+      if (isDestroyed) return;
+      isDestroyed = true;
+      isStarted = false;
+
+      // 1. إيقاف الخادم الأصلي
+      if (plugin) {
+        try {
+          await plugin.stop();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      // 2. إزالة مستمع الأحداث
+      if (listenerHandle) {
+        try {
+          await listenerHandle.remove();
+        } catch {
+          /* ignore */
+        }
+        listenerHandle = null;
+      }
+
+      handlers.clear();
+    },
+    sendTo(clientId: string, message: string) {
+      if (isDestroyed || !plugin) return;
       try {
-        void plugin?.stop();
-      } catch {
-        /* ignore */
+        void plugin.send({ clientId, message });
+      } catch (err) {
+        console.warn("[WssBridge] sendTo error:", err);
       }
     },
-    sendTo(clientId, message) {
+    broadcast(message: string) {
+      if (isDestroyed || !plugin) return;
       try {
-        void plugin?.send({ clientId, message });
-      } catch {
-        /* ignore */
+        void plugin.broadcast({ message });
+      } catch (err) {
+        console.warn("[WssBridge] broadcast error:", err);
       }
     },
-    broadcast(message) {
+    closeClient(clientId: string) {
+      if (isDestroyed || !plugin) return;
       try {
-        void plugin?.broadcast({ message });
-      } catch {
-        /* ignore */
+        void plugin.closeClient?.({ clientId });
+      } catch (err) {
+        console.warn("[WssBridge] closeClient error:", err);
       }
     },
-    closeClient(clientId) {
-      try {
-        void plugin?.closeClient?.({ clientId });
-      } catch {
-        /* ignore */
-      }
-    },
-    onEvent(handler) {
+    onEvent(handler: (evt: WssClientEvent) => void): () => void {
+      if (isDestroyed) return () => {};
       handlers.add(handler);
       return () => {
         handlers.delete(handler);
       };
     },
-    async getIpAddress() {
-      if (!plugin?.getIpAddress) return null;
+    async getIpAddress(): Promise<string | null> {
+      if (isDestroyed || !plugin?.getIpAddress) return null;
       try {
         const res = await plugin.getIpAddress();
-        return res?.ip ?? null;
+        const ip = res?.ip ?? null;
+        return isValidLocalIpv4(ip) ? ip : null;
       } catch {
         return null;
       }
     },
-    async getGatewayIp() {
-      if (!plugin?.getGatewayIp) return null;
+    async getGatewayIp(): Promise<string | null> {
+      if (isDestroyed || !plugin?.getGatewayIp) return null;
       try {
         const res = await plugin.getGatewayIp();
-        return res?.ip ?? null;
+        const ip = res?.ip ?? null;
+        return isValidLocalIpv4(ip) ? ip : null;
       } catch {
         return null;
       }
@@ -162,16 +231,25 @@ export function tryCreateNativeWssBridge(): WssBridge | null {
   return getNativeWssPlugin() ? createNativeWssBridge() : null;
 }
 
-/** العناوين المرشحة للوصول إلى المضيف عند إدخال الرمز يدوياً فقط. */
-export async function getJoinCandidateIps(): Promise<string[]> {
+/** العناوين المرشحة للوصول إلى المضيف عند إدخال الرمز يدوياً فقط (بدون QR). */
+export async function getJoinCandidateIps(targetHostIp?: string | null): Promise<string[]> {
   const candidates: string[] = [];
+
+  // إذا تم توفير IP محدد ومتحقق منه (من QR أو إدخال يدوي) نضعه أولاً
+  if (targetHostIp && (isValidLocalIpv4(targetHostIp) || targetHostIp.trim().startsWith("127.0.0.1") || targetHostIp.trim().startsWith("localhost"))) {
+    candidates.push(targetHostIp.trim());
+    return candidates;
+  }
+
   const bridge = tryCreateNativeWssBridge();
   if (bridge) {
     const gw = await bridge.getGatewayIp();
-    if (gw) candidates.push(gw);
+    if (gw && isValidLocalIpv4(gw) && !candidates.includes(gw)) {
+      candidates.push(gw);
+    }
   }
-  for (const fallback of ["192.168.43.1", "192.168.49.1", "192.168.1.1"]) {
-    if (!candidates.includes(fallback)) candidates.push(fallback);
-  }
+
+  // لا نستخدم أي عناوين افتراضية أو تخمينية إذا فشل الاكتشاف
+
   return candidates;
 }
