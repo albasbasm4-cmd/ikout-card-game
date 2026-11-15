@@ -21,7 +21,7 @@ import { useStageFit } from "@/hooks/use-stage-fit";
 import { playTapSound, playCardSound } from "@/utils/audio";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { UnoHand } from "@/components/uno/UnoHand";
-import { CARD_FLIGHT_SECONDS } from "@/utils/cardFlight";
+import { CARD_FLIGHT_SECONDS, screenDeltaToLocal } from "@/utils/cardFlight";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -78,12 +78,153 @@ export const Route = createFileRoute("/uno/play")({
   ),
 });
 
-interface FlyingUnoCard {
+export interface FlyingUnoCard {
   card: import("@/lib/uno/engine").Card;
   fromSeat: number;
   fromX: number;
   fromY: number;
   rotateStart: number;
+}
+
+export interface FlyingDrawCard {
+  id: string;
+  index: number;
+  total: number;
+  toSeat: number;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  rotateStart: number;
+  rotateEnd: number;
+  scaleStart: number;
+  scaleEnd: number;
+  delayMs: number;
+  durationMs: number;
+}
+
+export interface UnoDrawAnimationConfig {
+  /** مدة طيران كل بطاقة بالمللي ثانية */
+  cardDurationMs: number;
+  /** التأخير بين البطاقات المتتابعة (+2, +4) بالمللي ثانية */
+  cardStaggerMs: number;
+}
+
+export const DEFAULT_UNO_DRAW_CONFIG: UnoDrawAnimationConfig = {
+  cardDurationMs: 320,
+  cardStaggerMs: 130,
+};
+
+export function getUnoDrawTiming(
+  botSpeed: "SLOW" | "NORMAL" | "FAST",
+  reducedMotion: boolean,
+  config = DEFAULT_UNO_DRAW_CONFIG,
+): { durationMs: number; staggerMs: number } {
+  if (reducedMotion) {
+    return {
+      durationMs: 70,
+      staggerMs: 35,
+    };
+  }
+  const factor = botSpeed === "SLOW" ? 1.4 : botSpeed === "FAST" ? 0.65 : 1;
+  return {
+    durationMs: Math.round(config.cardDurationMs * factor),
+    staggerMs: Math.round(config.cardStaggerMs * factor),
+  };
+}
+
+export function getDrawPilePosition(
+  drawPileEl: HTMLElement | null,
+  stageEl: HTMLElement | null,
+  stageW: number,
+  stageH: number,
+  u: number,
+  tableCardW: number,
+): { fromX: number; fromY: number } {
+  if (drawPileEl && stageEl && typeof DOMMatrix !== "undefined") {
+    try {
+      const drawRect = drawPileEl.getBoundingClientRect();
+      const stageRect = stageEl.getBoundingClientRect();
+      if (stageRect.width > 0 && stageRect.height > 0) {
+        const cxDraw = drawRect.left + drawRect.width / 2;
+        const cyDraw = drawRect.top + drawRect.height / 2;
+        const cxStage = stageRect.left + stageRect.width / 2;
+        const cyStage = stageRect.top + stageRect.height / 2;
+        const local = screenDeltaToLocal(stageEl, cxDraw - cxStage, cyDraw - cyStage);
+        const xPct = 50 + (local.x / stageW) * 100;
+        const yPct = 50 + (local.y / stageH) * 100;
+        if (Number.isFinite(xPct) && Number.isFinite(yPct) && xPct > 0 && xPct < 100 && yPct > 0 && yPct < 100) {
+          return { fromX: xPct, fromY: yPct };
+        }
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  const fallbackOffsetPx = -Math.round(48 * u);
+  return {
+    fromX: 50 + (fallbackOffsetPx / stageW) * 100,
+    fromY: 50,
+  };
+}
+
+export function getHandSlotPosition(
+  slotIndex: number,
+  finalCount: number,
+  stageW: number,
+  cardW: number,
+): { toX: number; toY: number } {
+  const maxHandW = stageW * 0.6;
+  const step =
+    finalCount > 1
+      ? Math.max(1, Math.min(cardW * 0.72, (maxHandW - cardW) / (finalCount - 1)))
+      : 0;
+  const handW = cardW + step * Math.max(0, finalCount - 1);
+  const slotCenter = slotIndex * step + cardW / 2;
+  const offsetFromCenter = slotCenter - handW / 2;
+  return {
+    toX: 50 + (offsetFromCenter / stageW) * 100,
+    toY: 88,
+  };
+}
+
+export function getOpponentSeatPosition(
+  seatIndex: number,
+  playersCount: number,
+  mySeat: number,
+): { toX: number; toY: number; rotateEnd: number } {
+  const oppIndices: number[] = [];
+  for (let i = 0; i < playersCount; i++) {
+    if (i !== mySeat) oppIndices.push(i);
+  }
+  const oppIdx = oppIndices.indexOf(seatIndex);
+  if (oppIdx === -1) {
+    return { toX: 50, toY: 15, rotateEnd: 0 };
+  }
+  const n = oppIndices.length;
+  const ang = (Math.PI * (oppIdx + 0.5)) / n;
+  const toX = 50 + 36 * Math.cos(ang);
+  const toY = 54 - 40 * Math.sin(ang);
+  const rotateEnd = Math.round((((Math.PI / 2 - ang) * 180) / Math.PI) * 0.4);
+  return { toX, toY, rotateEnd };
+}
+
+export function detectDraw(
+  prevState: GameState | null,
+  nextState: GameState,
+): { seat: number; count: number; cardIds?: string[] } | null {
+  if (!prevState || nextState.round !== prevState.round) return null;
+  for (let i = 0; i < nextState.players.length; i++) {
+    const prevCount = prevState.players[i]?.hand.length ?? 0;
+    const nextCount = nextState.players[i]?.hand.length ?? 0;
+    if (nextCount > prevCount) {
+      const count = nextCount - prevCount;
+      const cardIds = nextState.players[i].hand.slice(-count).map((c) => c.id);
+      return { seat: i, count, cardIds };
+    }
+  }
+  return null;
 }
 
 const STAGE_H = 660;
@@ -118,7 +259,32 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
   const [wildFor, setWildFor] = useState<string | null>(null);
   const [flyingCard, setFlyingCard] = useState<FlyingUnoCard | null>(null);
   const [hiddenHandCardId, setHiddenHandCardId] = useState<string | null>(null);
+  const [flyingDrawCards, setFlyingDrawCards] = useState<FlyingDrawCard[]>([]);
+  const [hiddenDrawnCardIds, setHiddenDrawnCardIds] = useState<Set<string>>(new Set());
+  const [pendingOpponentDraw, setPendingOpponentDraw] = useState<Record<number, number>>({});
+  const [totalPendingDraw, setTotalPendingDraw] = useState(0);
+  const [departedCount, setDepartedCount] = useState(0);
+
+  const drawPileRef = useRef<HTMLButtonElement>(null);
+  const sRef = useRef<GameState | null>(null);
+  const lastAnimatedVersion = useRef<number>(-1);
+  const drawTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const busy = useRef(false);
+
+  const clearDrawTimeouts = useCallback(() => {
+    for (const t of drawTimeoutsRef.current) clearTimeout(t);
+    drawTimeoutsRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearDrawTimeouts();
+    };
+  }, [clearDrawTimeouts]);
+
+  useEffect(() => {
+    sRef.current = s;
+  }, [s]);
   const { settings, toggleSound, toggleOrientationPreference, setBotSpeed } = useSettings();
   const stageRef = useRef<HTMLDivElement>(null);
   const [dialogHost, setDialogHost] = useState<HTMLDivElement | null>(null);
@@ -163,37 +329,187 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
     }
   };
 
+  const commitState = useCallback(
+    (nextState: GameState, options?: { skipDrawAnimation?: boolean }) => {
+      const prevState = sRef.current;
+      sRef.current = nextState;
+
+      if (!options?.skipDrawAnimation && prevState && nextState.round === prevState.round) {
+        const drawInfo = detectDraw(prevState, nextState);
+        if (drawInfo && lastAnimatedVersion.current !== nextState.version) {
+          lastAnimatedVersion.current = nextState.version;
+          const { seat, count, cardIds } = drawInfo;
+          const u = STAGE_H / 450;
+          const pileW = Math.round(STAGE_H * 0.105);
+          const tableCardW = Math.round(STAGE_H * 0.125);
+          const meHandLen = nextState.players[ME]?.hand.length ?? 1;
+          const cardW = Math.max(
+            58,
+            Math.min(96, (stageW * 0.52) / Math.max(1, meHandLen) + 40),
+          );
+
+          const drawPilePos = getDrawPilePosition(
+            drawPileRef.current,
+            stageRef.current,
+            stageW,
+            STAGE_H,
+            u,
+            tableCardW,
+          );
+
+          const timing = getUnoDrawTiming(settings.botSpeed, !!reduced);
+          const beforeHandCount = prevState.players[seat]?.hand.length ?? 0;
+          const finalHandCount = nextState.players[seat]?.hand.length ?? (beforeHandCount + count);
+
+          const newFlyingCards: FlyingDrawCard[] = [];
+          for (let idx = 0; idx < count; idx++) {
+            const delayMs = idx * timing.staggerMs;
+            const durationMs = timing.durationMs;
+
+            let toX = 50;
+            let toY = 88;
+            let rotateEnd = 0;
+            let scaleStart = pileW / cardW;
+            let scaleEnd = 1;
+
+            if (seat === ME) {
+              const slotPos = getHandSlotPosition(beforeHandCount + idx, finalHandCount, stageW, cardW);
+              toX = slotPos.toX;
+              toY = slotPos.toY;
+              rotateEnd = Math.round(
+                ((beforeHandCount + idx - (finalHandCount - 1) / 2) / Math.max(1, finalHandCount)) * 8,
+              );
+            } else {
+              const oppPos = getOpponentSeatPosition(seat, nextState.players.length, ME);
+              toX = oppPos.toX;
+              toY = oppPos.toY;
+              rotateEnd = oppPos.rotateEnd;
+              scaleStart = 1;
+              scaleEnd = 0.72;
+            }
+
+            const rotateStart = Math.round((Math.random() - 0.5) * 6);
+
+            newFlyingCards.push({
+              id: `draw-${nextState.version}-${seat}-${idx}-${Date.now()}`,
+              index: idx,
+              total: count,
+              toSeat: seat,
+              fromX: drawPilePos.fromX,
+              fromY: drawPilePos.fromY,
+              toX,
+              toY,
+              rotateStart,
+              rotateEnd,
+              scaleStart,
+              scaleEnd,
+              delayMs,
+              durationMs,
+            });
+          }
+
+          clearDrawTimeouts();
+          busy.current = true;
+
+          if (seat === ME && cardIds) {
+            setHiddenDrawnCardIds(new Set(cardIds));
+          } else if (seat !== ME) {
+            setPendingOpponentDraw((prev) => ({ ...prev, [seat]: count }));
+          }
+
+          setTotalPendingDraw(count);
+          setDepartedCount(0);
+          setFlyingDrawCards(newFlyingCards);
+
+          newFlyingCards.forEach((dc, idx) => {
+            if (dc.delayMs > 0) {
+              drawTimeoutsRef.current.push(
+                setTimeout(() => {
+                  playCardSound();
+                  setDepartedCount((d) => Math.max(d, idx + 1));
+                }, dc.delayMs),
+              );
+            } else {
+              playCardSound();
+              setDepartedCount(1);
+            }
+
+            const landTime = dc.delayMs + dc.durationMs;
+            drawTimeoutsRef.current.push(
+              setTimeout(() => {
+                if (seat === ME && cardIds && cardIds[idx]) {
+                  setHiddenDrawnCardIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(cardIds[idx]);
+                    return next;
+                  });
+                } else if (seat !== ME) {
+                  setPendingOpponentDraw((prev) => ({
+                    ...prev,
+                    [seat]: Math.max(0, (prev[seat] ?? 0) - 1),
+                  }));
+                }
+                setFlyingDrawCards((prev) => prev.filter((c) => c.id !== dc.id));
+              }, landTime),
+            );
+          });
+
+          const maxTime = Math.max(...newFlyingCards.map((c) => c.delayMs + c.durationMs), 0);
+          drawTimeoutsRef.current.push(
+            setTimeout(() => {
+              setFlyingDrawCards([]);
+              setHiddenDrawnCardIds(new Set());
+              setPendingOpponentDraw({});
+              setTotalPendingDraw(0);
+              setDepartedCount(0);
+              busy.current = false;
+            }, maxTime + 25),
+          );
+        }
+      }
+
+      setS(nextState);
+      if (!netClient) saveGame(nextState);
+      if (netHost) unoHostPublish(nextState);
+    },
+    [ME, netClient, netHost, reduced, settings.botSpeed, stageW, clearDrawTimeouts],
+  );
+
   useEffect(() => {
     if (netClient) {
-      // المنضم: الحالة تصل من المضيف عبر الشبكة — نستأنف آخر حالة وصلت قبل الاشتراك
       setLoaded(true);
       const last = unoClientGetLastState();
-      if (last) setS(last);
-      return onUnoClientState((st) => setS(st));
+      if (last) {
+        sRef.current = last;
+        setS(last);
+      }
+      return onUnoClientState((st) => commitState(st));
     }
     if (netHost) {
-      const hostState = unoHostGetState();
-      setS(hostState ?? loadGame());
+      const hostState = unoHostGetState() ?? loadGame();
+      sRef.current = hostState;
+      setS(hostState);
       setLoaded(true);
-      return onUnoHostState((nst) => setS(nst));
+      return onUnoHostState((nst) => commitState(nst));
     }
-    setS(loadGame());
+    const init = loadGame();
+    sRef.current = init;
+    setS(init);
     setLoaded(true);
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [netClient, netHost, commitState]);
 
-  const apply = useCallback((r: Result, silent = false) => {
-    if (!r.ok) {
-      if (!silent) toast.error(r.error);
-      return false;
-    }
-    setS(r.state);
-    if (!netClient) saveGame(r.state);
-    if (netHost) unoHostPublish(r.state);
-    return true;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const apply = useCallback(
+    (r: Result, silent = false) => {
+      if (!r.ok) {
+        if (!silent) toast.error(r.error);
+        return false;
+      }
+      commitState(r.state);
+      return true;
+    },
+    [commitState],
+  );
 
   const playWithAnimation = useCallback(
     (
@@ -202,7 +518,6 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       color?: Color,
       baseState?: GameState,
     ) => {
-      // baseState يسمح للبوت بتمرير حالته المحدثة st حتى لا تضيع نداءات أونو/الكشف السابقة في نفس الدور
       const base = baseState ?? s;
       if (!base || busy.current) return;
       busy.current = true;
@@ -214,7 +529,6 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
         return;
       }
 
-      // حساب إحداثيات انطلاق الورقة من مقعد اللاعب
       let fromX = 50;
       let fromY = 88;
       let rotateStart = 0;
@@ -248,15 +562,13 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       const speedFactor = settings.botSpeed === "SLOW" ? 1.5 : settings.botSpeed === "FAST" ? 0.6 : 1;
       const flightDurationMs = reduced ? 80 : Math.round(350 * speedFactor);
       setTimeout(() => {
-        setS(r.state);
-        if (!netClient) saveGame(r.state);
-        if (netHost) unoHostPublish(r.state);
         setFlyingCard(null);
         setHiddenHandCardId(null);
         busy.current = false;
+        commitState(r.state);
       }, flightDurationMs);
     },
-    [s, reduced],
+    [s, ME, reduced, settings.botSpeed, commitState],
   );
 
   // إرسال هدف من المنضم إلى المضيف (اللعب الجماعي)
@@ -278,21 +590,21 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
         );
       }
     },
-    [ME, reduced],
+    [ME, reduced, settings.botSpeed],
   );
 
-  // Bot turns مع أنيميشن انطلاق الورقة من مقعد البوت إلى الطاولة
+  // Bot turns مع أنيميشن انطلاق الورقة من مقعد البوت إلى الطاولة وأنيميشن السحب
   useEffect(() => {
     if (netClient) return; // المنضم: حركات البوتات تجري على جهاز المضيف
-    if (!s || s.status !== "playing" || flyingCard !== null) return;
+    if (!s || s.status !== "playing" || flyingCard !== null || flyingDrawCards.length > 0) return;
     const p = s.players[s.current];
     if (!p.isBot) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
     const runBot = () => {
       if (cancelled) return;
-      // إن كانت حركة أخرى (أو حماية النقر) جارية، انتظر قليلاً بدل التخلي الصامت عن الدور
-      if (busy.current) {
+      // إن كانت حركة أخرى (أو حماية النقر/أنيميشن سحب) جارية، انتظر قليلاً بدل التخلي الصامت عن الدور
+      if (busy.current || flyingDrawCards.length > 0) {
         timer = setTimeout(runBot, 150);
         return;
       }
@@ -304,8 +616,9 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       ) {
         const caught = catchUno(st, st.current);
         if (caught.ok) {
-          st = caught.state;
           toast.warning("تم كشف نسيان أونو — سحب بطاقتين");
+          apply(caught, true);
+          return;
         }
       }
       if (st.players[st.current].hand.length === 2 && Math.random() < botAwareness(p.difficulty)) {
@@ -334,7 +647,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [s, flyingCard, apply, playWithAnimation]);
+  }, [s, flyingCard, flyingDrawCards.length, apply, playWithAnimation, settings.botSpeed]);
 
   if (!loaded) return <div className="min-h-screen" />;
   if (!s)
@@ -371,7 +684,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       toast.error("ليس دورك");
       return;
     }
-    if (busy.current || flyingCard !== null) return;
+    if (busy.current || flyingCard !== null || flyingDrawCards.length > 0) return;
     const card = me.hand.find((c) => c.id === id);
     if (!card) return;
     if (netClient) {
@@ -539,7 +852,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                     className="absolute -bottom-1 -left-1 rounded-full bg-primary px-1.5 font-bold text-primary-foreground"
                     style={{ fontSize: 17 }}
                   >
-                    {p.hand.length}
+                    {Math.max(0, p.hand.length - (pendingOpponentDraw[i] ?? 0))}
                   </span>
                   {p.hand.length === 1 && p.saidUno && (
                     <span
@@ -564,7 +877,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                     style={{ height: 40, paddingLeft: 14, paddingRight: 14, fontSize: 16 }}
                     // معطّل أثناء طيران البطاقة: الضغط في تلك النافذة يُحسب على حالة قديمة
                     // ثم تُمسحه نهاية الأنيميشن فوقه (فقدان الكشف)، فيُمنع الضغط حتى تستقر الحالة.
-                    disabled={flyingCard !== null}
+                    disabled={flyingCard !== null || flyingDrawCards.length > 0}
                     onClick={() =>
                       netClient
                         ? guard(() => clientAction({ type: "CATCH" }))
@@ -583,13 +896,14 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
             dir="ltr"
           >
             <Button
+              ref={drawPileRef}
               variant="ghost"
               onClick={() =>
                 netClient
                   ? guard(() => clientAction({ type: "DRAW" }))
                   : guard(() => apply(drawCard(s, ME, s.version)))
               }
-              disabled={!myTurn || !!s.drawnCardId}
+              disabled={!myTurn || !!s.drawnCardId || flyingCard !== null || flyingDrawCards.length > 0}
               className="uno-draw relative h-auto p-0"
               aria-label="اسحب"
             >
@@ -602,7 +916,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                 className="absolute -bottom-5 inset-x-0 text-center uno-sub"
                 style={{ fontSize: 15 }}
               >
-                {s.drawPile.length}
+                {Math.max(0, s.drawPile.length + (totalPendingDraw - departedCount))}
               </span>
             </Button>
             <div className="relative">
@@ -675,7 +989,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                 style={{ height: 46, paddingLeft: 18, paddingRight: 18, fontSize: 19 }}
                 // معطّل أثناء طيران البطاقة: نداء أونو في تلك النافذة يُحسب على حالة قديمة
                 // ويضيع عندما تستبدل نهاية الأنيميشن الحالة، فيُمنع حتى تستقر الحالة.
-                disabled={flyingCard !== null}
+                disabled={flyingCard !== null || flyingDrawCards.length > 0}
                 onClick={() =>
                   netClient
                     ? guard(() => clientAction({ type: "SAY_UNO" }))
@@ -689,6 +1003,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                   size="sm"
                   variant="outline"
                   style={{ height: 44, fontSize: 18 }}
+                  disabled={flyingCard !== null || flyingDrawCards.length > 0}
                   onClick={() =>
                     netClient
                       ? guard(() => clientAction({ type: "PASS" }))
@@ -741,11 +1056,43 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
               />
             </motion.div>
           )}
+          {/* أنيميشن سحب الأوراق من كومة السحب إلى يد اللاعب (بشري أو بوت) */}
+          {flyingDrawCards.map((dc) => (
+            <motion.div
+              key={dc.id}
+              className="pointer-events-none absolute z-50 -translate-x-1/2 -translate-y-1/2"
+              initial={{
+                left: `${dc.fromX}%`,
+                top: `${dc.fromY}%`,
+                scale: dc.scaleStart,
+                rotate: dc.rotateStart,
+                opacity: 0.95,
+              }}
+              animate={{
+                left: `${dc.toX}%`,
+                top: `${dc.toY}%`,
+                scale: dc.scaleEnd,
+                rotate: dc.rotateEnd,
+                opacity: 1,
+              }}
+              transition={{
+                delay: dc.delayMs / 1000,
+                duration: dc.durationMs / 1000,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              <UnoCard
+                faceDown
+                style={{ width: dc.toSeat === ME ? cardW : pileW }}
+                className="shadow-2xl ring-1 ring-white/20 drop-shadow-2xl"
+              />
+            </motion.div>
+          ))}
           <UnoHand
-            cards={me.hand.filter((c) => c.id !== hiddenHandCardId)}
+            cards={me.hand.filter((c) => c.id !== hiddenHandCardId && !hiddenDrawnCardIds.has(c.id))}
             width={stageW * 0.6}
             cardWidth={cardW}
-            enabled={myTurn && flyingCard === null}
+            enabled={myTurn && flyingCard === null && flyingDrawCards.length === 0}
             isLegal={(c) => canPlay(s, c)}
             onPlay={onCard}
           />
