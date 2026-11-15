@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -18,6 +19,7 @@ export const RotatePrompt: React.FC<RotatePromptProps> = ({ onDismiss }) => {
   useEffect(() => {
     const checkOrientation = () => {
       if (typeof window === "undefined") return;
+      if (typeof window !== "undefined" && Capacitor.isNativePlatform()) { setIsPortrait(false); return; }
       const portrait = window.innerHeight > window.innerWidth && window.innerWidth < 768;
       setIsPortrait(portrait);
     };

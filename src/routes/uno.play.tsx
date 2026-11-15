@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { NetworkLatencyBadge } from "@/components/NetworkLatencyBadge";
 import { ClientOnly, createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -126,7 +127,8 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
     const calc = () => {
       const vw = window.visualViewport?.width ?? window.innerWidth;
       const vh = window.visualViewport?.height ?? window.innerHeight;
-      const rotated = settings.orientationPreference === "landscape" && vh > vw;
+      const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
+      const rotated = !isNative && settings.orientationPreference === "landscape" && vh > vw;
       const ratio = rotated ? vh / vw : vw / vh;
       setStageW(Math.round(Math.min(2400, Math.max(900, STAGE_H * ratio))));
     };

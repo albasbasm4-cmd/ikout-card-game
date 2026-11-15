@@ -1,6 +1,7 @@
 import { useEffect, type RefObject } from "react";
+import { Capacitor } from "@capacitor/core";
 
-/** Read the device safe-area insets (notch / home indicator) in px. */
+/** Read the device safe-area insets (notch / home indicator / system bars) in px. */
 function readSafeInsets() {
   const probe = document.createElement("div");
   probe.style.cssText =
@@ -21,9 +22,11 @@ function readSafeInsets() {
 
 /**
  * Fit a fixed-size stage into the visible, notch-safe area of the viewport.
- * By default (orientation = 'landscape'), forces landscape: if the device is portrait,
- * it rotates 90° and scales to fit so the game is viewed horizontally.
- * If orientation = 'portrait', it leaves the view vertical without the 90° rotation.
+ * - On native Android (Capacitor APK): orientation is handled entirely by the Android
+ *   Activity (sensorLandscape), so CSS rotation (rotate 90deg) is never applied.
+ * - On Web (browsers): if viewed in portrait, it can rotate 90° and scale to fit
+ *   so the game can still be played horizontally in a mobile browser.
+ * - Respects safe area insets so system status bar and navigation bar never clip content.
  */
 export function useStageFit(
   stageRef: RefObject<HTMLDivElement | null>,
@@ -41,9 +44,13 @@ export function useStageFit(
       const ins = readSafeInsets();
       const w = Math.max(1, vw - ins.l - ins.r);
       const h = Math.max(1, vh - ins.t - ins.b);
+
+      const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
       const isDevicePortrait = h > w;
 
-      const shouldRotate = orientation === "landscape" && isDevicePortrait;
+      // On native Android, Activity owns orientation — do NOT rotate with CSS.
+      // On Web only: rotate 90deg if the browser viewport is in portrait.
+      const shouldRotate = !isNative && orientation === "landscape" && isDevicePortrait;
       const s = shouldRotate ? Math.min(h / stageW, w / stageH) : Math.min(w / stageW, h / stageH);
 
       const dx = (ins.l - ins.r) / 2;

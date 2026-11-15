@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -118,7 +119,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({
     const calc = () => {
       const vw = window.visualViewport?.width ?? window.innerWidth;
       const vh = window.visualViewport?.height ?? window.innerHeight;
-      const rotated = settings.orientationPreference === "landscape" && vh > vw;
+      const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
+      const rotated = !isNative && settings.orientationPreference === "landscape" && vh > vw;
       const ratio = rotated ? vh / vw : vw / vh;
       setStageW(Math.round(Math.min(1050, Math.max(700, STAGE_H * ratio))));
     };

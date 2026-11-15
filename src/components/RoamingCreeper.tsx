@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -48,7 +49,8 @@ export const RoamingCreeper: React.FC<RoamingCreeperProps> = () => {
     document.body.appendChild(s2);
 
     function fitAbout() {
-      const portrait = window.innerHeight > window.innerWidth;
+      const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
+      const portrait = !isNative && window.innerHeight > window.innerWidth;
       s2.style.inset = "auto";
       s2.style.left = "50%";
       s2.style.top = "50%";

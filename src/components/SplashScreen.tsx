@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -237,7 +238,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onReveal, onDone, cl
     function layout() {
       const vw = window.innerWidth,
         vh = window.innerHeight,
-        port = vh > vw,
+        isNative = typeof window !== "undefined" && Capacitor.isNativePlatform(),
+        port = !isNative && vh > vw,
         Lw = port ? vh : vw,
         Lh = port ? vw : vh;
       dpr = Math.min(window.devicePixelRatio || 1, 3);
