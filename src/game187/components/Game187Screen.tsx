@@ -20,7 +20,13 @@ import { playTapSound } from "../../utils/audio";
 import { play187Sound } from "../audio";
 import { isMessage187 } from "../messages";
 import { playChatVoice187 } from "../voices";
-import { Room187Channel, Client187Packet, Host187Packet } from "../network/network187";
+import {
+  Room187Channel,
+  Client187Packet,
+  Host187Packet,
+  getActiveRoom187Channel,
+  setActiveRoom187Channel,
+} from "../network/network187";
 
 export interface Room187SeatInfo {
   isHost: boolean;
@@ -224,14 +230,23 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
   }, [gameState.trickHistory, gameState.trump, gameState.players]);
   useEffect(() => {
     if (!heldTrick) return;
-    const t = window.setTimeout(() => setHeldTrick(null), Math.round(TRICK_HOLD_MS_187 * speedFactor()));
+    const t = window.setTimeout(
+      () => setHeldTrick(null),
+      Math.round(TRICK_HOLD_MS_187 * speedFactor()),
+    );
     return () => window.clearTimeout(t);
   }, [heldTrick]);
 
   // شبكة الغرفة المتزامنة
   useEffect(() => {
     if (mode === "room" && roomCode) {
-      const ch = new Room187Channel(roomCode, isHost ? "host" : "client");
+      let ch = getActiveRoom187Channel();
+      if (!ch || ch.getRoomCode() !== roomCode.trim().toUpperCase() || ch.isDisposed()) {
+        ch = new Room187Channel(roomCode, isHost ? "host" : "client", undefined, players);
+        setActiveRoom187Channel(ch);
+      } else {
+        ch.setInitialSeatBindings(players);
+      }
       channelRef.current = ch;
 
       ch.onMessage((msg: Client187Packet | Host187Packet) => {
@@ -269,10 +284,12 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
 
       return () => {
         ch.close();
+        if (channelRef.current === ch) channelRef.current = null;
+        if (getActiveRoom187Channel() === ch) setActiveRoom187Channel(null);
       };
     }
     return undefined;
-  }, [mode, roomCode, isHost, syncState, showMessage]);
+  }, [mode, roomCode, isHost, syncState, showMessage, players]);
 
   // أتمتة حركات البوتات (على جهاز المضيف فقط)
   useEffect(() => {
@@ -429,6 +446,12 @@ export const Game187Screen: React.FC<Game187ScreenProps> = ({
     playTapSound();
     try {
       localStorage.removeItem(STORAGE_KEY_187);
+    } catch {
+      // ignore
+    }
+    try {
+      channelRef.current?.close();
+      setActiveRoom187Channel(null);
     } catch {
       // ignore
     }

@@ -7,7 +7,13 @@ import { getPersistentPlayerToken } from "../network/playerToken";
  * المضيف: يبقي الحالة المرجعية (يتضمن هوية حامل الجوكر) ويبث نسخاً مقنّعة لكل جهاز،
  * وتُكشف هوية الجوكر وورق الجميع فقط في طور النتائج.
  */
-import { ensureHubServer, hubBroadcast, hubSendTo, registerHubChannel } from "../network/gameHub";
+import {
+  ensureHubServer,
+  hubBroadcast,
+  hubSendTo,
+  hubCloseClient,
+  registerHubChannel,
+} from "../network/gameHub";
 import { getJoinCandidateIps } from "../network/wssBridge";
 import { LocalClientSocket } from "../network/LocalClientSocket";
 import { actJoker, type JokerGame } from "./engine";
@@ -31,6 +37,7 @@ interface JokerHostState {
   clientToToken: Map<string, string>;
   tokenToClient: Map<string, string>;
   disconnectTimers: Map<string, ReturnType<typeof setTimeout>>;
+  lastSeqByClient: Map<string, number>;
   pidNames: Record<string, string>;
   state: JokerGame | null;
   seatListeners: Set<(names: Record<string, string>) => void>;
@@ -40,7 +47,12 @@ interface JokerHostState {
 function bindJokerClient(clientId: string, token: string): void {
   if (!host) return;
   const old = host.tokenToClient.get(token);
-  if (old && old !== clientId) host.clientToToken.delete(old);
+  if (old && old !== clientId) {
+    host.clientIdToPid.delete(old);
+    host.clientToToken.delete(old);
+    host.lastSeqByClient.delete(old);
+    hubCloseClient(old);
+  }
   host.tokenToClient.set(token, clientId);
   host.clientToToken.set(clientId, token);
 }
@@ -90,6 +102,7 @@ export async function startJokerHost(code: string): Promise<void> {
     clientToToken: new Map(),
     tokenToClient: new Map(),
     disconnectTimers: new Map(),
+    lastSeqByClient: new Map(),
     pidNames: {},
     state: null,
     seatListeners: new Set(),
@@ -123,14 +136,30 @@ export async function startJokerHost(code: string): Promise<void> {
       const p = (msg as Record<string, unknown>)["packet"] as
         { type?: string; payload?: Record<string, unknown> } | undefined;
       if (!p?.type) return;
-      if (p.type === "HELLO") {
-        const givenCode = String(p.payload?.["roomCode"] ?? "").trim().toUpperCase();
+      if (p.type === "HELLO" || p.type === "JOIN") {
+        const givenCode = String(p.payload?.["roomCode"] ?? "")
+          .trim()
+          .toUpperCase();
         if (host.code && givenCode !== host.code.toUpperCase()) {
           hubSendTo(clientId, { ch: "joker", packet: { type: "INVALID_ROOM" } });
           return;
         }
-        const name = String(p.payload?.["name"] ?? "لاعب");
-        const token = String(p.payload?.["token"] ?? clientId);
+        const name = String(p.payload?.["name"] ?? p.payload?.["playerName"] ?? "لاعب");
+        const token = String(
+          p.payload?.["token"] ?? (p as Record<string, unknown>)["playerToken"] ?? "",
+        ).trim();
+        const transportToken = String(
+          (p as Record<string, unknown>)["playerToken"] ?? token,
+        ).trim();
+        if (
+          !token ||
+          !transportToken ||
+          token !== transportToken ||
+          (host.state?.phase === "play" && !host.tokenToPid.has(token))
+        ) {
+          hubSendTo(clientId, { ch: "joker", packet: { type: "INVALID_TOKEN" } });
+          return;
+        }
         bindJokerClient(clientId, token);
 
         let pid = host.tokenToPid.get(token);
@@ -168,7 +197,20 @@ export async function startJokerHost(code: string): Promise<void> {
         return;
       }
       const pid = host.clientIdToPid.get(clientId);
-      if (!pid) return;
+      const token = host.clientToToken.get(clientId);
+      if (
+        !pid ||
+        !token ||
+        host.tokenToClient.get(token) !== clientId ||
+        host.tokenToPid.get(token) !== pid
+      )
+        return;
+      const seq = Number((p as Record<string, unknown>)["seq"]);
+      if (Number.isInteger(seq) && seq > 0) {
+        const previous = host.lastSeqByClient.get(clientId) ?? 0;
+        if (seq <= previous) return;
+        host.lastSeqByClient.set(clientId, seq);
+      }
       if (p.type === "INTENT") {
         const st = host.state;
         if (!st || st.phase !== "play") return;
@@ -191,6 +233,11 @@ export function stopJokerHost(): Promise<void> {
       clearTimeout(timer);
     }
     host.disconnectTimers.clear();
+    host.clientIdToPid.clear();
+    host.tokenToPid.clear();
+    host.clientToToken.clear();
+    host.tokenToClient.clear();
+    host.lastSeqByClient.clear();
   }
   unregisterChannel?.();
   unregisterChannel = null;
@@ -275,7 +322,11 @@ export function disconnectJokerClient(): void {
 }
 
 /** المنضم: يبحث عن المضيف على نقطة الاتصال وينضم بغرفة الرمز. */
-export async function connectJokerClient(opts: { code: string; name: string; hostIp?: string }): Promise<boolean> {
+export async function connectJokerClient(opts: {
+  code: string;
+  name: string;
+  hostIp?: string;
+}): Promise<boolean> {
   disconnectJokerClient();
   const candidates = await getJoinCandidateIps(opts.hostIp);
   for (const ip of candidates) {
@@ -293,7 +344,7 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
       url: ip.includes(":") ? `ws://${ip}` : `ws://${ip}:8080`,
       playerToken: token,
       playerName: opts.name || "لاعب",
-      maxReconnectAttempts: 0,
+      maxReconnectAttempts: 5,
       initialBackoffMs: 300,
       channel: "joker",
       roomCode: opts.code,
@@ -313,6 +364,7 @@ function probeJokerHost(ip: string, opts: { code: string; name: string }): Promi
         socket.send({
           v: 1,
           type: "HELLO",
+          playerToken: token,
           payload: { name: opts.name || "لاعب", roomCode: opts.code, token },
         } as never);
       } else if (st === "HOST_DROPPED" || st === "DISCONNECTED") {

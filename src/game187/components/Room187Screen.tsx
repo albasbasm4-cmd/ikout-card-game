@@ -23,6 +23,8 @@ import {
   Client187Packet,
   Host187Packet,
   findMySeat187,
+  setActiveRoom187Channel,
+  getActiveRoom187Channel,
 } from "../network/network187";
 import "../styles/room187.css";
 
@@ -93,6 +95,7 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
   onStartMatchRef.current = onStartMatch;
   /** يُرفع مع كل فتح غرفة/انضمام لإعادة إنشاء القناة حتى مع تكرار نفس الرمز. */
   const [joinNonce, setJoinNonce] = useState(0);
+  const isStartingMatchRef = useRef(false);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -153,8 +156,12 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         if (msg.type === "ROOM_SEATS_UPDATE") {
           setSeats(msg.seats);
         } else if (msg.type === "GAME_START") {
-          // كل منضم يحدد مقعده من رمز جهازه بدل مقعد ثابت لجميع المنضمين.
-          const mySeat = findMySeat187(msg.state.players, myTokenRef.current);
+          isStartingMatchRef.current = true;
+          setActiveRoom187Channel(channelRef.current);
+          const mySeat =
+            typeof msg.yourSeat === "number"
+              ? msg.yourSeat
+              : findMySeat187(msg.state.players, myTokenRef.current);
           onStartMatchRef.current(msg.state.players, "room", roomCode, {
             isHost: false,
             mySeat,
@@ -174,8 +181,11 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
     }
 
     return () => {
-      ch.close();
-      if (channelRef.current === ch) channelRef.current = null;
+      if (!isStartingMatchRef.current) {
+        ch.close();
+        if (channelRef.current === ch) channelRef.current = null;
+        if (getActiveRoom187Channel() === ch) setActiveRoom187Channel(null);
+      }
     };
   }, [roomMode, roomCode, joinNonce, targetHostIp]);
 
@@ -271,6 +281,8 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
 
     // إرسال بدء المباراة لجميع المنضمين في الغرفة
     // (كل منضم يحدد مقعده بنفسه من رمز جهازه، فلا مقعد ثابت للجميع)
+    isStartingMatchRef.current = true;
+    setActiveRoom187Channel(channelRef.current);
     channelRef.current?.send({
       type: "GAME_START",
       state: {
@@ -544,7 +556,9 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
               >
                 <span>تشخيص الاتصال</span>
               </button>
-              {diagOpen && <NetworkDiagnosticsPanel className="mx-auto mb-3 w-[360px] max-w-full" />}
+              {diagOpen && (
+                <NetworkDiagnosticsPanel className="mx-auto mb-3 w-[360px] max-w-full" />
+              )}
               <div className="r187-or">— أو —</div>
               <button
                 type="button"

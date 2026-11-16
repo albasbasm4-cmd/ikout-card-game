@@ -34,10 +34,13 @@ export class KoutWssTransport implements IHostTransport {
 
   private clientToToken = new Map<string, string>();
   private tokenToClient = new Map<string, string>();
+  private deadClients = new Set<string>();
 
   private bind(clientId: string, token: string) {
+    if (this.deadClients.has(clientId)) return;
     const old = this.tokenToClient.get(token);
     if (old && old !== clientId) {
+      this.deadClients.add(old);
       this.clientToToken.delete(old);
       // إغلاق أي اتصال قديم لنفس اللاعب لضمان وجود اتصال نشط واحد فقط
       hubCloseClient(old);
@@ -53,11 +56,13 @@ export class KoutWssTransport implements IHostTransport {
         const env = msg as unknown as KoutEnvelope;
         if (!env || typeof env !== "object" || !env.packet) return;
         const packet = env.packet as ClientPacket;
+        if (this.deadClients.has(clientId)) return;
         const token =
           typeof packet.playerToken === "string" && packet.playerToken
             ? packet.playerToken
             : clientId;
         this.bind(clientId, token);
+        if (this.deadClients.has(clientId) || this.tokenToClient.get(token) !== clientId) return;
         for (const h of Array.from(this.messageHandlers)) {
           try {
             h(token, packet);
@@ -77,6 +82,7 @@ export class KoutWssTransport implements IHostTransport {
       },
       onClientDisconnected: (clientId) => {
         const token = this.clientToToken.get(clientId);
+        this.deadClients.delete(clientId);
         this.clientToToken.delete(clientId);
         if (!token) return;
         // إذا وصل اتصال جديد لنفس التوكن قبل إغلاق القديم، لا نعتبره انقطاعاً
@@ -139,6 +145,7 @@ export class KoutWssTransport implements IHostTransport {
     this.unsubscribe = null;
     this.clientToToken.clear();
     this.tokenToClient.clear();
+    this.deadClients.clear();
     this.messageHandlers.clear();
     this.connectHandlers.clear();
     this.disconnectHandlers.clear();

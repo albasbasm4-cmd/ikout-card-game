@@ -11,6 +11,7 @@ import {
   ensureHubServer,
   hubBroadcast,
   hubSendTo,
+  hubCloseClient,
   registerHubChannel,
 } from "../../network/gameHub";
 import { getJoinCandidateIps } from "../../network/wssBridge";
@@ -71,6 +72,7 @@ interface UnoHostState {
   clientToToken: Map<string, string>;
   tokenToClient: Map<string, string>;
   disconnectTimers: Map<number, ReturnType<typeof setTimeout>>;
+  lastSeqByClient: Map<string, number>;
   seatNames: (string | null)[];
   state: GameState | null;
   seatListeners: Set<(seats: (string | null)[]) => void>;
@@ -80,7 +82,12 @@ interface UnoHostState {
 function bindUnoClient(clientId: string, token: string): void {
   if (!host) return;
   const old = host.tokenToClient.get(token);
-  if (old && old !== clientId) host.clientToToken.delete(old);
+  if (old && old !== clientId) {
+    host.clientIdToSeat.delete(old);
+    host.clientToToken.delete(old);
+    host.lastSeqByClient.delete(old);
+    hubCloseClient(old);
+  }
   host.tokenToClient.set(token, clientId);
   host.clientToToken.set(clientId, token);
 }
@@ -130,6 +137,7 @@ export async function startUnoHost(code: string): Promise<void> {
     clientToToken: new Map(),
     tokenToClient: new Map(),
     disconnectTimers: new Map(),
+    lastSeqByClient: new Map(),
     seatNames: Array.from({ length: 10 }, () => null),
     state: null,
     seatListeners: new Set(),
@@ -177,7 +185,7 @@ export async function startUnoHost(code: string): Promise<void> {
       const p = (msg as Record<string, unknown>)["packet"] as
         { type?: string; payload?: Record<string, unknown> } | undefined;
       if (!p?.type) return;
-      if (p.type === "HELLO") {
+      if (p.type === "HELLO" || p.type === "JOIN") {
         const givenCode = String(p.payload?.["roomCode"] ?? "")
           .trim()
           .toUpperCase();
@@ -185,7 +193,24 @@ export async function startUnoHost(code: string): Promise<void> {
           hubSendTo(clientId, { ch: "uno", packet: { type: "INVALID_ROOM" } });
           return;
         }
-        const token = String(p.payload?.["token"] ?? clientId);
+        const token = String(
+          p.payload?.["token"] ?? (p as Record<string, unknown>)["playerToken"] ?? "",
+        ).trim();
+        const transportToken = String(
+          (p as Record<string, unknown>)["playerToken"] ?? token,
+        ).trim();
+        if (
+          !token ||
+          !transportToken ||
+          token !== transportToken ||
+          (host.state && !host.tokenToSeat.has(token))
+        ) {
+          hubSendTo(clientId, {
+            ch: "uno",
+            packet: { type: host.state ? "GAME_ALREADY_STARTED" : "INVALID_TOKEN" },
+          });
+          return;
+        }
         bindUnoClient(clientId, token);
 
         let seat = host.tokenToSeat.get(token);
@@ -206,7 +231,7 @@ export async function startUnoHost(code: string): Promise<void> {
         }
 
         host.clientIdToSeat.set(clientId, seat);
-        host.seatNames[seat] = String(p.payload?.["name"] ?? "لاعب");
+        host.seatNames[seat] = String(p.payload?.["name"] ?? p.payload?.["playerName"] ?? "لاعب");
         hubSendTo(clientId, {
           ch: "uno",
           packet: { type: "WELCOME", payload: { seat, code: host.code } },
@@ -216,7 +241,17 @@ export async function startUnoHost(code: string): Promise<void> {
         return;
       }
       const seat = host.clientIdToSeat.get(clientId);
-      if (seat === undefined) return;
+      if (
+        seat === undefined ||
+        host.tokenToClient.get(host.clientToToken.get(clientId) ?? "") !== clientId
+      )
+        return;
+      const seq = Number((p as Record<string, unknown>)["seq"]);
+      if (Number.isInteger(seq) && seq > 0) {
+        const previous = host.lastSeqByClient.get(clientId) ?? 0;
+        if (seq <= previous) return;
+        host.lastSeqByClient.set(clientId, seq);
+      }
       if (p.type === "INTENT") {
         const st = host.state;
         if (!st) return;
@@ -377,7 +412,7 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
       url: ip.includes(":") ? `ws://${ip}` : `ws://${ip}:8080`,
       playerToken: token,
       playerName: opts.name || "لاعب",
-      maxReconnectAttempts: 0,
+      maxReconnectAttempts: 5,
       initialBackoffMs: 300,
       channel: "uno",
       roomCode: opts.code,
@@ -397,6 +432,7 @@ function probeUnoHost(ip: string, opts: { code: string; name: string }): Promise
         socket.send({
           v: 1,
           type: "HELLO",
+          playerToken: token,
           payload: { name: opts.name || "لاعب", roomCode: opts.code, token },
         } as never);
       } else if (st === "HOST_DROPPED" || st === "DISCONNECTED") {

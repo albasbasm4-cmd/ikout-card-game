@@ -6,6 +6,18 @@
 import { ITransport, Unsubscribe } from "./ITransport";
 import { ClientPacket, HostPacket, PROTOCOL_VERSION } from "./protocol";
 
+export type MultiplayerProtocolPhase =
+  | "DISCONNECTED"
+  | "CONNECTING"
+  | "CONNECTED"
+  | "JOIN_PENDING"
+  | "JOIN_ACCEPTED"
+  | "INITIAL_STATE_PENDING"
+  | "READY"
+  | "RECONNECTING"
+  | "REJECTED"
+  | "CLOSED";
+
 export type ClientSocketStatus =
   | "DISCONNECTED"
   | "CONNECTING"
@@ -100,6 +112,32 @@ export class LocalClientSocket implements ITransport {
 
   public getStatus(): ClientSocketStatus {
     return this.status;
+  }
+
+  /** Stable protocol vocabulary while retaining legacy UI status names. */
+  public getProtocolPhase(): MultiplayerProtocolPhase {
+    switch (this.status) {
+      case "CONNECTING":
+        return "CONNECTING";
+      case "CONNECTED":
+        return "CONNECTED";
+      case "JOINING":
+        return "JOIN_PENDING";
+      case "JOINED":
+        return "JOIN_ACCEPTED";
+      case "INITIAL_STATE_RECEIVED":
+        return "INITIAL_STATE_PENDING";
+      case "READY":
+        return "READY";
+      case "RECONNECTING":
+        return "RECONNECTING";
+      case "REJECTED":
+        return "REJECTED";
+      case "CLOSED":
+        return "CLOSED";
+      default:
+        return "DISCONNECTED";
+    }
   }
 
   public getAssignedSeat(): number | null {
@@ -277,55 +315,72 @@ export class LocalClientSocket implements ITransport {
     if (!packet || typeof packet !== "object" || !("type" in packet)) return;
     const pType = packet.type as string;
 
-    if (pType === "JOIN_ACCEPTED") {
+    if (pType === "JOIN_ACCEPTED" || pType === "WELCOME") {
       const payload = (packet as any).payload;
-      if (payload && typeof payload.seatIndex === "number" && payload.seatIndex >= 0) {
-        this.assignedSeat = payload.seatIndex;
-        this.setStatus("JOINED");
-        // بث رسالة قبول الانضمام أولاً حتى تسجل الواجهة رقم المقعد
-        this.emitMessage(packet);
-
-        if (this.pendingInitialStatePacket) {
-          const pending = this.pendingInitialStatePacket;
-          this.pendingInitialStatePacket = null;
-          this.processInitialStatePacket(pending);
-          // بث الحالة الابتدائية المخزنة للمستمعين بالترتيب الصحيح فور تحقق الجاهزية
-          if (this.status === "READY") {
-            this.emitMessage(pending);
-          }
-        }
-        return;
+      let seat = payload?.seatIndex ?? payload?.seat;
+      if (
+        typeof seat !== "number" &&
+        typeof payload?.pid === "string" &&
+        payload.pid.startsWith("p")
+      ) {
+        const parsed = parseInt(payload.pid.slice(1), 10);
+        if (!isNaN(parsed)) seat = parsed;
       }
+      if (typeof seat === "number" && Number.isInteger(seat) && seat >= 0) {
+        this.assignedSeat = seat;
+      }
+      this.setStatus("JOINED");
       this.emitMessage(packet);
+      if (this.pendingInitialStatePacket) {
+        const pending = this.pendingInitialStatePacket;
+        this.pendingInitialStatePacket = null;
+        this.processInitialStatePacket(pending);
+        this.emitMessage(pending);
+        if (this.initialState !== null) this.setStatus("READY");
+      }
       return;
     }
 
-    if (pType === "SEAT_UPDATE" || pType === "WELCOME" || pType === "ROOM_SEATS_UPDATE") {
+    if (pType === "SEAT_UPDATE" || pType === "ROOM_SEATS_UPDATE") {
       const payload = (packet as any).payload;
       const seat = typeof payload?.seatIndex === "number" ? payload.seatIndex : payload?.seat;
       if (typeof seat === "number" && seat >= 0 && this.assignedSeat === null) {
         this.assignedSeat = seat;
       }
-      // ملاحظة: SEAT_UPDATE وحدها لا تعتبر قبولاً نهائياً دون JOIN_ACCEPTED
       this.emitMessage(packet);
       return;
     }
 
-    if (pType === "CLIENT_STATE_UPDATE" || pType === "STATE") {
+    if (pType === "GAME_START") {
+      const payload = (packet as any).payload;
+      const seat =
+        (packet as any).yourSeat ?? payload?.yourSeat ?? payload?.seatIndex ?? payload?.seat;
+      if (typeof seat === "number" && Number.isInteger(seat) && seat >= 0) {
+        this.assignedSeat = seat;
+      }
+      this.setStatus("JOINED");
+      this.processInitialStatePacket(packet);
+      this.emitMessage(packet);
+      if (this.initialState !== null) this.setStatus("READY");
+      return;
+    }
+
+    if (pType === "CLIENT_STATE_UPDATE" || pType === "STATE" || pType === "STATE_UPDATE") {
       if (
         this.status !== "JOINED" &&
         this.status !== "INITIAL_STATE_RECEIVED" &&
         this.status !== "READY"
       ) {
-        // إذا وصلت الحالة قبل تأكيد القبول JOIN_ACCEPTED، يتم حفظها مؤقتاً
-        // ولا يتم بثها للمستمعين قبل تأكيد القبول وجاهزية المقبس
+        // Initial game state may arrive before the host's acceptance packet. Keep only the
+        // newest snapshot and deliver it after acceptance, never announcing READY early.
         this.pendingInitialStatePacket = packet;
         return;
-      } else {
-        this.processInitialStatePacket(packet);
-        this.emitMessage(packet);
-        return;
       }
+      this.processInitialStatePacket(packet);
+      // Consumers receive and synchronously handle the authoritative state before READY.
+      this.emitMessage(packet);
+      if (this.initialState !== null) this.setStatus("READY");
+      return;
     }
 
     if (pType === "REJECTED") {
@@ -374,13 +429,13 @@ export class LocalClientSocket implements ITransport {
       }
     }
 
-    const stateObj = payload?.state || (packet as any).state;
+    const stateObj =
+      payload?.state || payload?.game || (packet as any).state || (packet as any).game;
     // التحقق الصارم من بنية الحالة وصحتها
     if (stateObj && typeof stateObj === "object") {
       this.initialState = stateObj;
       if (this.status !== "READY") {
         this.setStatus("INITIAL_STATE_RECEIVED");
-        this.setStatus("READY");
       }
     }
   }
@@ -430,16 +485,19 @@ export class LocalClientSocket implements ITransport {
   }
 
   private sendJoin(): void {
+    const isUnoOrJoker = this.channel === "uno" || this.channel === "joker";
     this.send({
       v: PROTOCOL_VERSION,
       seq: ++this.seqCounter,
       playerToken: this.playerToken,
-      type: "JOIN",
+      type: (isUnoOrJoker ? "HELLO" : "JOIN") as any,
       payload: {
+        name: this.playerName,
         playerName: this.playerName,
         preferredSeat: this.preferredSeat,
         roomCode: this.roomCode,
-      },
+        token: this.playerToken,
+      } as any,
     });
   }
 
@@ -457,6 +515,12 @@ export class LocalClientSocket implements ITransport {
 
   // --- ITransport implementation ---
   public send(packet: ClientPacket): void {
+    if (packet && typeof packet === "object") {
+      if (typeof (packet as any).seq !== "number") (packet as any).seq = ++this.seqCounter;
+      if (typeof (packet as any).playerToken !== "string")
+        (packet as any).playerToken = this.playerToken;
+      if (typeof (packet as any).v !== "number") (packet as any).v = PROTOCOL_VERSION;
+    }
     const pType = packet.type as string;
     // حماية إرسال الحركات: يجب ألا يستطيع العميل إرسال حركات اللعبة قبل READY
     if (!LocalClientSocket.CONTROL_PACKET_TYPES.has(pType)) {
