@@ -195,8 +195,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
 
     const unsubMsg = activeSocket.onMessage((packet) => {
       switch (packet.type) {
-        case "JOIN_ACCEPTED":
-        case "SEAT_UPDATE": {
+        case "JOIN_ACCEPTED": {
           const pl = packet.payload;
           if (Array.isArray(pl.players)) {
             setLobbyPlayers(pl.players as PlayerSlot[]);
@@ -209,33 +208,43 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
               playerToken: activeSocket.getPlayerToken(),
               roomCode: joinCode,
             });
-            // قبول رسمي وتحديد المقعد من المضيف
-            setConnecting(false);
+            // المرحلة 2: تم قبول الانضمام وتعيين المقعد بنجاح، بانتظار استلام الحالة الابتدائية والوصول إلى READY
             setConnectError(null);
           }
+          break;
+        }
+        case "SEAT_UPDATE": {
+          const pl = packet.payload;
+          if (Array.isArray(pl.players)) {
+            setLobbyPlayers(pl.players as PlayerSlot[]);
+          }
+          // لا نعتبر تحديث المقاعد وحده إعلاناً لاكتمال الانضمام أو الجاهزية
           break;
         }
         case "CLIENT_STATE_UPDATE": {
           const st = packet.payload.state;
           if (!st) break;
-          koutClientSetInitialState(st);
-          if (typeof packet.payload.seatIndex === "number" && packet.payload.seatIndex >= 0) {
-            setMySeat(packet.payload.seatIndex);
-            setActiveKoutClient({
-              socket: activeSocket,
-              mySeat: packet.payload.seatIndex,
-              playerToken: activeSocket.getPlayerToken(),
-              roomCode: joinCode,
-            });
-          }
-          // تم استلام الحالة الابتدائية الموثوقة بنجاح
-          setJoined(true);
-          setConnecting(false);
-          setShowScanner(false);
-          setConnectError(null);
-          if (st.phase && st.phase !== "LOBBY" && !lobbyStartedRef.current) {
-            lobbyStartedRef.current = true;
-            onStartGame();
+          // التحقق الصريح: لا نعلن اكتمال الانضمام أو نبدأ اللعب إلا بعد تحقق جاهزية المقبس الفعلية socket.isReady()
+          if (activeSocket.isReady()) {
+            koutClientSetInitialState(st);
+            if (typeof packet.payload.seatIndex === "number" && packet.payload.seatIndex >= 0) {
+              setMySeat(packet.payload.seatIndex);
+              setActiveKoutClient({
+                socket: activeSocket,
+                mySeat: packet.payload.seatIndex,
+                playerToken: activeSocket.getPlayerToken(),
+                roomCode: joinCode,
+              });
+            }
+            // المرحلة 3: تم التحقق من الحالة الابتدائية والوصول المؤكد إلى READY
+            setJoined(true);
+            setConnecting(false);
+            setShowScanner(false);
+            setConnectError(null);
+            if (st.phase && st.phase !== "LOBBY" && !lobbyStartedRef.current) {
+              lobbyStartedRef.current = true;
+              onStartGame();
+            }
           }
           break;
         }
@@ -265,9 +274,13 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     });
 
     const unsubStatus = activeSocket.onStatusChange((st: ClientSocketStatus) => {
-      if (st === "INITIAL_STATE_RECEIVED" || st === "READY") {
+      if (st === "READY" && activeSocket.isReady()) {
+        // المرحلة 3: الجاهزية الفعلية المؤكدة فقط هي التي تعلن اكتمال الانضمام
         setJoined(true);
         setConnecting(false);
+        setConnectError(null);
+      } else if (st === "JOINED") {
+        // المرحلة 2: تم قبول الانضمام وتعيين المقعد بانتظار وصول الحالة
         setConnectError(null);
       } else if (st === "HOST_DROPPED") {
         setJoined(false);
@@ -277,7 +290,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
       } else if (st === "REJECTED") {
         setJoined(false);
         setConnecting(false);
-        setConnectError("تم رفض الانضمام (الغرفة ممتلئة أو الرمز غير صحيح).");
+        setConnectError("تم رفض الانضمام (الغرفة ممتلئة أو الرمز غير صحيح أو بدأت المباراة).");
         toast("تم رفض الانضمام");
       }
     });
@@ -422,7 +435,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
               }
             }, ROOM_JOIN_READY_TIMEOUT_MS);
           }
-        } else if (st === "READY" || st === "INITIAL_STATE_RECEIVED") {
+        } else if (st === "READY" && socket.isReady()) {
           // اكتمال الانضمام بنجاح: تنظيف جميع المؤقتات
           clearAllTimers();
           setConnecting(false);
@@ -733,7 +746,9 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
                 </button>
                 {connecting && (
                   <div className="rm-lbl" style={{ marginTop: 12, color: "#ffd27a" }}>
-                    جارِ الاتصال بمضيف الغرفة…
+                    {activeSocket?.getStatus() === "JOINED"
+                      ? "تم قبول الانضمام، جارِ استلام حالة الغرفة وتأكيد الجاهزية…"
+                      : "جارِ الاتصال بمضيف الغرفة…"}
                   </div>
                 )}
                 {connectError && !connecting && (
@@ -965,7 +980,10 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
           onCode={(raw) => {
             const parsed = parseRoomPayload(raw);
             if (parsed.roomCode) {
-              connectDirect(parsed.roomCode, parsed.isVerifiedIp ? `ws://${parsed.ip}:${parsed.port}` : undefined);
+              connectDirect(
+                parsed.roomCode,
+                parsed.isVerifiedIp ? `ws://${parsed.ip}:${parsed.port}` : undefined,
+              );
             } else if (parsed.isVerifiedIp) {
               connectDirect(joinCode || "", `ws://${parsed.ip}:${parsed.port}`);
             } else {

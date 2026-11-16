@@ -268,6 +268,20 @@ export class HostSession {
     const numSeats = RULES[this.engine.state.variant].seats;
     const preferred = packet.payload.preferredSeat;
 
+    // 1. التحقق الصارم من وجود وصحة التوكن
+    if (!playerToken || typeof playerToken !== "string" || playerToken.trim() === "") {
+      this.sendPacket(playerToken, {
+        type: "REJECTED",
+        payload: {
+          reason: "INVALID_TOKEN",
+          message: "Invalid player token",
+        },
+      });
+      this.sendError(playerToken, "INVALID_TOKEN", "Invalid player token", packet.seq);
+      return;
+    }
+
+    // 2. التحقق من تطابق رمز الغرفة عند تحديده
     if (this.roomCode) {
       const given = (packet.payload as { roomCode?: string }).roomCode?.trim().toUpperCase();
       if (given !== this.roomCode) {
@@ -283,21 +297,25 @@ export class HostSession {
       }
     }
 
-    // منع انضمام لاعب جديد إذا كانت المباراة قد بدأت بالفعل (يشمل الجولة الأولى وما بعدها)، مع السماح بإعادة اتصال اللاعب السابق
-    const isReservedRemoteSeat =
+    // 3. التحقق الحصري من عودة اللاعب عبر تطابق التوكن الأصلي مع tokenToSeat
+    const isReturningPlayer = this.tokenToSeat.has(playerToken);
+
+    // مقعد بشري بعيد مهيأ مسبقاً في المحرك ولم يتم ربطه بأي توكن بعد (في حالات حقن المحرك قبل بدء اللعب بالجلسة)
+    const isInitialUnboundRemoteSeat =
+      !this.hasGameStarted &&
       typeof preferred === "number" &&
       preferred >= 0 &&
       preferred < numSeats &&
       !this.seatToToken.has(preferred) &&
       this.engine.state.players?.[preferred]?.kind === "HUMAN_REMOTE";
 
-    const isReturningPlayer = this.tokenToSeat.has(playerToken) || isReservedRemoteSeat;
     const isGameUnderway =
       this.hasGameStarted ||
-      this.engine.state.phase !== "LOBBY" ||
-      this.engine.state.roundNo > 0;
+      (this.engine.state.phase !== "LOBBY" && !isInitialUnboundRemoteSeat) ||
+      (this.engine.state.roundNo > 0 && !isInitialUnboundRemoteSeat);
 
-    if (!isReturningPlayer && isGameUnderway) {
+    // حظر تام لانضمام أي لاعب جديد بعد بدء المباراة (يشمل الجولة الأولى وما بعدها والفترات بين الجولات)
+    if (!isReturningPlayer && !isInitialUnboundRemoteSeat && isGameUnderway) {
       this.sendPacket(playerToken, {
         type: "REJECTED",
         payload: {
@@ -309,18 +327,41 @@ export class HostSession {
       return;
     }
 
-    // Check if token already assigned
+    // منع أي لاعب جديد من الاستيلاء على مقعد محجوز للاعب منقطع باستخدام preferredSeat
+    if (
+      preferred !== undefined &&
+      this.seatToToken.has(preferred) &&
+      this.seatToToken.get(preferred) !== playerToken
+    ) {
+      const rejectReason = isGameUnderway ? "GAME_ALREADY_STARTED" : "SEAT_RESERVED";
+      this.sendPacket(playerToken, {
+        type: "REJECTED",
+        payload: {
+          reason: rejectReason,
+          message: "Requested seat is reserved for another player",
+        },
+      });
+      this.sendError(
+        playerToken,
+        rejectReason,
+        "Requested seat is reserved for another player",
+        packet.seq,
+      );
+      return;
+    }
+
+    // 4. تعيين المقعد: اللاعب العائد يستعيد مقعده السابق بالضبط دون إنشاء مقعد جديد
     let assignedSeat = this.tokenToSeat.get(playerToken);
 
     if (assignedSeat !== undefined) {
-      // إعادة اتصال: إلغاء مؤقت تولي الروبوت للمقعد
+      // إعادة اتصال للاعب الأصلي: إلغاء مؤقت تولي الروبوت للمقعد فوراً
       const timer = this.disconnectTimers.get(assignedSeat);
       if (timer) {
         clearTimeout(timer);
         this.disconnectTimers.delete(assignedSeat);
       }
     } else {
-      // Find open seat (مقعد المضيف محجوز دائماً)
+      // لاعب جديد في مرحلة LOBBY: البحث عن مقعد شاغر غير محجوز لأي توكن
       if (
         preferred !== undefined &&
         preferred >= 0 &&
@@ -579,12 +620,7 @@ export class HostSession {
     }
 
     if (this.engine.state.matchStopped) {
-      this.sendError(
-        playerToken,
-        "MATCH_STOPPED",
-        "Match has concluded",
-        packet.seq,
-      );
+      this.sendError(playerToken, "MATCH_STOPPED", "Match has concluded", packet.seq);
       return;
     }
 
@@ -596,40 +632,23 @@ export class HostSession {
       accusedSeat >= numSeats ||
       accusedSeat === senderSeat
     ) {
-      this.sendError(
-        playerToken,
-        "INVALID_ACCUSED",
-        "Invalid accused seat",
-        packet.seq,
-      );
+      this.sendError(playerToken, "INVALID_ACCUSED", "Invalid accused seat", packet.seq);
       return;
     }
 
     const players = this.engine.state.players || [];
-    const senderPlayer =
-      players.find((p) => p.seatIndex === senderSeat) ?? players[senderSeat];
-    const accusedPlayer =
-      players.find((p) => p.seatIndex === accusedSeat) ?? players[accusedSeat];
+    const senderPlayer = players.find((p) => p.seatIndex === senderSeat) ?? players[senderSeat];
+    const accusedPlayer = players.find((p) => p.seatIndex === accusedSeat) ?? players[accusedSeat];
 
     // تحقق من أن المُبلِّغ لاعب بشري
     if (!senderPlayer || senderPlayer.kind === "AI_BOT") {
-      this.sendError(
-        playerToken,
-        "REPORT_REJECTED",
-        "Reporter must be a human player",
-        packet.seq,
-      );
+      this.sendError(playerToken, "REPORT_REJECTED", "Reporter must be a human player", packet.seq);
       return;
     }
 
     // تحقق من أن المتهم لاعب بشري وليس بوتاً
     if (!accusedPlayer || accusedPlayer.kind === "AI_BOT") {
-      this.sendError(
-        playerToken,
-        "REPORT_REJECTED",
-        "Cannot report an AI bot",
-        packet.seq,
-      );
+      this.sendError(playerToken, "REPORT_REJECTED", "Cannot report an AI bot", packet.seq);
       return;
     }
 
@@ -672,12 +691,7 @@ export class HostSession {
 
     // بلاغ مرفوض: لا يستهلك الحد ولا يبدأ التبريد
     if (!result) {
-      this.sendError(
-        playerToken,
-        "REPORT_REJECTED",
-        "البلاغ غير صالح",
-        packet.seq,
-      );
+      this.sendError(playerToken, "REPORT_REJECTED", "البلاغ غير صالح", packet.seq);
       return;
     }
 

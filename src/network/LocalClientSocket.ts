@@ -288,7 +288,11 @@ export class LocalClientSocket implements ITransport {
       }
       // ملاحظة: SEAT_UPDATE وحدها لا تعتبر قبولاً نهائياً دون JOIN_ACCEPTED
     } else if (pType === "CLIENT_STATE_UPDATE" || pType === "STATE") {
-      if (this.status !== "JOINED" && this.status !== "INITIAL_STATE_RECEIVED" && this.status !== "READY") {
+      if (
+        this.status !== "JOINED" &&
+        this.status !== "INITIAL_STATE_RECEIVED" &&
+        this.status !== "READY"
+      ) {
         // إذا وصلت الحالة قبل تأكيد القبول JOIN_ACCEPTED، يتم حفظها مؤقتاً
         this.pendingInitialStatePacket = packet;
       } else {
@@ -323,11 +327,17 @@ export class LocalClientSocket implements ITransport {
     if (payload && typeof payload.seatIndex === "number" && payload.seatIndex >= 0) {
       if (this.assignedSeat === null) {
         this.assignedSeat = payload.seatIndex;
+      } else if (payload.seatIndex !== this.assignedSeat) {
+        // عدم تطابق المقعد المخصص في الحالة مع المقعد المعتمد المقبول رسمياً
+        console.warn(
+          `[LocalClientSocket] Seat mismatch in initial state: expected ${this.assignedSeat}, got ${payload.seatIndex}`,
+        );
+        return;
       }
     }
 
     const stateObj = payload?.state || (packet as any).state;
-    // التحقق من بنية الحالة وصحتها
+    // التحقق الصارم من بنية الحالة وصحتها
     if (stateObj && typeof stateObj === "object") {
       if (this.status !== "READY") {
         this.setStatus("INITIAL_STATE_RECEIVED");

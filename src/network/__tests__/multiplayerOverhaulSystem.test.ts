@@ -360,9 +360,24 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
 
     it("rejects joins when room capacity is exceeded", async () => {
       // BO4 has 4 seats (0 is host, 1, 2, 3 for clients)
-      const c1 = new LocalClientSocket({ url: `ws://127.0.0.1:${server.port}`, playerToken: "p1", playerName: "1", roomCode });
-      const c2 = new LocalClientSocket({ url: `ws://127.0.0.1:${server.port}`, playerToken: "p2", playerName: "2", roomCode });
-      const c3 = new LocalClientSocket({ url: `ws://127.0.0.1:${server.port}`, playerToken: "p3", playerName: "3", roomCode });
+      const c1 = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "p1",
+        playerName: "1",
+        roomCode,
+      });
+      const c2 = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "p2",
+        playerName: "2",
+        roomCode,
+      });
+      const c3 = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "p3",
+        playerName: "3",
+        roomCode,
+      });
 
       await Promise.all([
         new Promise<void>((r) => c1.onStatusChange((s) => s === "READY" && r())),
@@ -371,7 +386,12 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
       ]);
 
       // 4th client should be rejected because room is full
-      const c4 = new LocalClientSocket({ url: `ws://127.0.0.1:${server.port}`, playerToken: "p4_overflow", playerName: "4", roomCode });
+      const c4 = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "p4_overflow",
+        playerName: "4",
+        roomCode,
+      });
       let c4Rejected = false;
       await new Promise<void>((resolve) => {
         c4.onStatusChange((s) => {
@@ -422,7 +442,7 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
       c1Reconnected.disconnect();
     });
 
-    it("prevents an unknown token from claiming a seat reserved by another token", async () => {
+    it("rejects an unknown token attempting to claim a seat reserved by another token with SEAT_RESERVED", async () => {
       const c1 = new LocalClientSocket({
         url: `ws://127.0.0.1:${server.port}`,
         playerToken: "legit_token",
@@ -440,13 +460,157 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
         preferredSeat: 1,
         roomCode,
       });
-      await new Promise<void>((r) => attacker.onStatusChange((s) => s === "READY" && r()));
-      // Attacker must not get seat 1
-      expect(attacker.getAssignedSeat()).not.toBe(1);
-      expect(attacker.getAssignedSeat()).toBe(2);
+
+      let rejectedReason: string | null = null;
+      attacker.onMessage((pkt) => {
+        if (pkt.type === "REJECTED") {
+          rejectedReason = (pkt.payload as any)?.reason;
+        }
+      });
+
+      await new Promise<void>((r) => attacker.onStatusChange((s) => s === "REJECTED" && r()));
+      expect(rejectedReason).toBe("SEAT_RESERVED");
+      expect(attacker.isReady()).toBe(false);
 
       c1.disconnect();
       attacker.disconnect();
+    });
+
+    it("disconnected player during match: new player trying to claim their seat with different token is rejected with GAME_ALREADY_STARTED", async () => {
+      const c1 = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "player_during_match",
+        playerName: "سعود",
+        roomCode,
+      });
+      await new Promise<void>((r) => c1.onStatusChange((s) => s === "READY" && r()));
+      expect(c1.getAssignedSeat()).toBe(1);
+
+      // Start match
+      session.startRound();
+      expect(session.getEngine().state.roundNo).toBe(1);
+
+      // c1 disconnects
+      c1.disconnect();
+      await new Promise((r) => setTimeout(r, 60));
+
+      // Attacker tries to claim seat 1 with different token
+      const attacker = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "intruder_token",
+        playerName: "متسلل",
+        preferredSeat: 1,
+        roomCode,
+      });
+      let rejectedReason = "";
+      attacker.onMessage((pkt) => {
+        if (pkt.type === "REJECTED") {
+          rejectedReason = (pkt.payload as any)?.reason;
+        }
+      });
+      await new Promise<void>((r) => attacker.onStatusChange((s) => s === "REJECTED" && r()));
+      expect(rejectedReason).toBe("GAME_ALREADY_STARTED");
+      expect(attacker.isReady()).toBe(false);
+
+      // Original player reconnects with same token -> succeeds and reclaims seat 1
+      const returningPlayer = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "player_during_match",
+        playerName: "سعود",
+        roomCode,
+      });
+      await new Promise<void>((r) => returningPlayer.onStatusChange((s) => s === "READY" && r()));
+      expect(returningPlayer.getAssignedSeat()).toBe(1);
+
+      attacker.disconnect();
+      returningPlayer.disconnect();
+    });
+
+    it("rejects new player join between two rounds if match has started", async () => {
+      // Start match
+      session.startRound();
+      expect(session.getEngine().state.roundNo).toBe(1);
+
+      // Attempt to join between rounds
+      const lateJoiner = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "late_joiner_between_rounds",
+        playerName: "متأخر",
+        roomCode,
+      });
+
+      let rejectedReason = "";
+      lateJoiner.onMessage((pkt) => {
+        if (pkt.type === "REJECTED") {
+          rejectedReason = (pkt.payload as any)?.reason;
+        }
+      });
+
+      await new Promise<void>((r) => lateJoiner.onStatusChange((s) => s === "REJECTED" && r()));
+      expect(rejectedReason).toBe("GAME_ALREADY_STARTED");
+      expect(lateJoiner.isReady()).toBe(false);
+
+      lateJoiner.disconnect();
+    });
+
+    it("concurrent reconnection with same token replaces old connection and never creates duplicate seats", async () => {
+      const c1 = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "same_token_concurrent",
+        playerName: "لاعب1",
+        roomCode,
+      });
+      await new Promise<void>((r) => c1.onStatusChange((s) => s === "READY" && r()));
+      const seat = c1.getAssignedSeat();
+      expect(seat).toBe(1);
+
+      // Connect second client with same token without explicitly closing first
+      const c2 = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "same_token_concurrent",
+        playerName: "لاعب1_مجددا",
+        roomCode,
+      });
+      await new Promise<void>((r) => c2.onStatusChange((s) => s === "READY" && r()));
+
+      // Both must refer to same seat 1, not duplicate seats
+      expect(c2.getAssignedSeat()).toBe(seat);
+
+      c1.disconnect();
+      c2.disconnect();
+    });
+
+    it("rejecting a new player does not affect existing connected players or match state", async () => {
+      const legitPlayer = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "legit_stable_player",
+        playerName: "فارس",
+        roomCode,
+      });
+      await new Promise<void>((r) => legitPlayer.onStatusChange((s) => s === "READY" && r()));
+      expect(legitPlayer.isReady()).toBe(true);
+
+      // Start match
+      session.startRound();
+      const initialPhase = session.getEngine().state.phase;
+      const initialRound = session.getEngine().state.roundNo;
+
+      // An unauthorized intruder tries to join
+      const intruder = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "intruder_no_impact",
+        playerName: "مخرب",
+        roomCode,
+      });
+      await new Promise<void>((r) => intruder.onStatusChange((s) => s === "REJECTED" && r()));
+
+      // Verified: legitPlayer is still READY and connected, and match state is unaltered
+      expect(legitPlayer.isReady()).toBe(true);
+      expect(session.getEngine().state.phase).toBe(initialPhase);
+      expect(session.getEngine().state.roundNo).toBe(initialRound);
+
+      legitPlayer.disconnect();
+      intruder.disconnect();
     });
   });
 
@@ -501,7 +665,7 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
 
     it("187: maskGameState187 masks other seats hands to dummy cards", () => {
       const engine = new GameEngine187({
-                players: [
+        players: [
           { seatIndex: 0, name: "P0", kind: "HUMAN_LOCAL" },
           { seatIndex: 1, name: "P1", kind: "REMOTE" },
           { seatIndex: 2, name: "P2", kind: "REMOTE" },

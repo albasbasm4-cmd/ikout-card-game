@@ -59,7 +59,13 @@ export interface CheatReportPayload {
 }
 
 export type ClientPacketType =
-  "JOIN" | "BID_REQUEST" | "TRUMP_REQUEST" | "PLAY_CARD_REQUEST" | "CHEAT_REPORT" | "PING" | "CONTINUE_DECISION";
+  | "JOIN"
+  | "BID_REQUEST"
+  | "TRUMP_REQUEST"
+  | "PLAY_CARD_REQUEST"
+  | "CHEAT_REPORT"
+  | "PING"
+  | "CONTINUE_DECISION";
 
 export interface BaseClientPacket<TType extends ClientPacketType, TPayload> {
   v: number;
@@ -75,7 +81,10 @@ export type TrumpRequestPacket = BaseClientPacket<"TRUMP_REQUEST", TrumpRequestP
 export type PlayCardRequestPacket = BaseClientPacket<"PLAY_CARD_REQUEST", PlayCardRequestPayload>;
 export type CheatReportPacket = BaseClientPacket<"CHEAT_REPORT", CheatReportPayload>;
 export type PingPacket = BaseClientPacket<"PING", PingPayload>;
-export type ContinueDecisionPacket = BaseClientPacket<"CONTINUE_DECISION", { continuePlay: boolean }>;
+export type ContinueDecisionPacket = BaseClientPacket<
+  "CONTINUE_DECISION",
+  { continuePlay: boolean }
+>;
 
 export type ClientPacket =
   | JoinPacket
@@ -123,7 +132,6 @@ export interface CheatVerdictPayload {
   winningTeam?: 0 | 1;
 }
 
-
 export interface JoinAcceptedPayload {
   roomCode: string;
   seatIndex: number;
@@ -133,7 +141,13 @@ export interface JoinAcceptedPayload {
 }
 
 export interface RejectedPayload {
-  reason: "INVALID_ROOM" | "ROOM_FULL" | "GAME_ALREADY_STARTED" | "INVALID_TOKEN" | "OTHER";
+  reason:
+    | "INVALID_ROOM"
+    | "ROOM_FULL"
+    | "GAME_ALREADY_STARTED"
+    | "INVALID_TOKEN"
+    | "SEAT_RESERVED"
+    | "OTHER";
   message: string;
 }
 
@@ -141,7 +155,13 @@ export type JoinAcceptedPacket = BaseHostPacket<"JOIN_ACCEPTED", JoinAcceptedPay
 export type RejectedPacket = BaseHostPacket<"REJECTED", RejectedPayload>;
 
 export type HostPacketType =
-  "JOIN_ACCEPTED" | "CLIENT_STATE_UPDATE" | "SEAT_UPDATE" | "ERROR" | "PONG" | "CHEAT_VERDICT" | "REJECTED";
+  | "JOIN_ACCEPTED"
+  | "CLIENT_STATE_UPDATE"
+  | "SEAT_UPDATE"
+  | "ERROR"
+  | "PONG"
+  | "CHEAT_VERDICT"
+  | "REJECTED";
 
 export interface BaseHostPacket<TType extends HostPacketType, TPayload> {
   v: number;
