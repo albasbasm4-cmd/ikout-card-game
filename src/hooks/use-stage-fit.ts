@@ -2,23 +2,29 @@ import { useEffect, type RefObject } from "react";
 import { Capacitor } from "@capacitor/core";
 import { isKeyboardActive } from "@/utils/keyboardOverlay";
 
-/** Read the device safe-area insets (notch / home indicator / system bars) in px. */
+let safeProbeEl: HTMLDivElement | null = null;
+
+/** Read the device safe-area insets (notch / home indicator / system bars) in px without DOM thrashing. */
 function readSafeInsets() {
-  const probe = document.createElement("div");
-  probe.style.cssText =
-    "position:fixed;visibility:hidden;pointer-events:none;" +
-    "padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);" +
-    "padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);";
-  document.body.appendChild(probe);
-  const cs = getComputedStyle(probe);
-  const r = {
+  if (typeof document === "undefined") {
+    return { t: 0, r: 0, b: 0, l: 0 };
+  }
+  if (!safeProbeEl || !safeProbeEl.isConnected) {
+    safeProbeEl = document.createElement("div");
+    safeProbeEl.id = "ikout-safe-area-probe";
+    safeProbeEl.style.cssText =
+      "position:fixed;visibility:hidden;pointer-events:none;z-index:-9999;" +
+      "padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);" +
+      "padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);";
+    document.body.appendChild(safeProbeEl);
+  }
+  const cs = getComputedStyle(safeProbeEl);
+  return {
     t: parseFloat(cs.paddingTop) || 0,
     r: parseFloat(cs.paddingRight) || 0,
     b: parseFloat(cs.paddingBottom) || 0,
     l: parseFloat(cs.paddingLeft) || 0,
   };
-  probe.remove();
-  return r;
 }
 
 /**
@@ -29,7 +35,8 @@ function readSafeInsets() {
  *   are preserved without shrinking or compressing the game layout.
  * - On Web (browsers): if viewed in portrait, it can rotate 90° and scale to fit
  *   so the game can still be played horizontally in a mobile browser.
- * - Respects safe area insets so system status bar and navigation bar never clip content.
+ * - Respects safe area insets so system status bar, navigation bar, and display cutout/notch
+ *   never clip content, while maximizing horizontal screen utilization in fullscreen.
  */
 export function useStageFit(
   stageRef: RefObject<HTMLDivElement | null>,
@@ -38,6 +45,8 @@ export function useStageFit(
   orientation: "landscape" | "portrait" = "landscape",
 ) {
   useEffect(() => {
+    let animFrameId = 0;
+
     const fit = () => {
       const el = stageRef.current;
       if (!el) return;
@@ -48,12 +57,17 @@ export function useStageFit(
       // On native platform with adjustNothing, or when keyboard is active,
       // preserve stable window dimensions so the stage does not compress or shrink.
       const vv = window.visualViewport;
-      const vw = isNative || kbActive || !vv ? window.innerWidth : vv.width;
-      const vh = isNative || kbActive || !vv ? window.innerHeight : vv.height;
+      const useVv = !isNative && !kbActive && !!vv;
+      const rawVw = useVv
+        ? vv.width
+        : window.innerWidth || document.documentElement.clientWidth || 1;
+      const rawVh = useVv
+        ? vv.height
+        : window.innerHeight || document.documentElement.clientHeight || 1;
 
       const ins = readSafeInsets();
-      const w = Math.max(1, vw - ins.l - ins.r);
-      const h = Math.max(1, vh - ins.t - ins.b);
+      const w = Math.max(1, rawVw - ins.l - ins.r);
+      const h = Math.max(1, rawVh - ins.t - ins.b);
 
       const isDevicePortrait = h > w;
 
@@ -64,33 +78,76 @@ export function useStageFit(
 
       const dx = (ins.l - ins.r) / 2;
       const dy = (ins.t - ins.b) / 2;
-      el.style.transform = `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))${
+      const nextTransform = `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))${
         shouldRotate ? " rotate(90deg)" : ""
       } scale(${s})`;
+
+      if (el.style.transform !== nextTransform) {
+        el.style.transform = nextTransform;
+      }
+    };
+
+    const scheduleFit = () => {
+      cancelAnimationFrame(animFrameId);
+      animFrameId = requestAnimationFrame(fit);
     };
 
     const handleVisualViewportResize = () => {
       // Ignore visualViewport resizing triggered by software keyboard overlay
       if (isKeyboardActive()) return;
-      fit();
+      scheduleFit();
     };
 
-    fit();
-    const t1 = window.setTimeout(fit, 80);
-    const t2 = window.setTimeout(fit, 250);
-    const t3 = window.setTimeout(fit, 600);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        scheduleFit();
+        // Staggered follow-ups after returning from background to catch immersive bar hide
+        window.setTimeout(fit, 80);
+        window.setTimeout(fit, 250);
+        window.setTimeout(fit, 600);
+      }
+    };
 
-    window.addEventListener("resize", fit);
-    window.addEventListener("orientationchange", fit);
+    // Immediate calculation
+    fit();
+    animFrameId = requestAnimationFrame(fit);
+
+    // Staggered initial recalculations for system bars / immersive mode transitions
+    const t1 = window.setTimeout(fit, 60);
+    const t2 = window.setTimeout(fit, 180);
+    const t3 = window.setTimeout(fit, 400);
+    const t4 = window.setTimeout(fit, 800);
+
+    window.addEventListener("resize", scheduleFit);
+    window.addEventListener("orientationchange", scheduleFit);
+    window.addEventListener("focus", scheduleFit);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("fullscreenchange", scheduleFit);
+
+    // ResizeObserver on documentElement ensures we catch viewport changes when system bars hide
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        scheduleFit();
+      });
+      resizeObserver.observe(document.documentElement);
+    }
+
     window.visualViewport?.addEventListener("resize", handleVisualViewportResize);
     window.visualViewport?.addEventListener("scroll", handleVisualViewportResize);
 
     return () => {
+      cancelAnimationFrame(animFrameId);
       window.clearTimeout(t1);
       window.clearTimeout(t2);
       window.clearTimeout(t3);
-      window.removeEventListener("resize", fit);
-      window.removeEventListener("orientationchange", fit);
+      window.clearTimeout(t4);
+      window.removeEventListener("resize", scheduleFit);
+      window.removeEventListener("orientationchange", scheduleFit);
+      window.removeEventListener("focus", scheduleFit);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("fullscreenchange", scheduleFit);
+      resizeObserver?.disconnect();
       window.visualViewport?.removeEventListener("resize", handleVisualViewportResize);
       window.visualViewport?.removeEventListener("scroll", handleVisualViewportResize);
     };
