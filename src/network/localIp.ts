@@ -174,6 +174,7 @@ export async function getLocalIpAddress(): Promise<string | null> {
           try {
             pc.onicecandidate = null;
             pc.onicecandidateerror = null;
+            pc.onicegatheringstatechange = null;
             pc.close();
           } catch {
             /* ignore */
@@ -197,6 +198,13 @@ export async function getLocalIpAddress(): Promise<string | null> {
 
         pc.onicecandidateerror = () => {
           // في حال حدوث خطأ أثناء الجمع
+        };
+
+        pc.onicegatheringstatechange = () => {
+          // اكتمال جمع المرشحين دون العثور على عنوان محلي صالح
+          if (pc.iceGatheringState === "complete") {
+            cleanup(null);
+          }
         };
 
         pc.createOffer()

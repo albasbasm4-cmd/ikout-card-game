@@ -50,6 +50,7 @@ export class HostSession {
   private stateListeners = new Set<(state: GameState) => void>();
   private disconnectTimers = new Map<number, ReturnType<typeof setTimeout>>();
   private lastProcessedSeq = new Map<string, number>();
+  private hasGameStarted = false;
   private readonly BOT_TAKEOVER_MS = 8000;
   private unsubscribeDisconnect?: () => void;
 
@@ -88,6 +89,7 @@ export class HostSession {
    */
   public replaceEngine(engine: KoutGameEngine): void {
     this.engine = engine;
+    this.hasGameStarted = engine.state.phase !== "LOBBY";
     this.broadcastState();
   }
 
@@ -114,6 +116,7 @@ export class HostSession {
   }
 
   public startRound(seed?: number): void {
+    this.hasGameStarted = true;
     this.engine.startRound(seed);
     this.broadcastState();
   }
@@ -280,12 +283,21 @@ export class HostSession {
       }
     }
 
-    // منع انضمام لاعب جديد إذا كانت المباراة قد بدأت بالفعل (إلا إذا كان إعادة اتصال للاعب سابق)
-    if (
-      !this.tokenToSeat.has(playerToken) &&
-      this.engine.state.phase !== "LOBBY" &&
-      this.engine.state.roundNo > 1
-    ) {
+    // منع انضمام لاعب جديد إذا كانت المباراة قد بدأت بالفعل (يشمل الجولة الأولى وما بعدها)، مع السماح بإعادة اتصال اللاعب السابق
+    const isReservedRemoteSeat =
+      typeof preferred === "number" &&
+      preferred >= 0 &&
+      preferred < numSeats &&
+      !this.seatToToken.has(preferred) &&
+      this.engine.state.players?.[preferred]?.kind === "HUMAN_REMOTE";
+
+    const isReturningPlayer = this.tokenToSeat.has(playerToken) || isReservedRemoteSeat;
+    const isGameUnderway =
+      this.hasGameStarted ||
+      this.engine.state.phase !== "LOBBY" ||
+      this.engine.state.roundNo > 0;
+
+    if (!isReturningPlayer && isGameUnderway) {
       this.sendPacket(playerToken, {
         type: "REJECTED",
         payload: {

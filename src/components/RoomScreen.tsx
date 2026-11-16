@@ -1,3 +1,7 @@
+// مهلات الاتصال المركزية للغرف والشبكة المحلية
+export const ROOM_CONNECT_TIMEOUT_MS = 5000; // المرحلة الأولى: مهلة فتح المقبس الشبكي
+export const ROOM_JOIN_READY_TIMEOUT_MS = 10000; // المرحلة الثانية: مهلة قبول الانضمام والحالة الابتدائية
+
 import { useSettings } from "../store/useSettings";
 /**
  * @license
@@ -129,6 +133,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
   const [mySeat, setMySeat] = useState(1);
   const lobbyStartedRef = useRef(false);
   const hostStartedRef = useRef(false);
+  const joinAttemptCounterRef = useRef<number>(0);
   const [joinCode, setJoinCode] = useState("");
   const [roomCode] = useState<string>(() => generateRoomCode());
   const [hostServerReady, setHostServerReady] = useState(false);
@@ -168,6 +173,15 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     return () => {
       cancelled = true;
       off();
+      joinAttemptCounterRef.current++;
+      if (joinSocketRef.current) {
+        try {
+          joinSocketRef.current.disconnect();
+        } catch {
+          /* noop */
+        }
+        joinSocketRef.current = null;
+      }
       if (!hostStartedRef.current) {
         clearKoutNet();
       }
@@ -309,6 +323,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
       return;
     }
     playTapSound();
+    const currentAttemptId = ++joinAttemptCounterRef.current;
     if (joinSocketRef.current) {
       try {
         joinSocketRef.current.disconnect();
@@ -322,6 +337,8 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     setJoinCode(trimmed);
 
     const connectToIp = (ip: string, port: number, candidates: string[]) => {
+      if (joinAttemptCounterRef.current !== currentAttemptId) return;
+
       const token = getPersistentPlayerToken("ikout");
       const socket = new LocalClientSocket({
         url: `ws://${ip}:${port}`,
@@ -329,15 +346,36 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
         playerName: loadProfile().name || "لاعب",
         maxReconnectAttempts: 4,
         initialBackoffMs: 600,
+        connectionTimeoutMs: ROOM_CONNECT_TIMEOUT_MS,
         channel: "kout",
         roomCode: trimmed,
       });
       joinSocketRef.current = socket;
       setActiveSocket(socket);
 
+      let connectTimer: ReturnType<typeof setTimeout> | null = null;
+      let joinReadyTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const clearAllTimers = () => {
+        if (connectTimer) {
+          clearTimeout(connectTimer);
+          connectTimer = null;
+        }
+        if (joinReadyTimer) {
+          clearTimeout(joinReadyTimer);
+          joinReadyTimer = null;
+        }
+      };
+
       const failOrFallback = () => {
+        clearAllTimers();
         socket.disconnect();
-        if (joinSocketRef.current === socket) setActiveSocket(null);
+        if (joinSocketRef.current === socket) {
+          setActiveSocket(null);
+          joinSocketRef.current = null;
+        }
+        if (joinAttemptCounterRef.current !== currentAttemptId) return;
+
         const rest = candidates.filter((c) => c !== ip);
         if (rest.length > 0) {
           connectToIp(rest[0], port, rest);
@@ -350,29 +388,64 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
         toast("تعذر الاتصال بالمضيف");
       };
 
-      const connectionTimeout = setTimeout(() => {
-        const s = socket.getStatus(); if (s !== "CONNECTED" && s !== "JOINING" && s !== "JOINED") failOrFallback();
-      }, 4000);
+      // المرحلة الأولى: مهلة فتح الاتصال الشبكي
+      connectTimer = setTimeout(() => {
+        if (joinAttemptCounterRef.current !== currentAttemptId) return;
+        const s = socket.getStatus();
+        if (s === "CONNECTING" || s === "RECONNECTING" || s === "DISCONNECTED") {
+          failOrFallback();
+        }
+      }, ROOM_CONNECT_TIMEOUT_MS);
 
       socket.onStatusChange((st: ClientSocketStatus) => {
+        if (joinAttemptCounterRef.current !== currentAttemptId) return;
+
         if (st === "CONNECTED") {
-          // تم فتح الاتصال الشبكي فقط؛ لا نعتبر اللاعب منضماً حتى يقبله المضيف ويسند له مقعداً
-          clearTimeout(connectionTimeout);
-        } else if (st === "JOINED" || st === "INITIAL_STATE_RECEIVED" || st === "READY") {
-          clearTimeout(connectionTimeout);
+          // تم فتح الاتصال الشبكي بنجاح: إلغاء مؤقت المرحلة الأولى وبدء المرحلة الثانية
+          if (connectTimer) {
+            clearTimeout(connectTimer);
+            connectTimer = null;
+          }
+          if (!joinReadyTimer) {
+            joinReadyTimer = setTimeout(() => {
+              if (joinAttemptCounterRef.current !== currentAttemptId) return;
+              if (!socket.isReady()) {
+                clearAllTimers();
+                socket.disconnect();
+                if (joinSocketRef.current === socket) {
+                  setActiveSocket(null);
+                  joinSocketRef.current = null;
+                }
+                setConnecting(false);
+                setConnectError("انتهت مهلة انتظار قبول الانضمام واستلام حالة الغرفة من المضيف.");
+                toast("تعذر استلام بيانات الغرفة");
+              }
+            }, ROOM_JOIN_READY_TIMEOUT_MS);
+          }
+        } else if (st === "READY" || st === "INITIAL_STATE_RECEIVED") {
+          // اكتمال الانضمام بنجاح: تنظيف جميع المؤقتات
+          clearAllTimers();
           setConnecting(false);
           setShowScanner(false);
           setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
           setTimeout(() => window.dispatchEvent(new Event("resize")), 300);
-        } else if (st === "HOST_DROPPED") {
-          clearTimeout(connectionTimeout);
-          failOrFallback();
         } else if (st === "REJECTED") {
-          clearTimeout(connectionTimeout);
+          // رفض صريح من المضيف: تنظيف المؤقتات وإيقاف المحاولات فوراً دون تجربة عناوين بديلة
+          clearAllTimers();
           socket.disconnect();
+          if (joinSocketRef.current === socket) {
+            setActiveSocket(null);
+            joinSocketRef.current = null;
+          }
           setConnecting(false);
-          setConnectError("تم رفض الانضمام (الغرفة ممتلئة أو الرمز غير صحيح).");
+          setConnectError("تم رفض الانضمام (الغرفة ممتلئة أو الرمز غير صحيح أو بدأت المباراة).");
           toast("تم رفض الانضمام");
+        } else if (st === "HOST_DROPPED") {
+          clearAllTimers();
+          failOrFallback();
+        } else if (st === "ERROR") {
+          clearAllTimers();
+          failOrFallback();
         }
       });
     };
@@ -387,6 +460,7 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
 
     void (async () => {
       const candidates = await getJoinCandidateIps();
+      if (joinAttemptCounterRef.current !== currentAttemptId) return;
       if (!candidates.length) {
         setConnecting(false);
         setConnectError(

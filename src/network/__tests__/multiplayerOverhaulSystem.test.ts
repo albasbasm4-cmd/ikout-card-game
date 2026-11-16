@@ -134,7 +134,7 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
       socket.disconnect();
     });
 
-    it("prevents sending game actions before joined", () => {
+    it("prevents sending game actions before READY (even if CONNECTED or JOINING)", () => {
       const socket = new LocalClientSocket({
         url: `ws://127.0.0.1:${server.port}`,
         playerToken: "token_blocked",
@@ -142,9 +142,10 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
         roomCode,
       });
 
-      expect(socket.isJoined()).toBe(false);
+      expect(socket.isReady()).toBe(false);
+      expect(socket.canSendGameActions()).toBe(false);
 
-      // Attempt to send action while not joined
+      // Attempt to send game actions before READY
       socket.send({
         v: 1,
         seq: 1,
@@ -153,7 +154,183 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
         payload: { bid: 5 },
       });
 
+      socket.send({
+        v: 1,
+        seq: 2,
+        playerToken: "token_blocked",
+        type: "PLAY_CARD_REQUEST",
+        payload: { card: { id: "c1", suit: "SPADES", rank: 10 } } as any,
+      });
+
+      socket.send({
+        v: 1,
+        seq: 3,
+        playerToken: "token_blocked",
+        type: "DRAW_REQUEST" as any,
+        payload: {} as any,
+      });
+
       socket.disconnect();
+    });
+
+    it("buffers CLIENT_STATE_UPDATE if received before JOIN_ACCEPTED and smoothly transitions to READY", () => {
+      // Create socket with transport override to test strict packet sequence
+      const mockTransport = {
+        handlers: new Set<(p: any) => void>(),
+        isConnected: () => true,
+        send: () => {},
+        disconnect: () => {},
+        onMessage: (h: any) => {
+          mockTransport.handlers.add(h);
+          return () => mockTransport.handlers.delete(h);
+        },
+      };
+
+      const socket = new LocalClientSocket({
+        playerToken: "seq_test",
+        playerName: "ترتيب",
+        transportOverride: mockTransport as any,
+        roomCode,
+      });
+
+      expect(socket.getStatus()).toBe("JOINING");
+      expect(socket.isReady()).toBe(false);
+
+      // 1. Simulate CLIENT_STATE_UPDATE arriving BEFORE JOIN_ACCEPTED
+      for (const h of mockTransport.handlers) {
+        h({
+          type: "CLIENT_STATE_UPDATE",
+          payload: {
+            seatIndex: 2,
+            state: { phase: "BID", roundNo: 1, hands: [[], [], [], []] },
+          },
+        });
+      }
+
+      // Should still be JOINING because JOIN_ACCEPTED hasn't verified acceptance
+      expect(socket.getStatus()).toBe("JOINING");
+      expect(socket.isReady()).toBe(false);
+
+      // 2. Now JOIN_ACCEPTED arrives with assigned seat 2
+      for (const h of mockTransport.handlers) {
+        h({
+          type: "JOIN_ACCEPTED",
+          payload: {
+            seatIndex: 2,
+            roomCode,
+            playerToken: "seq_test",
+          },
+        });
+      }
+
+      // Now it should immediately transition to READY
+      expect(socket.getAssignedSeat()).toBe(2);
+      expect(socket.isJoined()).toBe(true);
+      expect(socket.isReady()).toBe(true);
+      expect(socket.canSendGameActions()).toBe(true);
+
+      socket.disconnect();
+    });
+
+    it("SEAT_UPDATE alone does not transition client to JOINED or READY without JOIN_ACCEPTED", () => {
+      const mockTransport = {
+        handlers: new Set<(p: any) => void>(),
+        isConnected: () => true,
+        send: () => {},
+        disconnect: () => {},
+        onMessage: (h: any) => {
+          mockTransport.handlers.add(h);
+          return () => mockTransport.handlers.delete(h);
+        },
+      };
+
+      const socket = new LocalClientSocket({
+        playerToken: "seat_alone",
+        playerName: "مقعد_فقط",
+        transportOverride: mockTransport as any,
+        roomCode,
+      });
+
+      for (const h of mockTransport.handlers) {
+        h({
+          type: "SEAT_UPDATE",
+          payload: { seatIndex: 1 },
+        });
+      }
+
+      // Must remain in JOINING because SEAT_UPDATE alone is not formal acceptance
+      expect(socket.getStatus()).toBe("JOINING");
+      expect(socket.isReady()).toBe(false);
+
+      socket.disconnect();
+    });
+
+    it("rejects new player join after round 1 has started with GAME_ALREADY_STARTED", async () => {
+      // Start the match first
+      session.startRound();
+
+      const socket = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "late_joiner_token",
+        playerName: "متأخر",
+        roomCode,
+      });
+
+      let rejectedReason: string | null = null;
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Timeout waiting for REJECTED")), 2500);
+        socket.onMessage((pkt) => {
+          if (pkt.type === "REJECTED") {
+            rejectedReason = (pkt.payload as any)?.reason;
+          }
+        });
+        socket.onStatusChange((st) => {
+          if (st === "REJECTED") {
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+      });
+
+      expect(rejectedReason).toBe("GAME_ALREADY_STARTED");
+      expect(socket.isJoined()).toBe(false);
+      expect(socket.isReady()).toBe(false);
+
+      socket.disconnect();
+    });
+
+    it("allows registered player to reconnect after round 1 has started and reclaims their seat", async () => {
+      // 1. Player joins during LOBBY
+      const p1 = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "legit_p1_reconnect",
+        playerName: "لاعب1",
+        roomCode,
+      });
+
+      await new Promise<void>((r) => p1.onStatusChange((s) => s === "READY" && r()));
+      expect(p1.getAssignedSeat()).toBe(1);
+
+      // 2. Disconnect p1
+      p1.disconnect();
+      await new Promise((r) => setTimeout(r, 60));
+
+      // 3. Game starts during their disconnect
+      session.startRound();
+
+      // 4. p1 reconnects with the same token
+      const p1Reconnected = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: "legit_p1_reconnect",
+        playerName: "لاعب1",
+        roomCode,
+      });
+
+      await new Promise<void>((r) => p1Reconnected.onStatusChange((s) => s === "READY" && r()));
+      expect(p1Reconnected.getAssignedSeat()).toBe(1);
+      expect(p1Reconnected.isReady()).toBe(true);
+
+      p1Reconnected.disconnect();
     });
 
     it("rejects joins with incorrect room code and transitions to REJECTED", async () => {
@@ -412,17 +589,20 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
         roomCode,
       });
 
-      await new Promise<void>((resolve, reject) => {
-        const t = setTimeout(() => reject(new Error("Timeout waiting for READY")), 3000);
-        socket.onStatusChange((s) => {
-          if (s === "READY") {
-            clearTimeout(t);
-            resolve();
-          }
+      if (socket.getStatus() !== "READY") {
+        await new Promise<void>((resolve, reject) => {
+          const t = setTimeout(() => reject(new Error("Timeout waiting for READY")), 3000);
+          socket.onStatusChange((s) => {
+            if (s === "READY") {
+              clearTimeout(t);
+              resolve();
+            }
+          });
         });
-      });
+      }
 
       expect(socket.isJoined()).toBe(true);
+      expect(socket.isReady()).toBe(true);
       session.startRound();
 
       const engine = session.getEngine();
