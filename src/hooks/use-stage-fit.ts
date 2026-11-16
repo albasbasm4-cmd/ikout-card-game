@@ -37,6 +37,8 @@ function readSafeInsets() {
  *   so the game can still be played horizontally in a mobile browser.
  * - Respects safe area insets so system status bar, navigation bar, and display cutout/notch
  *   never clip content, while maximizing horizontal screen utilization in fullscreen.
+ * - Guards against double-subtracting safe area insets if a parent container already applies safe padding.
+ * - Carefully tracks and cleans up all staggered timers and listeners on unmount.
  */
 export function useStageFit(
   stageRef: RefObject<HTMLDivElement | null>,
@@ -46,6 +48,16 @@ export function useStageFit(
 ) {
   useEffect(() => {
     let animFrameId = 0;
+    const activeTimers = new Set<number>();
+
+    const safeTimeout = (fn: () => void, ms: number) => {
+      const id = window.setTimeout(() => {
+        activeTimers.delete(id);
+        fn();
+      }, ms);
+      activeTimers.add(id);
+      return id;
+    };
 
     const fit = () => {
       const el = stageRef.current;
@@ -54,20 +66,51 @@ export function useStageFit(
       const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
       const kbActive = isKeyboardActive();
 
-      // On native platform with adjustNothing, or when keyboard is active,
-      // preserve stable window dimensions so the stage does not compress or shrink.
-      const vv = window.visualViewport;
+      // On native platform with adjustNothing and fullscreen, window dimensions provide
+      // stable geometry that spans the display. On web browsers without keyboard,
+      // visualViewport captures the visible area accounting for browser UI chrome.
+      const vv = typeof window !== "undefined" ? window.visualViewport : null;
       const useVv = !isNative && !kbActive && !!vv;
       const rawVw = useVv
         ? vv.width
-        : window.innerWidth || document.documentElement.clientWidth || 1;
+        : window.innerWidth ||
+          (typeof document !== "undefined" ? document.documentElement.clientWidth : 0) ||
+          1;
       const rawVh = useVv
         ? vv.height
-        : window.innerHeight || document.documentElement.clientHeight || 1;
+        : window.innerHeight ||
+          (typeof document !== "undefined" ? document.documentElement.clientHeight : 0) ||
+          1;
 
       const ins = readSafeInsets();
-      const w = Math.max(1, rawVw - ins.l - ins.r);
-      const h = Math.max(1, rawVh - ins.t - ins.b);
+
+      // Check if stage parent container already applies padding or safe insets
+      let parentPadL = 0;
+      let parentPadR = 0;
+      let parentPadT = 0;
+      let parentPadB = 0;
+      const parent = el.parentElement;
+      if (
+        parent &&
+        typeof document !== "undefined" &&
+        parent !== document.body &&
+        parent !== document.documentElement
+      ) {
+        const pcs = getComputedStyle(parent);
+        parentPadL = parseFloat(pcs.paddingLeft) || 0;
+        parentPadR = parseFloat(pcs.paddingRight) || 0;
+        parentPadT = parseFloat(pcs.paddingTop) || 0;
+        parentPadB = parseFloat(pcs.paddingBottom) || 0;
+      }
+
+      // Do NOT subtract safe area twice if parent container already applies padding for insets
+      const effectiveInsetL = Math.max(ins.l, parentPadL);
+      const effectiveInsetR = Math.max(ins.r, parentPadR);
+      const effectiveInsetT = Math.max(ins.t, parentPadT);
+      const effectiveInsetB = Math.max(ins.b, parentPadB);
+
+      const w = Math.max(1, rawVw - effectiveInsetL - effectiveInsetR);
+      const h = Math.max(1, rawVh - effectiveInsetT - effectiveInsetB);
 
       const isDevicePortrait = h > w;
 
@@ -76,8 +119,9 @@ export function useStageFit(
       const shouldRotate = !isNative && orientation === "landscape" && isDevicePortrait;
       const s = shouldRotate ? Math.min(h / stageW, w / stageH) : Math.min(w / stageW, h / stageH);
 
-      const dx = (ins.l - ins.r) / 2;
-      const dy = (ins.t - ins.b) / 2;
+      // Center stage precisely within the available safe area
+      const dx = (effectiveInsetL - effectiveInsetR) / 2;
+      const dy = (effectiveInsetT - effectiveInsetB) / 2;
       const nextTransform = `translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))${
         shouldRotate ? " rotate(90deg)" : ""
       } scale(${s})`;
@@ -101,10 +145,10 @@ export function useStageFit(
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         scheduleFit();
-        // Staggered follow-ups after returning from background to catch immersive bar hide
-        window.setTimeout(fit, 80);
-        window.setTimeout(fit, 250);
-        window.setTimeout(fit, 600);
+        // Staggered follow-ups after returning from background to catch immersive bar transitions
+        safeTimeout(fit, 80);
+        safeTimeout(fit, 250);
+        safeTimeout(fit, 600);
       }
     };
 
@@ -113,10 +157,10 @@ export function useStageFit(
     animFrameId = requestAnimationFrame(fit);
 
     // Staggered initial recalculations for system bars / immersive mode transitions
-    const t1 = window.setTimeout(fit, 60);
-    const t2 = window.setTimeout(fit, 180);
-    const t3 = window.setTimeout(fit, 400);
-    const t4 = window.setTimeout(fit, 800);
+    safeTimeout(fit, 60);
+    safeTimeout(fit, 180);
+    safeTimeout(fit, 400);
+    safeTimeout(fit, 800);
 
     window.addEventListener("resize", scheduleFit);
     window.addEventListener("orientationchange", scheduleFit);
@@ -138,10 +182,8 @@ export function useStageFit(
 
     return () => {
       cancelAnimationFrame(animFrameId);
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      window.clearTimeout(t3);
-      window.clearTimeout(t4);
+      activeTimers.forEach((id) => window.clearTimeout(id));
+      activeTimers.clear();
       window.removeEventListener("resize", scheduleFit);
       window.removeEventListener("orientationchange", scheduleFit);
       window.removeEventListener("focus", scheduleFit);

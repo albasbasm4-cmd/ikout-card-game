@@ -1,41 +1,52 @@
+#!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const manifestPath = path.resolve(process.cwd(), "android/app/src/main/AndroidManifest.xml");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, "..");
+const androidAppDir = path.resolve(rootDir, "android", "app");
+const manifestPath = path.resolve(androidAppDir, "src", "main", "AndroidManifest.xml");
+const javaDir = path.resolve(androidAppDir, "src", "main", "java", "com", "ikout", "cardgame");
+const mainActivityPath = path.resolve(javaDir, "MainActivity.java");
+const wsPluginSourcePath = path.resolve(rootDir, "src", "android", "WebSocketServerPlugin.java");
+const wsPluginDestPath = path.resolve(javaDir, "ws", "WebSocketServerPlugin.java");
+
 if (!fs.existsSync(manifestPath)) {
-  console.warn(
-    `WARN: AndroidManifest.xml not found at ${manifestPath}. ` +
-      "لم يتم إنشاء مشروع أندرويد بعد (شغّل npx cap add android أولاً) — تم تخطي إصلاح الأندرويد.",
-  );
+  console.log("No Android project found; skipping patch.");
   process.exit(0);
 }
 
+// 1. Ensure permissions and hardware acceleration in AndroidManifest.xml
 let manifest = fs.readFileSync(manifestPath, "utf-8");
-const requiredEntries = [
-  '<uses-permission android:name="android.permission.CAMERA" />',
-  '<uses-permission android:name="android.permission.INTERNET" />',
-  '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />',
-  '<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />',
-  '<uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />',
-  '<uses-feature android:name="android.hardware.camera" android:required="false" />',
-  '<uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />',
+
+const permissions = [
+  "android.permission.CAMERA",
+  "android.permission.INTERNET",
+  "android.permission.ACCESS_NETWORK_STATE",
+  "android.permission.ACCESS_WIFI_STATE",
+  "android.permission.CHANGE_WIFI_MULTICAST_STATE",
+  "android.permission.NEARBY_WIFI_DEVICES",
 ];
 
-for (const entry of requiredEntries) {
-  if (!manifest.includes(entry))
-    manifest = manifest.replace("</manifest>", `    ${entry}\n</manifest>`);
+for (const perm of permissions) {
+  if (!manifest.includes(perm)) {
+    manifest = manifest.replace(
+      "<application",
+      `    <uses-permission android:name="${perm}" />\n    <application`,
+    );
+  }
 }
 
-if (manifest.includes("<application") && !manifest.includes('android:hardwareAccelerated="true"')) {
-  manifest = manifest.replace("<application", '<application android:hardwareAccelerated="true"');
-}
-if (
-  manifest.includes("<application") &&
-  !manifest.includes('android:usesCleartextTraffic="true"')
-) {
-  manifest = manifest.replace("<application", '<application android:usesCleartextTraffic="true"');
+if (!manifest.includes('android:hardwareAccelerated="true"')) {
+  manifest = manifest.replace(
+    "<application",
+    '<application\n        android:hardwareAccelerated="true"',
+  );
 }
 
+// Ensure the main Activity uses pure overlay soft-input mode so Android never
+// resizes or pans the window when the virtual keyboard appears.
 if (manifest.includes('android:windowSoftInputMode="adjustResize"')) {
   manifest = manifest.replace(
     'android:windowSoftInputMode="adjustResize"',
@@ -47,58 +58,35 @@ if (manifest.includes('android:windowSoftInputMode="adjustResize"')) {
     'android:windowSoftInputMode="adjustNothing"',
   );
 }
+
 fs.writeFileSync(manifestPath, manifest, "utf-8");
 console.log(
   "Patched AndroidManifest.xml with camera/network permissions and hardware acceleration.",
 );
-// ---------------- تسجيل الإضافة الأصلية لخادم WebSocket ----------------
-// 1) نسخ مصدر الإضافة إلى مشروع الأندرويد
-// 2) إضافة اعتماد NanoHTTPD WebSocket إلى build.gradle
-// 3) تسجيل الإضافة في MainActivity حتى تتوفر window.Capacitor.Plugins.WebSocketServer
-const pluginSrc = path.resolve(
-  process.cwd(),
-  "android-plugin/com/ikout/cardgame/ws/WebSocketServerPlugin.java",
-);
-const pluginDestDir = path.resolve(
-  process.cwd(),
-  "android/app/src/main/java/com/ikout/cardgame/ws",
-);
-const pluginDest = path.join(pluginDestDir, "WebSocketServerPlugin.java");
 
-if (fs.existsSync(pluginSrc)) {
-  fs.mkdirSync(pluginDestDir, { recursive: true });
-  fs.copyFileSync(pluginSrc, pluginDest);
+// 2. Copy WebSocketServerPlugin.java into Android app source tree
+if (fs.existsSync(wsPluginSourcePath)) {
+  fs.mkdirSync(path.dirname(wsPluginDestPath), { recursive: true });
+  fs.copyFileSync(wsPluginSourcePath, wsPluginDestPath);
   console.log("Copied WebSocketServerPlugin.java into the Android project.");
-} else {
-  console.warn(`Plugin source not found: ${pluginSrc}`);
 }
 
-const gradlePath = path.resolve(process.cwd(), "android/app/build.gradle");
-if (fs.existsSync(gradlePath)) {
-  let gradle = fs.readFileSync(gradlePath, "utf-8");
-  const dep = "implementation 'org.nanohttpd:nanohttpd-websocket:2.3.1'";
-  if (!gradle.includes("nanohttpd")) {
-    gradle = gradle.replace(/dependencies\s*{/, `dependencies {\n    ${dep}`);
-    fs.writeFileSync(gradlePath, gradle, "utf-8");
-    console.log("Added NanoHTTPD WebSocket dependency to app/build.gradle.");
-  }
-}
-
-const activityPath = path.resolve(
-  process.cwd(),
-  "android/app/src/main/java/com/ikout/cardgame/MainActivity.java",
-);
-if (fs.existsSync(activityPath)) {
-  const mainActivity = `package com.ikout.cardgame;
+// 3. Register WebSocketServerPlugin & Immersive Fullscreen in MainActivity.java
+if (fs.existsSync(mainActivityPath)) {
+  const replacement = `package com.ikout.cardgame;
 
 import android.content.pm.ActivityInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.WebSettings;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 import com.ikout.cardgame.ws.WebSocketServerPlugin;
 
@@ -110,15 +98,17 @@ public class MainActivity extends BridgeActivity {
 
     // السماح بالاستفادة الكاملة من الشاشة العرضية والتعامل مع النوتش بدون قص
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      getWindow().getAttributes().layoutInDisplayCutoutMode =
+      WindowManager.LayoutParams lp = getWindow().getAttributes();
+      lp.layoutInDisplayCutoutMode =
           WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+      getWindow().setAttributes(lp);
     }
 
     // يجب التسجيل قبل أن يبني Capacitor الجسر
     registerPlugin(WebSocketServerPlugin.class);
     super.onCreate(savedInstanceState);
 
-    // تطبيق وضع ملء الشاشة الحقيقي (Immersive Fullscreen)
+    // تطبيق وضع ملء الشاشة الحقيقي وتمديد مساحة الـ WebView لكامل الشاشة
     applyImmersiveMode();
 
     // السماح باتصال ws:// المحلي من صفحة https://localhost
@@ -147,19 +137,37 @@ public class MainActivity extends BridgeActivity {
   }
 
   /**
-   * تفعيل وضع Immersive Fullscreen لإخفاء شريط الحالة وشريط التنقل
-   * مع السماح بإظهارهما مؤقتاً بالسحب (BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE / IMMERSIVE_STICKY).
+   * تفعيل وضع Immersive Fullscreen الحقيقي:
+   * 1. منع النظام من قصر الـ Decor/WebView على أشرطة النظام (decorFitsSystemWindows = false).
+   * 2. إخفاء أشرطة النظام (Status Bar و Navigation Bar) بصورة تامة أثناء اللعب.
+   * 3. تفعيل السحب لإظهار أشرطة النظام مؤقتاً (BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE).
+   * 4. التوافق المباشر مع جميع إصدارات أندرويد المستهدفة (Android 11+ R و Android 10 وأقدم).
    */
   private void applyImmersiveMode() {
+    Window window = getWindow();
+    if (window == null) return;
+
+    // تمكين الـ WebView من الاستفادة من كامل المساحة الفيزيائية للشاشة
+    WindowCompat.setDecorFitsSystemWindows(window, false);
+
+    WindowInsetsControllerCompat controller =
+        WindowCompat.getInsetsController(window, window.getDecorView());
+    if (controller != null) {
+      controller.hide(WindowInsetsCompat.Type.systemBars());
+      controller.setSystemBarsBehavior(
+          WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+    }
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-      WindowInsetsController insetsController = getWindow().getInsetsController();
+      window.setDecorFitsSystemWindows(false);
+      WindowInsetsController insetsController = window.getInsetsController();
       if (insetsController != null) {
         insetsController.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
         insetsController.setSystemBarsBehavior(
             WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
       }
     } else {
-      View decorView = getWindow().getDecorView();
+      View decorView = window.getDecorView();
       if (decorView != null) {
         int flags = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -173,6 +181,6 @@ public class MainActivity extends BridgeActivity {
   }
 }
 `;
-  fs.writeFileSync(activityPath, mainActivity, "utf-8");
+  fs.writeFileSync(mainActivityPath, replacement, "utf-8");
   console.log("Registered WebSocketServerPlugin in MainActivity.");
 }

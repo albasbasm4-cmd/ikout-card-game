@@ -4,10 +4,14 @@ import android.content.pm.ActivityInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.WebSettings;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 import com.ikout.cardgame.ws.WebSocketServerPlugin;
 
@@ -19,15 +23,17 @@ public class MainActivity extends BridgeActivity {
 
     // السماح بالاستفادة الكاملة من الشاشة العرضية والتعامل مع النوتش بدون قص
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      getWindow().getAttributes().layoutInDisplayCutoutMode =
+      WindowManager.LayoutParams lp = getWindow().getAttributes();
+      lp.layoutInDisplayCutoutMode =
           WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+      getWindow().setAttributes(lp);
     }
 
     // يجب التسجيل قبل أن يبني Capacitor الجسر
     registerPlugin(WebSocketServerPlugin.class);
     super.onCreate(savedInstanceState);
 
-    // تطبيق وضع ملء الشاشة الحقيقي (Immersive Fullscreen)
+    // تطبيق وضع ملء الشاشة الحقيقي وتمديد مساحة الـ WebView لكامل الشاشة
     applyImmersiveMode();
 
     // السماح باتصال ws:// المحلي من صفحة https://localhost
@@ -56,19 +62,37 @@ public class MainActivity extends BridgeActivity {
   }
 
   /**
-   * تفعيل وضع Immersive Fullscreen لإخفاء شريط الحالة وشريط التنقل
-   * مع السماح بإظهارهما مؤقتاً بالسحب (BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE / IMMERSIVE_STICKY).
+   * تفعيل وضع Immersive Fullscreen الحقيقي:
+   * 1. منع النظام من قصر الـ Decor/WebView على أشرطة النظام (decorFitsSystemWindows = false).
+   * 2. إخفاء أشرطة النظام (Status Bar و Navigation Bar) بصورة تامة أثناء اللعب.
+   * 3. تفعيل السحب لإظهار أشرطة النظام مؤقتاً (BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE).
+   * 4. التوافق المباشر مع جميع إصدارات أندرويد المستهدفة (Android 11+ R و Android 10 وأقدم).
    */
   private void applyImmersiveMode() {
+    Window window = getWindow();
+    if (window == null) return;
+
+    // تمكين الـ WebView من الاستفادة من كامل المساحة الفيزيائية للشاشة
+    WindowCompat.setDecorFitsSystemWindows(window, false);
+
+    WindowInsetsControllerCompat controller =
+        WindowCompat.getInsetsController(window, window.getDecorView());
+    if (controller != null) {
+      controller.hide(WindowInsetsCompat.Type.systemBars());
+      controller.setSystemBarsBehavior(
+          WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+    }
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-      WindowInsetsController insetsController = getWindow().getInsetsController();
+      window.setDecorFitsSystemWindows(false);
+      WindowInsetsController insetsController = window.getInsetsController();
       if (insetsController != null) {
         insetsController.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
         insetsController.setSystemBarsBehavior(
             WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
       }
     } else {
-      View decorView = getWindow().getDecorView();
+      View decorView = window.getDecorView();
       if (decorView != null) {
         int flags = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
             | View.SYSTEM_UI_FLAG_LAYOUT_STABLE

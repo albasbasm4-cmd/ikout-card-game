@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * InlineQrScanner — كاميرا مسح رمز QR بملء الشاشة الحقيقي (True Fullscreen):
- * تفتح الكاميرا عبر createPortal على document.body لمنع أي تأثر بتحويلات المسرح (transform)،
- * وتغطي كامل الشاشة (100dvw/100dvh) مع فيديو fixed inset-0 وobject-fit: cover،
- * وإطار تسديد في المنتصف مناسب للأجهزة الأفقية، مع زر رجوع/إلغاء يراعي النوتش،
- * وضمان إيقاف مسارات الوسائط عند الانتهاء أو الإلغاء أو الفشل ومنع الجلسات المتزامنة.
+ * - تفتح الكاميرا عبر createPortal على document.body لمنع أي تأثر بتحويلات المسرح (transform).
+ * - تغطي كامل الشاشة باستخدام 100dvw و100dvh مع fallback ملائم (100vw/100vh وinset: 0).
+ * - الفيديو يغطي كامل الغلاف عبر position: fixed وobject-fit: cover.
+ * - إطار تسديد في المنتصف متناسق للأجهزة الأفقية، وزر إلغاء يراعي النوتش وأشرطة النظام.
+ * - إدارة محكمة لجلسات الكاميرا لمنع الجلسات المتزامنة أو تسرب الـ Streams المتأخرة،
+ *   مع إيقاف مسارات الوسائط فوراً عند الانتهاء أو الإلغاء أو الفشل.
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -14,7 +16,7 @@ import { createPortal } from "react-dom";
 import jsQR from "jsqr";
 
 export interface InlineQrScannerProps {
-  /** يُستدعى مرة واحدة عند قراءة رمز ناجح (بعد إيقاف الكاميرا). */
+  /** يُستدعى مرة واحدة فقط عند قراءة رمز ناجح (بعد إيقاف الكاميرا). */
   onCode: (raw: string) => void;
   /** إلغاء المسح وإغلاق الكاميرا. */
   onCancel: () => void;
@@ -22,7 +24,9 @@ export interface InlineQrScannerProps {
   hint?: string;
 }
 
-/** متعقب عالمي للجلسة النشطة لمنع تشغيل أكثر من جلسة كاميرا بالتزامن */
+/** معرّف رقمي فريد للجلسة الحالية النشطة */
+let activeSessionToken = 0;
+/** دالة إيقاف عامة لأي ماسح نشط عبر التطبيق لمنع الجلسات المتزامنة */
 let globalStopActiveScanner: (() => void) | null = null;
 
 export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
@@ -37,7 +41,7 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
   const doneRef = useRef(false);
 
   useEffect(() => {
-    // إيقاف أي جلسة كاميرا نشطة سابقة قبل بدء الجلسة الجديدة
+    // 1. إيقاف وإلغاء أي جلسة سابقة كانت نشطة أو قيد الانتظار فوراً
     if (globalStopActiveScanner) {
       try {
         globalStopActiveScanner();
@@ -47,7 +51,9 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
       globalStopActiveScanner = null;
     }
 
-    let cancelled = false;
+    // توليد رمز جلسة جديد فريد لهذه الدورة
+    const sessionToken = ++activeSessionToken;
+    let isCancelled = false;
     let tries = 0;
     let timerId: number | null = null;
 
@@ -57,9 +63,9 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
         timerId = null;
       }
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => {
+        streamRef.current.getTracks().forEach((track) => {
           try {
-            t.stop();
+            track.stop();
           } catch {
             /* ignore */
           }
@@ -71,11 +77,16 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
       }
     };
 
-    // تسجيل دالة الإيقاف لهذه الجلسة
-    globalStopActiveScanner = stopStream;
+    // تسجيل دالة الإلغاء العالمية لهذه الجلسة بالتحديد
+    globalStopActiveScanner = () => {
+      isCancelled = true;
+      stopStream();
+    };
 
     const tick = () => {
-      if (cancelled || doneRef.current) return;
+      if (isCancelled || sessionToken !== activeSessionToken || doneRef.current) {
+        return;
+      }
       const video = videoRef.current;
       if (!video || video.readyState < 2 || video.videoWidth === 0) {
         timerId = window.setTimeout(tick, 100);
@@ -99,6 +110,8 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
 
       if (found?.data && !doneRef.current) {
         doneRef.current = true;
+        // إلغاء الجلسة لمنع أي إطارات إضافية
+        activeSessionToken++;
         stopStream();
         onCode(found.data);
         return;
@@ -114,7 +127,7 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
     };
 
     const start = async () => {
-      // أولاً: ماسح الكاميرا الأصلي (Capacitor) إن كان متاحاً
+      // أولاً: فحص ماسح الباركود الأصلي (Capacitor) إن كان متاحاً
       const win = window as unknown as {
         Capacitor?: {
           Plugins?: {
@@ -128,57 +141,87 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
       if (win.Capacitor?.Plugins?.BarcodeScanner) {
         try {
           const res = await win.Capacitor.Plugins.BarcodeScanner.startScan();
+          // في حال إلغاء الجلسة أثناء عمل الماسح الأصلي
+          if (isCancelled || sessionToken !== activeSessionToken) return;
+
           if (res?.hasContent && res.content && !doneRef.current) {
             doneRef.current = true;
+            activeSessionToken++;
+            stopStream();
             onCode(res.content);
             return;
+          } else {
+            // المستخدم ألغى المسح من الواجهة الأصلية: نغلق بدون التحول لكاميرا الويب
+            stopStream();
+            onCancel();
+            return;
           }
-        } catch {
-          // نتابع بكاميرا getUserMedia
+        } catch (err: unknown) {
+          if (isCancelled || sessionToken !== activeSessionToken) return;
+          const msg = err instanceof Error ? err.message : String(err);
+          // إذا كان الخطأ ناتجاً عن إلغاء المستخدم
+          if (
+            msg.toLowerCase().includes("cancel") ||
+            msg.toLowerCase().includes("dismiss") ||
+            msg.toLowerCase().includes("closed")
+          ) {
+            stopStream();
+            onCancel();
+            return;
+          }
+          // في حال عدم توفر الإضافة الأصلية نكمل بـ getUserMedia
         }
       }
 
-      try {
-        let stream: MediaStream;
+      // ثانياً: تشغيل كاميرا getUserMedia بدون قيود دقة إجبارية قد تمنع بعض الهواتف
+      const constraintsList: MediaStreamConstraints[] = [
+        {
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        },
+        {
+          video: {
+            facingMode: { ideal: "environment" },
+          },
+        },
+        {
+          video: true,
+        },
+      ];
+
+      let stream: MediaStream | null = null;
+      let lastErr: unknown = null;
+
+      for (const constraints of constraintsList) {
+        if (isCancelled || sessionToken !== activeSessionToken) return;
         try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: { ideal: "environment" },
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-            },
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          break;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+
+      // تحقق حاسم: هل تم إلغاء الجلسة أثناء انتظار وصول الـ MediaStream؟
+      if (isCancelled || sessionToken !== activeSessionToken) {
+        if (stream) {
+          stream.getTracks().forEach((track) => {
+            try {
+              track.stop();
+            } catch {
+              /* ignore */
+            }
           });
-        } catch {
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: "environment" },
-            });
-          } catch {
-            stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          }
         }
+        return;
+      }
 
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        streamRef.current = stream;
-
-        // انتظار استقرار العنصر في DOM
-        await new Promise((r) => window.setTimeout(r, 40));
-        if (cancelled || !videoRef.current) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => {});
-        tick();
-      } catch (err: unknown) {
-        if (cancelled) return;
+      if (!stream) {
         stopStream();
-        const name = err instanceof Error ? err.name : "";
+        const name = lastErr instanceof Error ? lastErr.name : "";
         setError(
           name === "NotAllowedError" || name === "SecurityError"
             ? "تم رفض إذن الكاميرا — امنح التطبيق الإذن من إعدادات النظام أو أدخل الرمز يدوياً"
@@ -186,15 +229,30 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
               ? "لا توجد كاميرا متاحة على هذا الجهاز — أدخل الرمز يدوياً"
               : "تعذر تشغيل الكاميرا — أدخل الرمز يدوياً",
         );
+        return;
       }
+
+      streamRef.current = stream;
+
+      // انتظار استقرار العنصر في الـ DOM
+      await new Promise((r) => window.setTimeout(r, 40));
+      if (isCancelled || sessionToken !== activeSessionToken || !videoRef.current) {
+        stopStream();
+        return;
+      }
+
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play().catch(() => {});
+      tick();
     };
 
     void start();
 
     return () => {
-      cancelled = true;
+      isCancelled = true;
+      activeSessionToken++;
       stopStream();
-      if (globalStopActiveScanner === stopStream) {
+      if (globalStopActiveScanner) {
         globalStopActiveScanner = null;
       }
     };
@@ -202,8 +260,15 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
   }, []);
 
   const handleCancelClick = () => {
+    activeSessionToken++;
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch {
+          /* ignore */
+        }
+      });
       streamRef.current = null;
     }
     if (globalStopActiveScanner) {
@@ -221,19 +286,20 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
         right: 0,
         bottom: 0,
         left: 0,
-        width: "100%",
-        height: "100%",
-        minWidth: "100vw",
-        minHeight: "100vh",
-        zIndex: 9999,
+        width: "100vw",
+        height: "100vh",
+        minWidth: "100%",
+        minHeight: "100%",
+        zIndex: 99999,
         background: "#000",
         overflow: "hidden",
       }}
+      className="ikout-qr-scanner-portal"
       role="dialog"
       aria-modal="true"
       aria-label="مسح رمز QR"
     >
-      {/* فيديو الكاميرا بملء الشاشة الحقيقي */}
+      {/* فيديو الكاميرا بملء الشاشة الحقيقي مع تغطية كاملة */}
       <video
         ref={videoRef}
         playsInline
@@ -273,7 +339,7 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
           top: 0,
           left: 0,
           right: 0,
-          padding: "max(10px, env(safe-area-inset-top, 10px)) 16px 12px",
+          padding: "max(12px, env(safe-area-inset-top, 12px)) 16px 12px",
           textAlign: "center",
           fontWeight: 800,
           color: "#fff",
@@ -286,26 +352,26 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
         {hint}
       </div>
 
-      {/* زر إلغاء المسح مع مراعاة منطقة النوتش على الأجهزة الأفقية */}
+      {/* زر إلغاء المسح مع مراعاة كاملة لأشرطة النظام والنوتش */}
       <button
         type="button"
         onClick={handleCancelClick}
         aria-label="إلغاء المسح"
         style={{
           position: "absolute",
-          top: "max(12px, env(safe-area-inset-top, 12px))",
+          top: "max(16px, env(safe-area-inset-top, 16px))",
           right: "max(16px, env(safe-area-inset-right, 16px))",
           width: "clamp(44px, 7vmin, 54px)",
           height: "clamp(44px, 7vmin, 54px)",
           borderRadius: "50%",
-          border: "2px solid rgba(77,243,255,0.5)",
-          background: "linear-gradient(135deg, rgba(60,188,255,0.35), rgba(14,134,224,0.55))",
-          boxShadow: "0 2px 12px rgba(10,90,156,0.45)",
+          border: "2px solid rgba(77,243,255,0.6)",
+          background: "linear-gradient(135deg, rgba(60,188,255,0.4), rgba(14,134,224,0.65))",
+          boxShadow: "0 2px 14px rgba(10,90,156,0.5)",
           cursor: "pointer",
           display: "grid",
           placeItems: "center",
           padding: 0,
-          zIndex: 10,
+          zIndex: 100,
         }}
       >
         <svg
@@ -322,7 +388,7 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
         </svg>
       </button>
 
-      {/* رسالة الخطأ في حال تعذر تشغيل الكاميرا دون تجميد الشاشة */}
+      {/* رسالة الخطأ دون تجميد الشاشة مع زر للعودة للإدخال اليدوي */}
       {error && (
         <div
           style={{
@@ -338,7 +404,7 @@ export const InlineQrScanner: React.FC<InlineQrScannerProps> = ({
             color: "#ffb4ae",
             fontWeight: 800,
             fontSize: "clamp(13px, 2.5vh, 20px)",
-            zIndex: 20,
+            zIndex: 110,
           }}
         >
           <p style={{ maxWidth: 460, margin: "0 0 18px", lineHeight: 1.5 }}>{error}</p>
