@@ -135,6 +135,8 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
   const hostStartedRef = useRef(false);
   const joinAttemptCounterRef = useRef<number>(0);
   const [joinCode, setJoinCode] = useState("");
+  const pendingEarlyStateRef = useRef<{ state: any; seatIndex?: number } | null>(null);
+  const initialStateAppliedRef = useRef<boolean>(false);
   const [roomCode] = useState<string>(() => generateRoomCode());
   const [hostServerReady, setHostServerReady] = useState(false);
   const [hostServerError, setHostServerError] = useState<string | null>(null);
@@ -210,6 +212,25 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
             });
             // المرحلة 2: تم قبول الانضمام وتعيين المقعد بنجاح، بانتظار استلام الحالة الابتدائية والوصول إلى READY
             setConnectError(null);
+
+            // في حال كانت الحالة المبكرة محفوظة والمقبس أصبح جاهزاً
+            if (
+              activeSocket.isReady() &&
+              pendingEarlyStateRef.current &&
+              !initialStateAppliedRef.current
+            ) {
+              const early = pendingEarlyStateRef.current;
+              pendingEarlyStateRef.current = null;
+              initialStateAppliedRef.current = true;
+              koutClientSetInitialState(early.state);
+              setJoined(true);
+              setConnecting(false);
+              setShowScanner(false);
+              if (early.state.phase && early.state.phase !== "LOBBY" && !lobbyStartedRef.current) {
+                lobbyStartedRef.current = true;
+                onStartGame();
+              }
+            }
           }
           break;
         }
@@ -226,7 +247,10 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
           if (!st) break;
           // التحقق الصريح: لا نعلن اكتمال الانضمام أو نبدأ اللعب إلا بعد تحقق جاهزية المقبس الفعلية socket.isReady()
           if (activeSocket.isReady()) {
-            koutClientSetInitialState(st);
+            if (!initialStateAppliedRef.current) {
+              initialStateAppliedRef.current = true;
+              koutClientSetInitialState(st);
+            }
             if (typeof packet.payload.seatIndex === "number" && packet.payload.seatIndex >= 0) {
               setMySeat(packet.payload.seatIndex);
               setActiveKoutClient({
@@ -245,6 +269,9 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
               lobbyStartedRef.current = true;
               onStartGame();
             }
+          } else {
+            // حفظ الحالة المبكرة لمعالجتها فور وصول تأكيد القبول والجاهزية
+            pendingEarlyStateRef.current = { state: st, seatIndex: packet.payload.seatIndex };
           }
           break;
         }
@@ -275,10 +302,19 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
 
     const unsubStatus = activeSocket.onStatusChange((st: ClientSocketStatus) => {
       if (st === "READY" && activeSocket.isReady()) {
-        // المرحلة 3: الجاهزية الفعلية المؤكدة فقط هي التي تعلن اكتمال الانضمام
-        setJoined(true);
-        setConnecting(false);
-        setConnectError(null);
+        // المرحلة 3: التحقق من استلام الحالة وتطبيقها قبل إعلان اكتمال الانضمام
+        const socketInitialState = (activeSocket as any).getInitialState?.();
+        const pendingState = pendingEarlyStateRef.current?.state || socketInitialState;
+        if (pendingState && !initialStateAppliedRef.current) {
+          initialStateAppliedRef.current = true;
+          koutClientSetInitialState(pendingState);
+          pendingEarlyStateRef.current = null;
+        }
+        if (initialStateAppliedRef.current) {
+          setJoined(true);
+          setConnecting(false);
+          setConnectError(null);
+        }
       } else if (st === "JOINED") {
         // المرحلة 2: تم قبول الانضمام وتعيين المقعد بانتظار وصول الحالة
         setConnectError(null);
@@ -348,6 +384,8 @@ export const RoomScreen: React.FC<RoomScreenProps> = ({
     setConnectError(null);
     setConnecting(true);
     setJoinCode(trimmed);
+    initialStateAppliedRef.current = false;
+    pendingEarlyStateRef.current = null;
 
     const connectToIp = (ip: string, port: number, candidates: string[]) => {
       if (joinAttemptCounterRef.current !== currentAttemptId) return;

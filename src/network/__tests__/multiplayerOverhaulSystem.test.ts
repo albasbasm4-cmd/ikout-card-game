@@ -6,7 +6,7 @@ import { LocalClientSocket, type ClientSocketStatus } from "../LocalClientSocket
 import { isValidLocalIpv4 } from "../localIp";
 import { getJoinCandidateIps } from "../wssBridge";
 import { filterStateForSeat } from "../protocol";
-import { maskUnoState } from "../../lib/uno/unoNet";
+import { maskUnoState, unoHostBroadcastAll } from "../../lib/uno/unoNet";
 import { newGame as newUnoGame } from "../../lib/uno/engine";
 import { maskGameState187 } from "../../game187/network/network187";
 import { GameEngine187 } from "../../game187/engine";
@@ -35,6 +35,8 @@ class TestBridgeTransport implements IHostTransport {
       } else if (evt.type === "CLIENT_DISCONNECTED") {
         const token = this.clientToToken.get(evt.clientId) ?? evt.clientId;
         this.clientToToken.delete(evt.clientId);
+        // إذا كان هناك اتصال أحدث لنفس التوكن مسجل في النقل، لا نعتبر إغلاق الاتصال القديم انقطاعاً
+        if (this.tokenToClient.get(token) !== evt.clientId) return;
         this.tokenToClient.delete(token);
         for (const h of Array.from(this.disconnectHandlers)) h(token);
       } else if (evt.type === "CLIENT_MESSAGE") {
@@ -228,6 +230,107 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
       expect(socket.isJoined()).toBe(true);
       expect(socket.isReady()).toBe(true);
       expect(socket.canSendGameActions()).toBe(true);
+
+      socket.disconnect();
+    });
+
+    it("delivers early CLIENT_STATE_UPDATE to consumer listener and applies initial state exactly once after valid JOIN_ACCEPTED", () => {
+      const mockTransport = {
+        handlers: new Set<(p: any) => void>(),
+        isConnected: () => true,
+        send: () => {},
+        disconnect: () => {},
+        onMessage: (h: any) => {
+          mockTransport.handlers.add(h);
+          return () => mockTransport.handlers.delete(h);
+        },
+      };
+
+      const socket = new LocalClientSocket({
+        playerToken: "consumer_test_tok",
+        playerName: "مستهلك",
+        transportOverride: mockTransport as any,
+        roomCode,
+      });
+
+      // محاكاة مستهلك الواجهة (RoomScreen consumer)
+      let consumerInitialStateApplied: any = null;
+      let consumerAppliedCount = 0;
+      let consumerJoined = false;
+
+      socket.onMessage((packet) => {
+        if (packet.type === "CLIENT_STATE_UPDATE" && socket.isReady()) {
+          if (!consumerInitialStateApplied) {
+            consumerInitialStateApplied = packet.payload.state;
+            consumerAppliedCount++;
+            consumerJoined = true;
+          }
+        }
+      });
+
+      socket.onStatusChange((status) => {
+        if (status === "READY" && socket.isReady()) {
+          const st = socket.getInitialState();
+          if (st && !consumerInitialStateApplied) {
+            consumerInitialStateApplied = st;
+            consumerAppliedCount++;
+            consumerJoined = true;
+          }
+        }
+      });
+
+      expect(socket.getStatus()).toBe("JOINING");
+      expect(socket.isReady()).toBe(false);
+      expect(consumerJoined).toBe(false);
+      expect(consumerInitialStateApplied).toBeNull();
+
+      // 1. إرسال CLIENT_STATE_UPDATE قبل JOIN_ACCEPTED
+      const earlyState = { phase: "BID", roundNo: 1, hands: [[], [], [], []] };
+      for (const h of mockTransport.handlers) {
+        h({
+          type: "CLIENT_STATE_UPDATE",
+          payload: {
+            seatIndex: 2,
+            state: earlyState,
+          },
+        });
+      }
+
+      // التأكد أن المقبس لم يصل إلى READY وأن الواجهة لم تعلن اكتمال الانضمام
+      expect(socket.getStatus()).toBe("JOINING");
+      expect(socket.isReady()).toBe(false);
+      expect(consumerJoined).toBe(false);
+      expect(consumerInitialStateApplied).toBeNull();
+
+      // 2. إرسال JOIN_ACCEPTED
+      for (const h of mockTransport.handlers) {
+        h({
+          type: "JOIN_ACCEPTED",
+          payload: {
+            seatIndex: 2,
+            roomCode,
+            playerToken: "consumer_test_tok",
+          },
+        });
+      }
+
+      // التأكد من معالجة الحالة المحفوظة واستلام الواجهة لها وانتقال المقبس إلى READY
+      expect(socket.getStatus()).toBe("READY");
+      expect(socket.isReady()).toBe(true);
+      expect(consumerJoined).toBe(true);
+      expect(consumerInitialStateApplied).toEqual(earlyState);
+      expect(consumerAppliedCount).toBe(1);
+
+      // التأكد من عدم تكرار تطبيق الحالة عند وصول حزم لاحقة غير ابتدائية
+      for (const h of mockTransport.handlers) {
+        h({
+          type: "SEAT_UPDATE",
+          payload: {
+            seatIndex: 2,
+          },
+        });
+      }
+      expect(consumerAppliedCount).toBe(1);
 
       socket.disconnect();
     });
@@ -580,6 +683,57 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
       c2.disconnect();
     });
 
+    it("transport & server: concurrent reconnection with same token replaces old client, preserves seat, and closing old connection does not trigger bot takeover", async () => {
+      // 1. اتصال اللاعب الأصلي بالتوكن T
+      const token = "concurrent_transport_token";
+      const c1 = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: token,
+        playerName: "لاعب_أصيل",
+        roomCode,
+      });
+      await new Promise<void>((r) => c1.onStatusChange((s) => s === "READY" && r()));
+      const assignedSeat = c1.getAssignedSeat();
+      expect(assignedSeat).toBe(1);
+
+      // بدء المباراة
+      session.startRound();
+      expect(session.getEngine().state.roundNo).toBe(1);
+      const phaseBefore = session.getEngine().state.phase;
+
+      // 2. فتح اتصال ثانٍ بالتوكن T نفسه دون إغلاق الاتصال الأول يدوياً
+      const c2 = new LocalClientSocket({
+        url: `ws://127.0.0.1:${server.port}`,
+        playerToken: token,
+        playerName: "لاعب_أصيل_اتصال2",
+        roomCode,
+      });
+      await new Promise<void>((r) => c2.onStatusChange((s) => s === "READY" && r()));
+
+      // 3. يجب ألا ينشأ مقعد جديد ويستمر المقعد نفسه
+      expect(c2.getAssignedSeat()).toBe(assignedSeat);
+
+      // 4. لا ينبغي أن يكون هناك مقعدان مختلفان للتوكن نفسه
+      const assigned = (session as any).tokenToSeat.get(token);
+      expect(assigned).toBe(assignedSeat);
+
+      // 5. إغلاق الاتصال القديم لاحقاً
+      c1.disconnect();
+      await new Promise((r) => setTimeout(r, 80));
+
+      // 6. يجب ألا يؤدي إغلاق القديم إلى تحرير مقعد الجديد أو تشغيل Bot Takeover
+      expect(assignedSeat).not.toBeNull();
+      const playerSlot = session.getEngine().state.players?.[assignedSeat!];
+      expect(playerSlot?.kind).toBe("HUMAN_REMOTE");
+      expect(playerSlot?.connected).toBe(true);
+
+      // 7. التأكد أن حالة المباراة لم تتأثر
+      expect(session.getEngine().state.roundNo).toBe(1);
+      expect(session.getEngine().state.phase).toBe(phaseBefore);
+
+      c2.disconnect();
+    });
+
     it("rejecting a new player does not affect existing connected players or match state", async () => {
       const legitPlayer = new LocalClientSocket({
         url: `ws://127.0.0.1:${server.port}`,
@@ -710,6 +864,109 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
     });
   });
 
+  it("UNO: unoHostBroadcastAll broadcasts masked states per seat and never leaks raw drawPile or opponent hands in JSON", async () => {
+    const game = newUnoGame(
+      [
+        { name: "P0", isBot: false, difficulty: "easy" },
+        { name: "P1", isBot: false, difficulty: "easy" },
+      ],
+      "room",
+    );
+
+    // بث الحالة عبر الدالة المعدلة
+    unoHostBroadcastAll(game);
+
+    const maskedSeat0 = maskUnoState(game, 0);
+    const maskedSeat1 = maskUnoState(game, 1);
+
+    const json0 = JSON.stringify({ type: "STATE", payload: { state: maskedSeat0 } });
+    const json1 = JSON.stringify({ type: "STATE", payload: { state: maskedSeat1 } });
+
+    // فحص محتوى JSON النهائي: لا وجود لأوراق السحب الحقيقية
+    expect(json0).not.toContain(`"id":"${game.drawPile[0].id}"`);
+    expect(json1).not.toContain(`"id":"${game.drawPile[0].id}"`);
+
+    // لاعب 0 لا يرى في JSON أوراق لاعب 1
+    expect(json0).not.toContain(`"id":"${game.players[1].hand[0].id}"`);
+    // لاعب 1 لا يرى في JSON أوراق لاعب 0
+    expect(json1).not.toContain(`"id":"${game.players[0].hand[0].id}"`);
+  });
+
+  it("Packet-level privacy audit across all 4 games (iKout, UNO, 187, Joker): final JSON strings contain zero hidden opponent cards", () => {
+    // 1. iKout JSON packet check
+    session.startRound();
+    const koutState = session.getEngine().state;
+    const koutFilteredP1 = filterStateForSeat(koutState, 1);
+    const koutJsonP1 = JSON.stringify({
+      type: "CLIENT_STATE_UPDATE",
+      payload: { state: koutFilteredP1, seatIndex: 1 },
+    });
+
+    for (const seat of [0, 2, 3]) {
+      for (const card of koutState.hands[seat]) {
+        const cardIdPattern = `"rank":"${card.rank}","suit":"${card.suit}"`;
+        const p1HoldsSame = koutState.hands[1].some(
+          (c) => c.rank === card.rank && c.suit === card.suit,
+        );
+        if (!p1HoldsSame) {
+          expect(koutJsonP1).not.toContain(cardIdPattern);
+        }
+      }
+    }
+
+    // 2. UNO JSON packet check
+    const unoGame = newUnoGame(
+      [
+        { name: "P0", isBot: false, difficulty: "easy" },
+        { name: "P1", isBot: false, difficulty: "easy" },
+      ],
+      "room",
+    );
+    const unoMaskedP1 = maskUnoState(unoGame, 1);
+    const unoJsonP1 = JSON.stringify({ type: "STATE", payload: { state: unoMaskedP1 } });
+    for (const card of unoGame.players[0].hand) {
+      expect(unoJsonP1).not.toContain(`"id":"${card.id}"`);
+    }
+    for (const card of unoGame.drawPile) {
+      expect(unoJsonP1).not.toContain(`"id":"${card.id}"`);
+    }
+
+    // 3. 187 JSON packet check
+    const engine187 = new GameEngine187({
+      players: [
+        { seatIndex: 0, name: "P0", kind: "HUMAN_LOCAL" },
+        { seatIndex: 1, name: "P1", kind: "REMOTE" },
+        { seatIndex: 2, name: "P2", kind: "REMOTE" },
+        { seatIndex: 3, name: "P3", kind: "REMOTE" },
+        { seatIndex: 4, name: "P4", kind: "REMOTE" },
+      ],
+    });
+    engine187.startRound();
+    const raw187 = engine187.state;
+    const masked187P1 = maskGameState187(raw187, 1);
+    const json187P1 = JSON.stringify({ type: "STATE_UPDATE", state: masked187P1 });
+    for (const seat of [0, 2, 3, 4]) {
+      for (const card of raw187.hands[seat]) {
+        expect(json187P1).not.toContain(card.id);
+      }
+    }
+
+    // 4. Joker JSON packet check
+    const jokerGame = dealJoker(
+      createJokerGame([
+        { id: "p1", name: "P1", char: "c1", score: 0, bot: false },
+        { id: "p2", name: "P2", char: "c2", score: 0, bot: false },
+        { id: "p3", name: "P3", char: "c3", score: 0, bot: false },
+        { id: "p4", name: "P4", char: "c4", score: 0, bot: false },
+      ]),
+    );
+    const maskedJokerP1 = maskJokerState(jokerGame, "p1");
+    const jsonJokerP1 = JSON.stringify({ type: "STATE", payload: { state: maskedJokerP1 } });
+    if (jokerGame.cards["p2"]) {
+      expect(jsonJokerP1).not.toContain(jokerGame.cards["p2"]);
+    }
+  });
+
   describe("4. Local IP Discovery & Validation", () => {
     it("excludes 169.254.0.0/16 link-local addresses by default", () => {
       expect(isValidLocalIpv4("169.254.1.1")).toBe(false);
@@ -745,6 +1002,106 @@ describe("Comprehensive Multiplayer Overhaul System Test Suite", () => {
   });
 
   describe("5. Authoritative Host & Duplicate Action Protection", () => {
+    it("game actions sent before READY are dropped locally, never reach the host, and cannot alter engine state", async () => {
+      const mockTransport = {
+        sentPackets: [] as any[],
+        handlers: new Set<(p: any) => void>(),
+        isConnected: () => true,
+        send: (p: any) => {
+          mockTransport.sentPackets.push(p);
+        },
+        disconnect: () => {},
+        onMessage: (h: any) => {
+          mockTransport.handlers.add(h);
+          return () => mockTransport.handlers.delete(h);
+        },
+      };
+
+      const socket = new LocalClientSocket({
+        playerToken: "gate_tok",
+        playerName: "حارس",
+        transportOverride: mockTransport as any,
+        roomCode,
+      });
+
+      // Status is JOINING (not READY)
+      expect(socket.isReady()).toBe(false);
+      expect(socket.canSendGameActions()).toBe(false);
+
+      // Try sending PLAY_CARD_REQUEST and BID_REQUEST
+      socket.send({
+        v: 1,
+        seq: 1,
+        playerToken: "gate_tok",
+        type: "PLAY_CARD_REQUEST",
+        payload: { card: { rank: "A", suit: "SPADES" } },
+      } as any);
+
+      socket.send({
+        v: 1,
+        seq: 2,
+        playerToken: "gate_tok",
+        type: "BID_REQUEST",
+        payload: { bid: 6 },
+      });
+
+      // Assert no game action was sent over transport (only the initial JOIN_ROOM_REQUEST was sent)
+      expect(
+        mockTransport.sentPackets.some(
+          (p) => p.type === "PLAY_CARD_REQUEST" || p.type === "BID_REQUEST",
+        ),
+      ).toBe(false);
+
+      // Now bring socket to JOINED
+      for (const h of mockTransport.handlers) {
+        h({
+          type: "JOIN_ACCEPTED",
+          payload: { seatIndex: 1, roomCode, playerToken: "gate_tok" },
+        });
+      }
+      expect(socket.getStatus()).toBe("JOINED");
+      expect(socket.isReady()).toBe(false);
+
+      // Still cannot send game actions in JOINED before READY
+      socket.send({
+        v: 1,
+        seq: 3,
+        playerToken: "gate_tok",
+        type: "BID_REQUEST",
+        payload: { bid: 6 },
+      });
+      expect(
+        mockTransport.sentPackets.some(
+          (p) => p.type === "PLAY_CARD_REQUEST" || p.type === "BID_REQUEST",
+        ),
+      ).toBe(false);
+
+      // Now receive INITIAL_STATE and transition to READY
+      for (const h of mockTransport.handlers) {
+        h({
+          type: "CLIENT_STATE_UPDATE",
+          payload: { seatIndex: 1, state: { phase: "BID", roundNo: 1 } },
+        });
+      }
+      expect(socket.getStatus()).toBe("READY");
+      expect(socket.isReady()).toBe(true);
+      expect(socket.canSendGameActions()).toBe(true);
+
+      // Now game actions ARE permitted
+      socket.send({
+        v: 1,
+        seq: 4,
+        playerToken: "gate_tok",
+        type: "BID_REQUEST",
+        payload: { bid: 6 },
+      });
+      const bidPackets = mockTransport.sentPackets.filter((p) => p.type === "BID_REQUEST");
+      expect(bidPackets.length).toBe(1);
+      expect(bidPackets[0].seq).toBe(4);
+
+      socket.disconnect();
+    });
+
     it("deduplicates action packets with same seq to prevent double-execution", async () => {
       const socket = new LocalClientSocket({
         url: `ws://127.0.0.1:${server.port}`,

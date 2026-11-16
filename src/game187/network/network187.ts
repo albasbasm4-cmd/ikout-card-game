@@ -5,13 +5,24 @@ import { getPersistentPlayerToken } from "../../network/playerToken";
  */
 
 import { Card187, GameState187, Player187, Suit187 } from "../types";
-import { ensureHubServer, hubBroadcast, hubSendTo, registerHubChannel } from "../../network/gameHub";
+import {
+  ensureHubServer,
+  hubBroadcast,
+  hubSendTo,
+  registerHubChannel,
+} from "../../network/gameHub";
 import { getJoinCandidateIps } from "../../network/wssBridge";
 import { LocalClientSocket } from "../../network/LocalClientSocket";
 
 export type Client187Packet =
   | { type: "CHAT"; seat: number; message: string }
-  | { type: "JOIN"; playerName: string; characterId?: string; clientToken: string; roomCode?: string }
+  | {
+      type: "JOIN";
+      playerName: string;
+      characterId?: string;
+      clientToken: string;
+      roomCode?: string;
+    }
   | { type: "LEAVE"; clientToken: string }
   | { type: "BID"; seat: number; bid: number }
   | { type: "DISCARD"; seat: number; cardIds: string[] }
@@ -37,7 +48,6 @@ export function findMySeat187(players: Player187[] | undefined, clientToken: str
   return idx === -1 ? 1 : idx;
 }
 
-
 /**
  * ينشئ نسخة شبكية آمنة: أوراق صاحب المقعد فقط تبقى مكشوفة، وتُحجب أوراق بقية المقاعد.
  * تستقبل clientSeat كرقم المقعد؛ لا يُرسل المضيف حالة اللعب الخام للمنضمين.
@@ -46,7 +56,11 @@ export function maskGameState187(state: GameState187, clientSeat: number): GameS
   const hands = state.hands.map((hand, seat) =>
     seat === clientSeat
       ? hand
-      : hand.map((_, index) => ({ id: `masked-${seat}-${index}`, suit: "S" as Suit187, rank: 2 as const })),
+      : hand.map((_, index) => ({
+          id: `masked-${seat}-${index}`,
+          suit: "S" as Suit187,
+          rank: 2 as const,
+        })),
   );
   return { ...state, hands };
 }
@@ -108,18 +122,19 @@ export class Room187Channel {
       },
       onClientMessage: (clientId, msg) => {
         const packet = (msg as Record<string, unknown>)["packet"] as
-          | Client187Packet
-          | Host187Packet
-          | undefined;
+          Client187Packet | Host187Packet | undefined;
         if (!packet || typeof packet !== "object" || !("type" in packet)) return;
         const j = packet as Record<string, unknown> as {
           payload?: Record<string, unknown>;
           clientToken?: unknown;
           roomCode?: unknown;
         };
-        const tokenCandidate = (typeof j.clientToken === "string" && j.clientToken)
-          ? j.clientToken
-          : (typeof j.payload?.["playerToken"] === "string" ? (j.payload["playerToken"] as string) : null);
+        const tokenCandidate =
+          typeof j.clientToken === "string" && j.clientToken
+            ? j.clientToken
+            : typeof j.payload?.["playerToken"] === "string"
+              ? (j.payload["playerToken"] as string)
+              : null;
         if (tokenCandidate) {
           this.clientToToken.set(clientId, tokenCandidate);
           this.tokenToClient.set(tokenCandidate, clientId);
@@ -140,10 +155,7 @@ export class Room187Channel {
             return;
           }
           // JOIN صريح من شاشة الغرفة: يجب أن يطابق رمز الغرفة
-          if (
-            j.roomCode === undefined ||
-            String(j.roomCode).trim().toUpperCase() !== this.code
-          ) {
+          if (j.roomCode === undefined || String(j.roomCode).trim().toUpperCase() !== this.code) {
             reject();
             return;
           }
@@ -219,6 +231,10 @@ export class Room187Channel {
     }
     if (this.role === "host") {
       if (this.unregHost) {
+        if (msg.type === "STATE_UPDATE") {
+          this.sendStateUpdate((msg as any).state);
+          return;
+        }
         hubBroadcast({ ch: "g187", packet: msg });
       } else {
         this.pending.push(msg);

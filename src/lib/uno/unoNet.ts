@@ -178,7 +178,9 @@ export async function startUnoHost(code: string): Promise<void> {
         { type?: string; payload?: Record<string, unknown> } | undefined;
       if (!p?.type) return;
       if (p.type === "HELLO") {
-        const givenCode = String(p.payload?.["roomCode"] ?? "").trim().toUpperCase();
+        const givenCode = String(p.payload?.["roomCode"] ?? "")
+          .trim()
+          .toUpperCase();
         if (host.code && givenCode !== host.code.toUpperCase()) {
           hubSendTo(clientId, { ch: "uno", packet: { type: "INVALID_ROOM" } });
           return;
@@ -353,7 +355,11 @@ function listenToClientSocket(socket: LocalClientSocket): void {
 }
 
 /** المنضم: يبحث عن المضيف على نقطة الاتصال وينضم بغرفة الرمز. */
-export async function connectUnoClient(opts: { code: string; name: string; hostIp?: string }): Promise<boolean> {
+export async function connectUnoClient(opts: {
+  code: string;
+  name: string;
+  hostIp?: string;
+}): Promise<boolean> {
   disconnectUnoClient();
   const candidates = await getJoinCandidateIps(opts.hostIp);
   for (const ip of candidates) {
@@ -440,7 +446,10 @@ export function onUnoClientSeats(cb: (seats: (string | null)[]) => void): () => 
   };
 }
 
-/** نبث الحالة المبدئية أيضاً عبر hubBroadcast عند عدم وجود مقاعد مسجلة (احتياط). */
+/** نبث الحالة المحدثة للمقاعد المسجلة بشكل مقنّع ومخصص لكل مقعد، دون كشف أوراق السحب أو الخصوم. */
 export function unoHostBroadcastAll(state: GameState): void {
-  hubBroadcast({ ch: "uno", packet: { type: "STATE", payload: { state } } });
+  if (host) {
+    host.state = state;
+    publishState();
+  }
 }

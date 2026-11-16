@@ -74,6 +74,8 @@ export class LocalClientSocket implements ITransport {
 
   /** تخزين مؤقت للحالة الابتدائية إذا وصلت قبل JOIN_ACCEPTED */
   private pendingInitialStatePacket: HostPacket | null = null;
+  /** آخر حالة ابتدائية مستلمة ومتحقق منها من المضيف */
+  private initialState: any | null = null;
 
   constructor(options: LocalClientSocketOptions) {
     this.url = options.url ?? "ws://localhost:8080";
@@ -149,6 +151,10 @@ export class LocalClientSocket implements ITransport {
 
   public getRoomCode(): string | undefined {
     return this.roomCode;
+  }
+
+  public getInitialState(): any | null {
+    return this.initialState;
   }
 
   private setStatus(newStatus: ClientSocketStatus): void {
@@ -239,14 +245,6 @@ export class LocalClientSocket implements ITransport {
           if (this.channel && (!parsed || parsed.ch !== this.channel)) return;
 
           this.handleInboundPacket(packet);
-
-          for (const handler of Array.from(this.messageHandlers)) {
-            try {
-              handler(packet);
-            } catch (err) {
-              console.error("[LocalClientSocket] messageHandler error:", err);
-            }
-          }
         } catch (err) {
           console.error("[LocalClientSocket] Parse error:", err);
         }
@@ -265,6 +263,16 @@ export class LocalClientSocket implements ITransport {
     }
   }
 
+  private emitMessage(packet: HostPacket): void {
+    for (const handler of Array.from(this.messageHandlers)) {
+      try {
+        handler(packet);
+      } catch (err) {
+        console.error("[LocalClientSocket] messageHandler error:", err);
+      }
+    }
+  }
+
   private handleInboundPacket(packet: HostPacket): void {
     if (!packet || typeof packet !== "object" || !("type" in packet)) return;
     const pType = packet.type as string;
@@ -274,33 +282,59 @@ export class LocalClientSocket implements ITransport {
       if (payload && typeof payload.seatIndex === "number" && payload.seatIndex >= 0) {
         this.assignedSeat = payload.seatIndex;
         this.setStatus("JOINED");
+        // بث رسالة قبول الانضمام أولاً حتى تسجل الواجهة رقم المقعد
+        this.emitMessage(packet);
+
         if (this.pendingInitialStatePacket) {
           const pending = this.pendingInitialStatePacket;
           this.pendingInitialStatePacket = null;
           this.processInitialStatePacket(pending);
+          // بث الحالة الابتدائية المخزنة للمستمعين بالترتيب الصحيح فور تحقق الجاهزية
+          if (this.status === "READY") {
+            this.emitMessage(pending);
+          }
         }
+        return;
       }
-    } else if (pType === "SEAT_UPDATE" || pType === "WELCOME" || pType === "ROOM_SEATS_UPDATE") {
+      this.emitMessage(packet);
+      return;
+    }
+
+    if (pType === "SEAT_UPDATE" || pType === "WELCOME" || pType === "ROOM_SEATS_UPDATE") {
       const payload = (packet as any).payload;
       const seat = typeof payload?.seatIndex === "number" ? payload.seatIndex : payload?.seat;
       if (typeof seat === "number" && seat >= 0 && this.assignedSeat === null) {
         this.assignedSeat = seat;
       }
       // ملاحظة: SEAT_UPDATE وحدها لا تعتبر قبولاً نهائياً دون JOIN_ACCEPTED
-    } else if (pType === "CLIENT_STATE_UPDATE" || pType === "STATE") {
+      this.emitMessage(packet);
+      return;
+    }
+
+    if (pType === "CLIENT_STATE_UPDATE" || pType === "STATE") {
       if (
         this.status !== "JOINED" &&
         this.status !== "INITIAL_STATE_RECEIVED" &&
         this.status !== "READY"
       ) {
         // إذا وصلت الحالة قبل تأكيد القبول JOIN_ACCEPTED، يتم حفظها مؤقتاً
+        // ولا يتم بثها للمستمعين قبل تأكيد القبول وجاهزية المقبس
         this.pendingInitialStatePacket = packet;
+        return;
       } else {
         this.processInitialStatePacket(packet);
+        this.emitMessage(packet);
+        return;
       }
-    } else if (pType === "REJECTED") {
+    }
+
+    if (pType === "REJECTED") {
       this.setStatus("REJECTED");
-    } else if (pType === "ERROR") {
+      this.emitMessage(packet);
+      return;
+    }
+
+    if (pType === "ERROR") {
       const errPayload = (packet as any).payload;
       const errMsg =
         typeof errPayload === "string"
@@ -319,7 +353,11 @@ export class LocalClientSocket implements ITransport {
       } else if (this.status !== "READY") {
         this.setStatus("ERROR");
       }
+      this.emitMessage(packet);
+      return;
     }
+
+    this.emitMessage(packet);
   }
 
   private processInitialStatePacket(packet: HostPacket): void {
@@ -339,6 +377,7 @@ export class LocalClientSocket implements ITransport {
     const stateObj = payload?.state || (packet as any).state;
     // التحقق الصارم من بنية الحالة وصحتها
     if (stateObj && typeof stateObj === "object") {
+      this.initialState = stateObj;
       if (this.status !== "READY") {
         this.setStatus("INITIAL_STATE_RECEIVED");
         this.setStatus("READY");
@@ -411,9 +450,6 @@ export class LocalClientSocket implements ITransport {
 
     this.transportOverride.onMessage((packet) => {
       this.handleInboundPacket(packet);
-      for (const handler of Array.from(this.messageHandlers)) {
-        handler(packet);
-      }
     });
 
     this.sendJoin();
