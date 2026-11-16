@@ -10,10 +10,7 @@ import {
 
 describe("Keyboard Overlay & Native Android Soft Input Configuration", () => {
   it("verifies AndroidManifest.xml uses adjustNothing for pure overlay behavior", () => {
-    const manifestPath = path.resolve(
-      process.cwd(),
-      "android/app/src/main/AndroidManifest.xml",
-    );
+    const manifestPath = path.resolve(process.cwd(), "android/app/src/main/AndroidManifest.xml");
     expect(fs.existsSync(manifestPath)).toBe(true);
     const manifest = fs.readFileSync(manifestPath, "utf-8");
 
@@ -35,10 +32,7 @@ describe("Keyboard Overlay & Native Android Soft Input Configuration", () => {
   });
 
   it("verifies scripts/patch-capacitor-android.mjs enforces adjustNothing", () => {
-    const scriptPath = path.resolve(
-      process.cwd(),
-      "scripts/patch-capacitor-android.mjs",
-    );
+    const scriptPath = path.resolve(process.cwd(), "scripts/patch-capacitor-android.mjs");
     expect(fs.existsSync(scriptPath)).toBe(true);
     const script = fs.readFileSync(scriptPath, "utf-8");
 
@@ -47,10 +41,7 @@ describe("Keyboard Overlay & Native Android Soft Input Configuration", () => {
 
   it("verifies viewport meta tag contains interactive-widget=overlays-content", () => {
     const rootPath = path.resolve(process.cwd(), "src/routes/__root.tsx");
-    const htmlGenPath = path.resolve(
-      process.cwd(),
-      "scripts/generate-static-html.mjs",
-    );
+    const htmlGenPath = path.resolve(process.cwd(), "scripts/generate-static-html.mjs");
 
     const rootContent = fs.readFileSync(rootPath, "utf-8");
     const htmlContent = fs.readFileSync(htmlGenPath, "utf-8");
@@ -61,10 +52,7 @@ describe("Keyboard Overlay & Native Android Soft Input Configuration", () => {
 
   it("verifies use-stage-fit.ts and screen components prevent shrinking on keyboard resize", () => {
     const hookPath = path.resolve(process.cwd(), "src/hooks/use-stage-fit.ts");
-    const gameScreenPath = path.resolve(
-      process.cwd(),
-      "src/components/GameScreen.tsx",
-    );
+    const gameScreenPath = path.resolve(process.cwd(), "src/components/GameScreen.tsx");
     const hookContent = fs.readFileSync(hookPath, "utf-8");
     const gameScreenContent = fs.readFileSync(gameScreenPath, "utf-8");
 
@@ -114,22 +102,16 @@ describe("Keyboard Overlay State & Input Visibility Management", () => {
   });
 
   it("handles keyboard events and manages CSS variables and body classes", () => {
-    window.dispatchEvent(
-      new CustomEvent("keyboardWillShow", { detail: { keyboardHeight: 280 } }),
-    );
+    window.dispatchEvent(new CustomEvent("keyboardWillShow", { detail: { keyboardHeight: 280 } }));
 
     expect(isKeyboardActive()).toBe(true);
     expect(getKeyboardHeight()).toBe(280);
     expect(document.body.classList.contains("keyboard-open")).toBe(true);
-    expect(
-      document.documentElement.style.getPropertyValue("--keyboard-height"),
-    ).toBe("280px");
+    expect(document.documentElement.style.getPropertyValue("--keyboard-height")).toBe("280px");
 
     window.dispatchEvent(new Event("keyboardWillHide"));
     expect(document.body.classList.contains("keyboard-open")).toBe(false);
-    expect(
-      document.documentElement.style.getPropertyValue("--keyboard-height"),
-    ).toBe("0px");
+    expect(document.documentElement.style.getPropertyValue("--keyboard-height")).toBe("0px");
   });
 
   it("invokes scrollIntoView on focused inputs when obscured by overlay", () => {

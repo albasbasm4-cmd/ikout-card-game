@@ -61,7 +61,12 @@ export interface GameScreenProps {
   /** وضع المضيف في اللعب الجماعي عبر الأجهزة (هوت سبوت). */
   netHost?: { session: unknown; engine: unknown } | null;
   /** وضع المنضم في اللعب الجماعي عبر الأجهزة (هوت سبوت). */
-  netClient?: { socket: unknown; mySeat: number; playerToken: string; initialState?: unknown } | null;
+  netClient?: {
+    socket: unknown;
+    mySeat: number;
+    playerToken: string;
+    initialState?: unknown;
+  } | null;
 }
 
 export const GameScreen: React.FC<GameScreenProps> = ({

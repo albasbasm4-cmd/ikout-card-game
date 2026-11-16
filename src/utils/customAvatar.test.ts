@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { applyVoiceAd, newCustomAvatar, saveCustomAvatar, listCustomAvatars, isSavedCustomAvatar } from "./customAvatar";
+import {
+  applyVoiceAd,
+  newCustomAvatar,
+  saveCustomAvatar,
+  listCustomAvatars,
+  isSavedCustomAvatar,
+} from "./customAvatar";
 
 describe("custom characters", () => {
   beforeEach(() => localStorage.clear());

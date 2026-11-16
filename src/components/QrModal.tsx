@@ -6,7 +6,17 @@
 import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { createPortal } from "react-dom";
-import { X, Copy, Check, QrCode as QrIcon, Wifi, Sparkles, Edit2, CheckCircle, AlertTriangle } from "lucide-react";
+import {
+  X,
+  Copy,
+  Check,
+  QrCode as QrIcon,
+  Wifi,
+  Sparkles,
+  Edit2,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
 import { encodeRoomPayload, getLocalIpAddress, isValidLocalIpv4 } from "../network/localIp";
 
 export interface QrModalProps {
@@ -26,7 +36,9 @@ export const QrModal: React.FC<QrModalProps> = ({
   onClose,
   className = "",
 }) => {
-  const [ip, setIp] = useState<string>(() => (initialIp && isValidLocalIpv4(initialIp) ? initialIp : ""));
+  const [ip, setIp] = useState<string>(() =>
+    initialIp && isValidLocalIpv4(initialIp) ? initialIp : "",
+  );
   const [isDetecting, setIsDetecting] = useState<boolean>(!initialIp);
   const [isEditingIp, setIsEditingIp] = useState<boolean>(false);
   const [tempIp, setTempIp] = useState<string>(ip);
@@ -221,7 +233,9 @@ export const QrModal: React.FC<QrModalProps> = ({
             </div>
           ) : (
             <div className="flex items-center justify-between mt-0.5">
-              <span className={`font-mono text-xs font-bold select-all ${hasVerifiedIp ? "text-emerald-300" : "text-amber-400/80"}`}>
+              <span
+                className={`font-mono text-xs font-bold select-all ${hasVerifiedIp ? "text-emerald-300" : "text-amber-400/80"}`}
+              >
                 {hasVerifiedIp ? connectionUrl : "غير محدد (اضغط تعديل IP)"}
               </span>
               {hasVerifiedIp && (
@@ -244,7 +258,8 @@ export const QrModal: React.FC<QrModalProps> = ({
 
         {/* Helper tip for Wi-Fi & AP Isolation */}
         <p className="text-[10px] text-amber-200/60 text-right mb-3 leading-relaxed">
-          نصيحة: تأكد من اتصال جميع الأجهزة بنفس شبكة Wi-Fi أو نقطة اتصال الجوال (Hotspot). إذا تعذر الاتصال عبر راوتر Wi-Fi منزلي، قد تكون خاصية عزل الأجهزة (AP Isolation) مفعلة بالراوتر.
+          نصيحة: تأكد من اتصال جميع الأجهزة بنفس شبكة Wi-Fi أو نقطة اتصال الجوال (Hotspot). إذا تعذر
+          الاتصال عبر راوتر Wi-Fi منزلي، قد تكون خاصية عزل الأجهزة (AP Isolation) مفعلة بالراوتر.
         </p>
 
         {/* Done / Close Button */}

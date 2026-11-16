@@ -78,12 +78,15 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
   });
   const { game, holdingId, modal } = jokerSession;
 
-  const setGame = useCallback((updater: JokerGame | null | ((prev: JokerGame | null) => JokerGame | null)) => {
-    setJokerSession((prev: JokerSessionState) => ({
-      ...prev,
-      game: typeof updater === "function" ? updater(prev.game) : updater,
-    }));
-  }, []);
+  const setGame = useCallback(
+    (updater: JokerGame | null | ((prev: JokerGame | null) => JokerGame | null)) => {
+      setJokerSession((prev: JokerSessionState) => ({
+        ...prev,
+        game: typeof updater === "function" ? updater(prev.game) : updater,
+      }));
+    },
+    [],
+  );
 
   const setHoldingId = useCallback((id: string | null) => {
     setJokerSession((prev: JokerSessionState) => ({ ...prev, holdingId: id }));
@@ -351,66 +354,70 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                   </div>
                   <div className="kd">
                     <div className="ksb kdk" style={{ marginBottom: 16 }}>
-                      أنت داخل غرفة المضيف · مقعدك: <b style={{ color: "#00e5ff" }}>{human.toUpperCase()}</b>
+                      أنت داخل غرفة المضيف · مقعدك:{" "}
+                      <b style={{ color: "#00e5ff" }}>{human.toUpperCase()}</b>
                     </div>
                     <div
                       id="ksa"
                       style={
                         {
                           "--c": Math.min(3, Math.max(2, clientSeatsNum)),
-                          "--r": Math.ceil(Math.max(1, clientSeatsNum) / Math.min(3, Math.max(2, clientSeatsNum))),
+                          "--r": Math.ceil(
+                            Math.max(1, clientSeatsNum) / Math.min(3, Math.max(2, clientSeatsNum)),
+                          ),
                         } as React.CSSProperties
                       }
                     >
-                      {Array.from(
-                        { length: Math.max(4, clientSeatsNum) },
-                        (_, idx) => idx,
-                      ).map((idx) => {
-                        const row = clientSeatsRows[idx];
-                        if (!row) {
+                      {Array.from({ length: Math.max(4, clientSeatsNum) }, (_, idx) => idx).map(
+                        (idx) => {
+                          const row = clientSeatsRows[idx];
+                          if (!row) {
+                            return (
+                              <div className="ks empty" key={`cempty-${idx}`}>
+                                <span className="knum">{idx + 1}</span>
+                                <div className="kav">+</div>
+                                <span className="ksn">مقعد فارغ</span>
+                                <div className="kbg">
+                                  <b className="bt">بانتظار لاعب</b>
+                                </div>
+                              </div>
+                            );
+                          }
+                          const [pid, name] = row;
                           return (
-                            <div className="ks empty" key={`cempty-${idx}`}>
+                            <div className={`ks ${pid === human ? "me" : "bot"}`} key={pid}>
                               <span className="knum">{idx + 1}</span>
-                              <div className="kav">+</div>
-                              <span className="ksn">مقعد فارغ</span>
+                              <div className="kav">
+                                {pid === human ? (
+                                  <img src={characterFace(profile.characterId)} alt="" />
+                                ) : (
+                                  <span
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      width: "100%",
+                                      height: "100%",
+                                      fontWeight: 900,
+                                      fontSize: "clamp(14px, 3vh, 26px)",
+                                    }}
+                                  >
+                                    {(name || "؟").slice(0, 1)}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="ksn">
+                                {pid === "p0" ? `${name} — المضيف` : name}
+                              </span>
                               <div className="kbg">
-                                <b className="bt">بانتظار لاعب</b>
+                                <b className={pid === human ? "hu" : "bt"}>
+                                  {pid === human ? "أنت" : pid === "p0" ? "المضيف" : "لاعب"}
+                                </b>
                               </div>
                             </div>
                           );
-                        }
-                        const [pid, name] = row;
-                        return (
-                        <div className={`ks ${pid === human ? "me" : "bot"}`} key={pid}>
-                          <span className="knum">{idx + 1}</span>
-                          <div className="kav">
-                            {pid === human ? (
-                              <img src={characterFace(profile.characterId)} alt="" />
-                            ) : (
-                              <span
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  width: "100%",
-                                  height: "100%",
-                                  fontWeight: 900,
-                                  fontSize: "clamp(14px, 3vh, 26px)",
-                                }}
-                              >
-                                {(name || "؟").slice(0, 1)}
-                              </span>
-                            )}
-                          </div>
-                          <span className="ksn">{pid === "p0" ? `${name} — المضيف` : name}</span>
-                          <div className="kbg">
-                            <b className={pid === human ? "hu" : "bt"}>
-                              {pid === human ? "أنت" : pid === "p0" ? "المضيف" : "لاعب"}
-                            </b>
-                          </div>
-                        </div>
-                        );
-                      })}
+                        },
+                      )}
                     </div>
                     <div className="kst kdk" style={{ marginTop: 14 }}>
                       في انتظار بدء المباراة من المضيف…
@@ -491,7 +498,14 @@ export default function JokerApp({ onBack }: JokerAppProps = {}) {
                           style={
                             canStart
                               ? { flex: 2, fontSize: 30, top: 0, height: "100%" }
-                              : { flex: 2, fontSize: 30, top: 0, height: "100%", filter: "grayscale(.5)", opacity: 0.6 }
+                              : {
+                                  flex: 2,
+                                  fontSize: 30,
+                                  top: 0,
+                                  height: "100%",
+                                  filter: "grayscale(.5)",
+                                  opacity: 0.6,
+                                }
                           }
                           disabled={!canStart}
                           onClick={start}

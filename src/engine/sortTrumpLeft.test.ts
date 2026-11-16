@@ -11,7 +11,12 @@ const cards = [
 
 describe("sortTrumpLeft", () => {
   it("puts trump cards leftmost keeping order", () => {
-    expect(sortTrumpLeft(cards, "H" as never).map((c) => (c as { id: string }).id)).toEqual(["h1", "h2", "s", "d"]);
+    expect(sortTrumpLeft(cards, "H" as never).map((c) => (c as { id: string }).id)).toEqual([
+      "h1",
+      "h2",
+      "s",
+      "d",
+    ]);
   });
   it("keeps order before trump is chosen", () => {
     expect(sortTrumpLeft(cards, null)).toEqual(cards);

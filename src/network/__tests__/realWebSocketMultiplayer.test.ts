@@ -259,7 +259,7 @@ describe("Real WebSocket TCP Multiplayer Integration", () => {
     p1Ws.close();
     p2Ws.close();
 
-        const p1States = p1Packets
+    const p1States = p1Packets
       .filter((p) => p.type === "CLIENT_STATE_UPDATE")
       .map((p) => p.payload.state);
     const lastP1State = p1States[p1States.length - 1];

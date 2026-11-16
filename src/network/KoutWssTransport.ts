@@ -31,6 +31,17 @@ export class KoutWssTransport implements IHostTransport {
   private disconnectHandlers = new Set<(playerToken: string) => void>();
   private unsubscribe: (() => void) | null = null;
   private ready = false;
+  private roomCode?: string;
+
+  constructor(options?: { roomCode?: string }) {
+    if (options?.roomCode) {
+      this.roomCode = options.roomCode.trim().toUpperCase();
+    }
+  }
+
+  public setRoomCode(code: string): void {
+    this.roomCode = code.trim().toUpperCase();
+  }
 
   private clientToToken = new Map<string, string>();
   private tokenToClient = new Map<string, string>();
@@ -57,6 +68,28 @@ export class KoutWssTransport implements IHostTransport {
         if (!env || typeof env !== "object" || !env.packet) return;
         const packet = env.packet as ClientPacket;
         if (this.deadClients.has(clientId)) return;
+
+        // التحقق من رمز الغرفة قبل استبدال أي اتصال قائم
+        if (packet.type === "JOIN") {
+          const room = (packet.payload as { roomCode?: string })?.roomCode;
+          if (
+            this.roomCode &&
+            String(room || "")
+              .trim()
+              .toUpperCase() !== this.roomCode
+          ) {
+            hubSendTo(clientId, {
+              ch: CH,
+              packet: {
+                v: 1,
+                type: "REJECTED",
+                payload: { reason: "INVALID_ROOM", message: "Room code does not match" },
+              },
+            });
+            return;
+          }
+        }
+
         const token =
           typeof packet.playerToken === "string" && packet.playerToken
             ? packet.playerToken

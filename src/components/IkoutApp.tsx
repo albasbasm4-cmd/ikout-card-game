@@ -171,7 +171,10 @@ export default function App() {
               }}
               netHost={
                 getActiveKoutHost()
-                  ? { session: getActiveKoutHost()!.session, engine: getActiveKoutHost()!.session.getEngine() }
+                  ? {
+                      session: getActiveKoutHost()!.session,
+                      engine: getActiveKoutHost()!.session.getEngine(),
+                    }
                   : null
               }
               netClient={

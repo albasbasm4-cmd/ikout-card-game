@@ -71,7 +71,10 @@ function readStore(): Store {
     if (raw) {
       const p = JSON.parse(raw);
       const avatars = Array.isArray(p.avatars) ? p.avatars.map(sanitize) : [];
-      return { avatars, activeId: typeof p.activeId === "string" ? p.activeId : avatars[0]?.id ?? null };
+      return {
+        avatars,
+        activeId: typeof p.activeId === "string" ? p.activeId : (avatars[0]?.id ?? null),
+      };
     }
     const legacy = localStorage.getItem(LEGACY_KEY);
     if (legacy) {
@@ -122,7 +125,11 @@ export function saveCustomAvatar(data: CustomAvatarData): CustomAvatarData {
 export function applyVoiceAd(data: CustomAvatarData): CustomAvatarData {
   if (data.maxClips >= UPGRADED_CLIP_SLOTS) return data;
   const watched = Math.min(data.voiceAdsWatched + 1, ADS_PER_UNLOCK);
-  return { ...data, voiceAdsWatched: watched, maxClips: watched >= ADS_PER_UNLOCK ? UPGRADED_CLIP_SLOTS : BASE_CLIP_SLOTS };
+  return {
+    ...data,
+    voiceAdsWatched: watched,
+    maxClips: watched >= ADS_PER_UNLOCK ? UPGRADED_CLIP_SLOTS : BASE_CLIP_SLOTS,
+  };
 }
 
 export function isSavedCustomAvatar(id: string): boolean {

@@ -4,12 +4,17 @@ import path from "node:path";
 
 describe("Screen Orientation & System Bars Fix Verification", () => {
   it("verifies MainActivity.java enforces sensorLandscape and cutout mode", () => {
-    const mainActivityPath = path.resolve(process.cwd(), "android/app/src/main/java/com/ikout/cardgame/MainActivity.java");
+    const mainActivityPath = path.resolve(
+      process.cwd(),
+      "android/app/src/main/java/com/ikout/cardgame/MainActivity.java",
+    );
     expect(fs.existsSync(mainActivityPath)).toBe(true);
     const content = fs.readFileSync(mainActivityPath, "utf-8");
 
     // 1. Must enforce native sensorLandscape
-    expect(content).toContain("setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)");
+    expect(content).toContain(
+      "setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)",
+    );
 
     // 2. Must handle display cutout for short edges in landscape
     expect(content).toContain("LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES");
@@ -32,7 +37,9 @@ describe("Screen Orientation & System Bars Fix Verification", () => {
     expect(fs.existsSync(scriptPath)).toBe(true);
     const content = fs.readFileSync(scriptPath, "utf-8");
 
-    expect(content).toContain("setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)");
+    expect(content).toContain(
+      "setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE)",
+    );
     expect(content).toContain("LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES");
     expect(content).toContain("registerPlugin(WebSocketServerPlugin.class)");
     expect(content).toContain("MIXED_CONTENT_ALWAYS_ALLOW");

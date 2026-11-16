@@ -153,7 +153,14 @@ export function getDrawPilePosition(
         const local = screenDeltaToLocal(stageEl, cxDraw - cxStage, cyDraw - cyStage);
         const xPct = 50 + (local.x / stageW) * 100;
         const yPct = 50 + (local.y / stageH) * 100;
-        if (Number.isFinite(xPct) && Number.isFinite(yPct) && xPct > 0 && xPct < 100 && yPct > 0 && yPct < 100) {
+        if (
+          Number.isFinite(xPct) &&
+          Number.isFinite(yPct) &&
+          xPct > 0 &&
+          xPct < 100 &&
+          yPct > 0 &&
+          yPct < 100
+        ) {
           return { fromX: xPct, fromY: yPct };
         }
       }
@@ -177,9 +184,7 @@ export function getHandSlotPosition(
 ): { toX: number; toY: number } {
   const maxHandW = stageW * 0.6;
   const step =
-    finalCount > 1
-      ? Math.max(1, Math.min(cardW * 0.72, (maxHandW - cardW) / (finalCount - 1)))
-      : 0;
+    finalCount > 1 ? Math.max(1, Math.min(cardW * 0.72, (maxHandW - cardW) / (finalCount - 1))) : 0;
   const handW = cardW + step * Math.max(0, finalCount - 1);
   const slotCenter = slotIndex * step + cardW / 2;
   const offsetFromCenter = slotCenter - handW / 2;
@@ -343,10 +348,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
           const pileW = Math.round(STAGE_H * 0.105);
           const tableCardW = Math.round(STAGE_H * 0.125);
           const meHandLen = nextState.players[ME]?.hand.length ?? 1;
-          const cardW = Math.max(
-            58,
-            Math.min(96, (stageW * 0.52) / Math.max(1, meHandLen) + 40),
-          );
+          const cardW = Math.max(58, Math.min(96, (stageW * 0.52) / Math.max(1, meHandLen) + 40));
 
           const drawPilePos = getDrawPilePosition(
             drawPileRef.current,
@@ -359,7 +361,7 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
 
           const timing = getUnoDrawTiming(settings.botSpeed, !!reduced);
           const beforeHandCount = prevState.players[seat]?.hand.length ?? 0;
-          const finalHandCount = nextState.players[seat]?.hand.length ?? (beforeHandCount + count);
+          const finalHandCount = nextState.players[seat]?.hand.length ?? beforeHandCount + count;
 
           const newFlyingCards: FlyingDrawCard[] = [];
           for (let idx = 0; idx < count; idx++) {
@@ -373,11 +375,17 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
             let scaleEnd = 1;
 
             if (seat === ME) {
-              const slotPos = getHandSlotPosition(beforeHandCount + idx, finalHandCount, stageW, cardW);
+              const slotPos = getHandSlotPosition(
+                beforeHandCount + idx,
+                finalHandCount,
+                stageW,
+                cardW,
+              );
               toX = slotPos.toX;
               toY = slotPos.toY;
               rotateEnd = Math.round(
-                ((beforeHandCount + idx - (finalHandCount - 1) / 2) / Math.max(1, finalHandCount)) * 8,
+                ((beforeHandCount + idx - (finalHandCount - 1) / 2) / Math.max(1, finalHandCount)) *
+                  8,
               );
             } else {
               const oppPos = getOpponentSeatPosition(seat, nextState.players.length, ME);
@@ -559,7 +567,8 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
         rotateStart,
       });
 
-      const speedFactor = settings.botSpeed === "SLOW" ? 1.5 : settings.botSpeed === "FAST" ? 0.6 : 1;
+      const speedFactor =
+        settings.botSpeed === "SLOW" ? 1.5 : settings.botSpeed === "FAST" ? 0.6 : 1;
       const flightDurationMs = reduced ? 80 : Math.round(350 * speedFactor);
       setTimeout(() => {
         setFlyingCard(null);
@@ -579,7 +588,8 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
       if (animate) {
         setFlyingCard({ card: animate, fromSeat: ME, fromX: 50, fromY: 88, rotateStart: 0 });
         setHiddenHandCardId(animate.id);
-        const speedFactor = settings.botSpeed === "SLOW" ? 1.5 : settings.botSpeed === "FAST" ? 0.6 : 1;
+        const speedFactor =
+          settings.botSpeed === "SLOW" ? 1.5 : settings.botSpeed === "FAST" ? 0.6 : 1;
         setTimeout(
           () => {
             setFlyingCard(null);
@@ -780,7 +790,12 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
               type="button"
               onClick={() => {
                 playTapSound();
-                const next = settings.botSpeed === "NORMAL" ? "FAST" : settings.botSpeed === "FAST" ? "SLOW" : "NORMAL";
+                const next =
+                  settings.botSpeed === "NORMAL"
+                    ? "FAST"
+                    : settings.botSpeed === "FAST"
+                      ? "SLOW"
+                      : "NORMAL";
                 setBotSpeed(next);
               }}
               aria-label="سرعة اللعب"
@@ -903,7 +918,9 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
                   ? guard(() => clientAction({ type: "DRAW" }))
                   : guard(() => apply(drawCard(s, ME, s.version)))
               }
-              disabled={!myTurn || !!s.drawnCardId || flyingCard !== null || flyingDrawCards.length > 0}
+              disabled={
+                !myTurn || !!s.drawnCardId || flyingCard !== null || flyingDrawCards.length > 0
+              }
               className="uno-draw relative h-auto p-0"
               aria-label="اسحب"
             >
@@ -1089,7 +1106,9 @@ export function Play({ onBack, onGoHome }: PlayProps = {}) {
             </motion.div>
           ))}
           <UnoHand
-            cards={me.hand.filter((c) => c.id !== hiddenHandCardId && !hiddenDrawnCardIds.has(c.id))}
+            cards={me.hand.filter(
+              (c) => c.id !== hiddenHandCardId && !hiddenDrawnCardIds.has(c.id),
+            )}
             width={stageW * 0.6}
             cardWidth={cardW}
             enabled={myTurn && flyingCard === null && flyingDrawCards.length === 0}

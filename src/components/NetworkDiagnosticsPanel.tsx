@@ -64,7 +64,9 @@ export const NetworkDiagnosticsPanel: React.FC<NetworkDiagnosticsPanelProps> = (
         </div>
         <div className="flex items-center justify-between">
           <span className="text-amber-200/70">بوابة الشبكة (عنوان المضيف)</span>
-          <span className="font-mono text-amber-100">{report ? (report.gatewayIp ?? "غير معروف") : "…"}</span>
+          <span className="font-mono text-amber-100">
+            {report ? (report.gatewayIp ?? "غير معروف") : "…"}
+          </span>
         </div>
       </div>
 

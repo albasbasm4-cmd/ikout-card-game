@@ -1,4 +1,10 @@
-import { startUnoHost, stopUnoHost, onUnoHostSeats, setUnoHostSeatNames, unoHostNewGame } from "@/lib/uno/unoNet";
+import {
+  startUnoHost,
+  stopUnoHost,
+  onUnoHostSeats,
+  setUnoHostSeatNames,
+  unoHostNewGame,
+} from "@/lib/uno/unoNet";
 import { ClientOnly, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, Bot, User, UserPlus } from "lucide-react";
@@ -104,7 +110,8 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
       !!remoteNames[i] ||
       seats[i]?.type === "bot");
   const waiting = seats.filter(
-    (s, i) => i > 0 && s.type === "human" && !(s as { occupied: boolean }).occupied && !remoteNames[i],
+    (s, i) =>
+      i > 0 && s.type === "human" && !(s as { occupied: boolean }).occupied && !remoteNames[i],
   ).length;
   const canStart = seats.length >= 2 && waiting === 0;
 
@@ -157,7 +164,7 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
         difficulty: s.type === "bot" ? s.difficulty : ("medium" as Difficulty),
       };
     });
-    setUnoHostSeatNames(setup.map((p) => p.isBot ? null : p.name));
+    setUnoHostSeatNames(setup.map((p) => (p.isBot ? null : p.name)));
     const g = newGame(setup, "room");
     unoHostNewGame(g);
     saveGame(g);
@@ -348,10 +355,7 @@ export function Room({ onBack, onStartPlay }: RoomProps = {}) {
             <div id="mdin" onClick={(e) => e.stopPropagation()}>
               <h2>رمز QR للغرفة (نقطة اتصال)</h2>
               <div className="qbox">
-                <QRCodeSVG
-                  value={`uno-room:${code}`}
-                  size={190}
-                />
+                <QRCodeSVG value={`uno-room:${code}`} size={190} />
               </div>
               <p>
                 فعّل نقطة الاتصال المحمولة (Hotspot) على جهازك، ثم امسح الرمز من الأجهزة الأخرى.

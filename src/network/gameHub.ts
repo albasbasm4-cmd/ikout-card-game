@@ -358,7 +358,10 @@ export async function connectHubToHost(
   perIpTimeoutMs = 2500,
 ): Promise<HubClient | null> {
   for (const ip of candidates) {
-    const clean = ip.trim().replace(/^ws:\/\//i, "").replace(/:\d+$/, "");
+    const clean = ip
+      .trim()
+      .replace(/^ws:\/\//i, "")
+      .replace(/:\d+$/, "");
     if (!clean) continue;
     const client = new HubClient(`ws://${clean}:${port}`);
     const ok = await client.connect(perIpTimeoutMs);

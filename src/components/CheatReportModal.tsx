@@ -47,8 +47,7 @@ export const CheatReportModal: React.FC<CheatReportModalProps> = ({
   // إظهار اللاعبين الحقيقيين فقط من الفريق الخصم (بدون البوتات وبدون مقعد المُبلِّغ وبدون أعضاء فريقه)
   const reporterTeam =
     reporterSeat !== undefined
-      ? players?.find((p) => p.seatIndex === reporterSeat)?.team ??
-        (((reporterSeat % 2) as 0 | 1))
+      ? (players?.find((p) => p.seatIndex === reporterSeat)?.team ?? ((reporterSeat % 2) as 0 | 1))
       : undefined;
 
   const eligiblePlayers = (players || []).filter(

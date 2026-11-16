@@ -146,7 +146,13 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
           >
             <Check /> تأكيد
           </Button>
-          <Button variant="ghost" onClick={() => { setVipPick(false); setVipChoice(null); }}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setVipPick(false);
+              setVipChoice(null);
+            }}
+          >
             إلغاء
           </Button>
         </div>
@@ -440,7 +446,9 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
               </Button>
             </div>
             {cheatFeedback && (
-              <p className={cheatFeedback.isError ? "pc-vip-err" : "pc-vip-ok"}>{cheatFeedback.text}</p>
+              <p className={cheatFeedback.isError ? "pc-vip-err" : "pc-vip-ok"}>
+                {cheatFeedback.text}
+              </p>
             )}
           </div>
 
@@ -452,425 +460,445 @@ export const ProfileEditor: React.FC<ProfileEditorProps> = ({ onClose, game = "k
       )}
 
       {/* نافذة تخصيص الشخصية المخصصة */}
-      {showCustomModal && typeof document !== "undefined" && createPortal(
-        <div
-          dir="rtl"
-          className="pc-custom-overlay"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.85)",
-            backdropFilter: "blur(6px)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "16px",
-          }}
-        >
+      {showCustomModal &&
+        typeof document !== "undefined" &&
+        createPortal(
           <div
+            dir="rtl"
+            className="pc-custom-overlay"
             style={{
-              background: "linear-gradient(180deg, #222a30 0%, #1a2128 100%)",
-              border: "2px solid #eab308",
-              boxShadow: "0 20px 50px rgba(0,0,0,0.85), inset 0 0 30px rgba(234, 179, 8, 0.12)",
-              borderRadius: "24px",
-              padding: "24px",
-              width: "min(75vw, 760px)",
-              minWidth: "min(92vw, 320px)",
-              maxHeight: "88dvh",
-              fontFamily: "inherit",
-              overflowWrap: "anywhere",
-              overflowY: "auto",
-              color: "#fff",
-              position: "relative",
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.85)",
+              backdropFilter: "blur(6px)",
+              zIndex: 9999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "16px",
             }}
           >
             <div
               style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                borderBottom: "1px solid #2c363c",
-                paddingBottom: "12px",
-                marginBottom: "16px",
+                background: "linear-gradient(180deg, #222a30 0%, #1a2128 100%)",
+                border: "2px solid #eab308",
+                boxShadow: "0 20px 50px rgba(0,0,0,0.85), inset 0 0 30px rgba(234, 179, 8, 0.12)",
+                borderRadius: "24px",
+                padding: "24px",
+                width: "min(75vw, 760px)",
+                minWidth: "min(92vw, 320px)",
+                maxHeight: "88dvh",
+                fontFamily: "inherit",
+                overflowWrap: "anywhere",
+                overflowY: "auto",
+                color: "#fff",
+                position: "relative",
               }}
             >
-              <h3
-                style={{
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  color: "#eab308",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  margin: 0,
-                }}
-              >
-                <Sparkles size={20} />
-                تخصيص شخصيتك
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowCustomModal(false)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: "#a7b6bf",
-                  cursor: "pointer",
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* قائمة الشخصيات المخصصة: كل شخصية جديدة تحتاج 5 إعلانات */}
-            <div className="pc-cust-list">
-              {listCustomAvatars().map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className={`pc-cust-chip ${a.id === customData.id ? "pc-selected" : ""}`}
-                  onClick={() => setCustomData(a)}
-                >
-                  {a.avatarImage ? <img src={a.avatarImage} alt="" /> : <Camera size={14} />}
-                  <span>{a.name}</span>
-                </button>
-              ))}
-              <button
-                type="button"
-                className={`pc-cust-chip pc-cust-new ${!isSavedCustomAvatar(customData.id) ? "pc-selected" : ""}`}
-                onClick={() => setCustomData(newCustomAvatar())}
-              >
-                <Plus size={14} />
-                <span>شخصية جديدة</span>
-              </button>
-            </div>
-
-            {/* شرط الـ 5 إعلانات لكل شخصية جديدة */}
-            {!customAdProgress.unlocked && !isSavedCustomAvatar(customData.id) && (
-              <div
-                style={{
-                  background: "rgba(234, 179, 8, 0.15)",
-                  border: "1px solid #eab308",
-                  borderRadius: "12px",
-                  padding: "12px",
-                  marginBottom: "16px",
-                  textAlign: "center",
-                }}
-              >
-                <p style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#fef08a" }}>
-                  يلزم مشاهدة 5 إعلانات لإنشاء شخصية جديدة: (
-                  {customAdProgress.watchedCount}/5)
-                </p>
-                <Button
-                  onClick={async () => {
-                    try {
-                      const updated = await adManager.watchRewardedAdForCustomAvatar();
-                      setCustomAdProgress(updated);
-                    } catch (e: any) {
-                      alert(e?.message || "تعذر تحميل الإعلان");
-                    }
-                  }}
-                  style={{ background: "#eab308", color: "#000", fontWeight: "bold" }}
-                >
-                  <Video size={16} style={{ marginLeft: "6px" }} />
-                  مشاهدة إعلان مكافأة ({customAdProgress.watchedCount}/5)
-                </Button>
-              </div>
-            )}
-
-            {/* قسم صورة الشخصية */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                marginBottom: "20px",
-              }}
-            >
-              <div
-                style={{
-                  width: "100px",
-                  height: "100px",
-                  borderRadius: "50%",
-                  border: "3px solid #eab308",
-                  overflow: "hidden",
-                  background: "#1b2328",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "10px",
-                  position: "relative",
-                }}
-              >
-                {customData.avatarImage ? (
-                  <img
-                    src={customData.avatarImage}
-                    alt="Avatar"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                ) : (
-                  <Camera size={36} color="#8fa1ac" />
-                )}
-              </div>
-              <label
-                style={{
-                  background: "#1b2328",
-                  border: "1px solid #44525a",
-                  padding: "6px 14px",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  color: "#eab308",
-                }}
-              >
-                <Upload size={14} />
-                اختيار صورة من الجهاز
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      const base64 = ev.target?.result as string;
-                      if (base64) {
-                        setCustomData((prev) => ({ ...prev, avatarImage: base64 }));
-                      }
-                    };
-                    reader.readAsDataURL(file);
-                  }}
-                />
-              </label>
-            </div>
-
-            {/* اسم الشخصية */}
-            <div style={{ marginBottom: "16px" }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "13px",
-                  color: "#a7b6bf",
-                  marginBottom: "6px",
-                }}
-              >
-                اسم الشخصية
-              </label>
-              <input
-                type="text"
-                value={customData.name}
-                maxLength={20}
-                onChange={(e) => setCustomData((prev) => ({ ...prev, name: e.target.value }))}
-                style={{
-                  width: "100%",
-                  background: "#1b2328",
-                  border: "1px solid #2c363c",
-                  borderRadius: "8px",
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-
-            {/* قائمة المقاطع الصوتية (أقصى حد 5 مقاطع، 3 ثوانٍ لكل مقطع) */}
-            <div style={{ marginBottom: "20px" }}>
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: "8px",
+                  borderBottom: "1px solid #2c363c",
+                  paddingBottom: "12px",
+                  marginBottom: "16px",
                 }}
               >
-                <label style={{ fontSize: "13px", color: "#a7b6bf" }}>
-                  الأصوات والعبارات للشات ({customData.clips.length}/{customData.maxClips})
-                </label>
-                <span style={{ fontSize: "11px", color: "#8fa1ac" }}>أقصى مدة 3 ثوانٍ لكل صوت</span>
-              </div>
-
-              {customData.maxClips < UPGRADED_CLIP_SLOTS && (
-                <button
-                  type="button"
-                  className="pc-cust-upgrade"
-                  onClick={async () => {
-                    try {
-                      await adManager.showRewardedAd();
-                      setCustomData((prev) => applyVoiceAd(prev));
-                    } catch (e: any) {
-                      alert(e?.message || "تعذر تحميل الإعلان");
-                    }
-                  }}
-                >
-                  <Video size={14} />
-                  <span>ترقية إلى 10 أصوات — شاهد إعلان ({customData.voiceAdsWatched}/{ADS_PER_UNLOCK})</span>
-                </button>
-              )}
-
-              {customData.clips.map((clip, idx) => (
-                <div
-                  key={clip.id}
+                <h3
                   style={{
+                    fontSize: "18px",
+                    fontWeight: "bold",
+                    color: "#eab308",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
+                    gap: "8px",
+                    margin: 0,
+                  }}
+                >
+                  <Sparkles size={20} />
+                  تخصيص شخصيتك
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomModal(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#a7b6bf",
+                    cursor: "pointer",
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* قائمة الشخصيات المخصصة: كل شخصية جديدة تحتاج 5 إعلانات */}
+              <div className="pc-cust-list">
+                {listCustomAvatars().map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className={`pc-cust-chip ${a.id === customData.id ? "pc-selected" : ""}`}
+                    onClick={() => setCustomData(a)}
+                  >
+                    {a.avatarImage ? <img src={a.avatarImage} alt="" /> : <Camera size={14} />}
+                    <span>{a.name}</span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`pc-cust-chip pc-cust-new ${!isSavedCustomAvatar(customData.id) ? "pc-selected" : ""}`}
+                  onClick={() => setCustomData(newCustomAvatar())}
+                >
+                  <Plus size={14} />
+                  <span>شخصية جديدة</span>
+                </button>
+              </div>
+
+              {/* شرط الـ 5 إعلانات لكل شخصية جديدة */}
+              {!customAdProgress.unlocked && !isSavedCustomAvatar(customData.id) && (
+                <div
+                  style={{
+                    background: "rgba(234, 179, 8, 0.15)",
+                    border: "1px solid #eab308",
+                    borderRadius: "12px",
+                    padding: "12px",
+                    marginBottom: "16px",
+                    textAlign: "center",
+                  }}
+                >
+                  <p style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#fef08a" }}>
+                    يلزم مشاهدة 5 إعلانات لإنشاء شخصية جديدة: ({customAdProgress.watchedCount}/5)
+                  </p>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const updated = await adManager.watchRewardedAdForCustomAvatar();
+                        setCustomAdProgress(updated);
+                      } catch (e: any) {
+                        alert(e?.message || "تعذر تحميل الإعلان");
+                      }
+                    }}
+                    style={{ background: "#eab308", color: "#000", fontWeight: "bold" }}
+                  >
+                    <Video size={16} style={{ marginLeft: "6px" }} />
+                    مشاهدة إعلان مكافأة ({customAdProgress.watchedCount}/5)
+                  </Button>
+                </div>
+              )}
+
+              {/* قسم صورة الشخصية */}
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  marginBottom: "20px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100px",
+                    height: "100px",
+                    borderRadius: "50%",
+                    border: "3px solid #eab308",
+                    overflow: "hidden",
+                    background: "#1b2328",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "10px",
+                    position: "relative",
+                  }}
+                >
+                  {customData.avatarImage ? (
+                    <img
+                      src={customData.avatarImage}
+                      alt="Avatar"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <Camera size={36} color="#8fa1ac" />
+                  )}
+                </div>
+                <label
+                  style={{
+                    background: "#1b2328",
+                    border: "1px solid #44525a",
+                    padding: "6px 14px",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    color: "#eab308",
+                  }}
+                >
+                  <Upload size={14} />
+                  اختيار صورة من الجهاز
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        const base64 = ev.target?.result as string;
+                        if (base64) {
+                          setCustomData((prev) => ({ ...prev, avatarImage: base64 }));
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* اسم الشخصية */}
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "13px",
+                    color: "#a7b6bf",
+                    marginBottom: "6px",
+                  }}
+                >
+                  اسم الشخصية
+                </label>
+                <input
+                  type="text"
+                  value={customData.name}
+                  maxLength={20}
+                  onChange={(e) => setCustomData((prev) => ({ ...prev, name: e.target.value }))}
+                  style={{
+                    width: "100%",
                     background: "#1b2328",
                     border: "1px solid #2c363c",
                     borderRadius: "8px",
                     padding: "8px 12px",
+                    color: "#fff",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              {/* قائمة المقاطع الصوتية (أقصى حد 5 مقاطع، 3 ثوانٍ لكل مقطع) */}
+              <div style={{ marginBottom: "20px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                     marginBottom: "8px",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
+                  <label style={{ fontSize: "13px", color: "#a7b6bf" }}>
+                    الأصوات والعبارات للشات ({customData.clips.length}/{customData.maxClips})
+                  </label>
+                  <span style={{ fontSize: "11px", color: "#8fa1ac" }}>
+                    أقصى مدة 3 ثوانٍ لكل صوت
+                  </span>
+                </div>
+
+                {customData.maxClips < UPGRADED_CLIP_SLOTS && (
+                  <button
+                    type="button"
+                    className="pc-cust-upgrade"
+                    onClick={async () => {
+                      try {
+                        await adManager.showRewardedAd();
+                        setCustomData((prev) => applyVoiceAd(prev));
+                      } catch (e: any) {
+                        alert(e?.message || "تعذر تحميل الإعلان");
+                      }
+                    }}
+                  >
+                    <Video size={14} />
+                    <span>
+                      ترقية إلى 10 أصوات — شاهد إعلان ({customData.voiceAdsWatched}/{ADS_PER_UNLOCK}
+                      )
+                    </span>
+                  </button>
+                )}
+
+                {customData.clips.map((clip, idx) => (
+                  <div
+                    key={clip.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      background: "#1b2328",
+                      border: "1px solid #2c363c",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          const snd = new Audio(clip.dataUrl);
+                          snd.play().catch(() => {});
+                        }}
+                        style={{ height: "30px", width: "30px", color: "#eab308" }}
+                      >
+                        <Volume2 size={16} />
+                      </Button>
+                      <input
+                        type="text"
+                        className="pc-cust-cliptext"
+                        value={clip.name}
+                        maxLength={30}
+                        aria-label={`عبارة الصوت ${idx + 1}`}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setCustomData((prev) => ({
+                            ...prev,
+                            clips: prev.clips.map((c) =>
+                              c.id === clip.id ? { ...c, name: v } : c,
+                            ),
+                          }));
+                        }}
+                      />
+                    </div>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => {
-                        const snd = new Audio(clip.dataUrl);
-                        snd.play().catch(() => {});
+                        setCustomData((prev) => ({
+                          ...prev,
+                          clips: prev.clips.filter((c) => c.id !== clip.id),
+                        }));
                       }}
-                      style={{ height: "30px", width: "30px", color: "#eab308" }}
+                      style={{ height: "30px", width: "30px", color: "#ef4444" }}
                     >
-                      <Volume2 size={16} />
+                      <Trash2 size={16} />
                     </Button>
+                  </div>
+                ))}
+
+                {/* إضافة صوت جديد: الملف الصوتي أولاً ثم خانة عبارته مباشرة تحته */}
+                {customData.clips.length < customData.maxClips && (
+                  <div className="pc-cust-add">
+                    <label className="pc-cust-file">
+                      <Upload size={14} />
+                      <span>
+                        {pendingClipUrl
+                          ? "تم اختيار الملف الصوتي ✓ (تغيير)"
+                          : "رفع ملف صوتي (أقصاه 3 ثوانٍ)"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        style={{ display: "none" }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            const dataUrl = ev.target?.result as string;
+                            if (dataUrl) setPendingClipUrl(dataUrl);
+                          };
+                          reader.readAsDataURL(file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
                     <input
                       type="text"
                       className="pc-cust-cliptext"
-                      value={clip.name}
+                      placeholder="معنى الصوت المكتوب للشات (مثال: كفو يا شريكي)"
+                      value={newClipName}
                       maxLength={30}
-                      aria-label={`عبارة الصوت ${idx + 1}`}
-                      onChange={(e) => {
-                        const v = e.target.value;
+                      onChange={(e) => setNewClipName(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="pc-cust-addbtn"
+                      disabled={!pendingClipUrl || !newClipName.trim()}
+                      onClick={() => {
+                        if (!pendingClipUrl || !newClipName.trim()) return;
+                        const newClip: CustomVoiceClip = {
+                          id: `clip_${Date.now()}`,
+                          name: newClipName.trim(),
+                          dataUrl: pendingClipUrl,
+                          durationSeconds: 3,
+                        };
                         setCustomData((prev) => ({
                           ...prev,
-                          clips: prev.clips.map((c) => (c.id === clip.id ? { ...c, name: v } : c)),
+                          clips: [...prev.clips, newClip].slice(0, prev.maxClips),
                         }));
+                        setNewClipName("");
+                        setPendingClipUrl(null);
                       }}
-                    />
+                    >
+                      <Plus size={14} />
+                      <span>إضافة الصوت مع عبارته</span>
+                    </button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setCustomData((prev) => ({
-                        ...prev,
-                        clips: prev.clips.filter((c) => c.id !== clip.id),
-                      }));
-                    }}
-                    style={{ height: "30px", width: "30px", color: "#ef4444" }}
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                </div>
-              ))}
+                )}
+              </div>
 
-              {/* إضافة صوت جديد: الملف الصوتي أولاً ثم خانة عبارته مباشرة تحته */}
-              {customData.clips.length < customData.maxClips && (
-                <div className="pc-cust-add">
-                  <label className="pc-cust-file">
-                    <Upload size={14} />
-                    <span>{pendingClipUrl ? "تم اختيار الملف الصوتي ✓ (تغيير)" : "رفع ملف صوتي (أقصاه 3 ثوانٍ)"}</span>
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      style={{ display: "none" }}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                          const dataUrl = ev.target?.result as string;
-                          if (dataUrl) setPendingClipUrl(dataUrl);
-                        };
-                        reader.readAsDataURL(file);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
-                  <input
-                    type="text"
-                    className="pc-cust-cliptext"
-                    placeholder="معنى الصوت المكتوب للشات (مثال: كفو يا شريكي)"
-                    value={newClipName}
-                    maxLength={30}
-                    onChange={(e) => setNewClipName(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="pc-cust-addbtn"
-                    disabled={!pendingClipUrl || !newClipName.trim()}
-                    onClick={() => {
-                      if (!pendingClipUrl || !newClipName.trim()) return;
-                      const newClip: CustomVoiceClip = {
-                        id: `clip_${Date.now()}`,
-                        name: newClipName.trim(),
-                        dataUrl: pendingClipUrl,
-                        durationSeconds: 3,
-                      };
-                      setCustomData((prev) => ({
-                        ...prev,
-                        clips: [...prev.clips, newClip].slice(0, prev.maxClips),
-                      }));
-                      setNewClipName("");
-                      setPendingClipUrl(null);
-                    }}
-                  >
-                    <Plus size={14} />
-                    <span>إضافة الصوت مع عبارته</span>
-                  </button>
-                </div>
-              )}
+              {/* زر الحفظ النهائي */}
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowCustomModal(false)}
+                  style={{ color: "#a7b6bf" }}
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  onClick={() => {
+                    const isNew = !isSavedCustomAvatar(customData.id);
+                    if (isNew && !customAdProgress.unlocked) {
+                      alert("يرجى إكمال مشاهدة الـ 5 إعلانات لإنشاء شخصية جديدة");
+                      return;
+                    }
+                    if (!customData.avatarImage) {
+                      alert("يرجى اختيار صورة للأفاتار أولاً");
+                      return;
+                    }
+                    // حفظ محلي دائم
+                    const saved = saveCustomAvatar({
+                      ...customData,
+                      enabled: true,
+                    });
+                    setCustomData(saved);
+                    // الشخصية التالية تحتاج 5 إعلانات جديدة
+                    if (isNew) adManager.resetCustomAvatarAdProgress();
+                    setCustomAdProgress(adManager.getCustomAvatarAdProgress());
+                    // اختيار الشخصية كشخصية رئيسية
+                    choose({ characterId: "custom" });
+                    setShowCustomModal(false);
+                  }}
+                  style={{ background: "#eab308", color: "#000", fontWeight: "bold" }}
+                >
+                  <Check size={16} style={{ marginLeft: "6px" }} />
+                  حفظ واستخدام الشخصية
+                </Button>
+              </div>
             </div>
-
-            {/* زر الحفظ النهائي */}
-            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-              <Button
-                variant="ghost"
-                onClick={() => setShowCustomModal(false)}
-                style={{ color: "#a7b6bf" }}
-              >
-                إلغاء
-              </Button>
-              <Button
-                onClick={() => {
-                  const isNew = !isSavedCustomAvatar(customData.id);
-                  if (isNew && !customAdProgress.unlocked) {
-                    alert("يرجى إكمال مشاهدة الـ 5 إعلانات لإنشاء شخصية جديدة");
-                    return;
-                  }
-                  if (!customData.avatarImage) {
-                    alert("يرجى اختيار صورة للأفاتار أولاً");
-                    return;
-                  }
-                  // حفظ محلي دائم
-                  const saved = saveCustomAvatar({
-                    ...customData,
-                    enabled: true,
-                  });
-                  setCustomData(saved);
-                  // الشخصية التالية تحتاج 5 إعلانات جديدة
-                  if (isNew) adManager.resetCustomAvatarAdProgress();
-                  setCustomAdProgress(adManager.getCustomAvatarAdProgress());
-                  // اختيار الشخصية كشخصية رئيسية
-                  choose({ characterId: "custom" });
-                  setShowCustomModal(false);
-                }}
-                style={{ background: "#eab308", color: "#000", fontWeight: "bold" }}
-              >
-                <Check size={16} style={{ marginLeft: "6px" }} />
-                حفظ واستخدام الشخصية
-              </Button>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
     </section>
   );
 };

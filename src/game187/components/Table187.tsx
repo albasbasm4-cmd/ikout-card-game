@@ -96,7 +96,6 @@ const SPEED_LABELS: { id: BotSpeed; label: string }[] = [
   { id: "FAST", label: "سريع" },
 ];
 
-
 interface Seat187Props {
   seat: number;
   pos: string;
@@ -137,15 +136,9 @@ const Seat187 = React.memo(function Seat187({
       className={`kt-seat kt-pos-${pos} kt-side-${side} ${isSameSide ? "kt-team" : "kt-opp"} ${isActive ? "kt-active" : ""}`}
     >
       <div className="kt-avatar">
-        <img
-          src={characterFace(character)}
-          alt={playerName}
-          draggable={false}
-        />
+        <img src={characterFace(character)} alt={playerName} draggable={false} />
       </div>
-      {isBidder && phase !== "BID" && (
-        <Crown className="kt-crown" />
-      )}
+      {isBidder && phase !== "BID" && <Crown className="kt-crown" />}
       <div className="kt-name">
         {isBot && <Bot className="kt-bot" />}
         <span>{playerName}</span>

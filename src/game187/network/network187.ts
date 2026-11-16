@@ -229,19 +229,6 @@ export class Room187Channel {
               ? (j.payload["playerToken"] as string)
               : null;
 
-        if (tokenCandidate) {
-          const oldClient = this.tokenToClient.get(tokenCandidate);
-          if (oldClient && oldClient !== clientId) {
-            this.deadClients.add(oldClient);
-            this.clientToToken.delete(oldClient);
-            hubCloseClient(oldClient);
-          }
-          this.clientToToken.set(clientId, tokenCandidate);
-          this.tokenToClient.set(tokenCandidate, clientId);
-        }
-
-        const clientToken = this.clientToToken.get(clientId);
-
         if (packet.type === "JOIN") {
           const reject = (errMsg: string) => {
             hubSendTo(clientId, {
@@ -250,43 +237,38 @@ export class Room187Channel {
             });
           };
 
+          // 1. التحقق الصارم من رمز الغرفة قبل أي تعديل على الاتصال أو المقاعد أو الجلسات
           if (j.clientToken === undefined) {
             const room = j.payload?.["roomCode"];
             if (room === undefined || String(room).trim().toUpperCase() !== this.code) {
               reject("رمز الغرفة غير صحيح");
               return;
             }
-            // إذا كان اللاعب معروفاً مسبقاً (إعادة اتصال)، نعيد له مقعده فوراً
-            if (tokenCandidate && this.tokenToSeat.has(tokenCandidate)) {
-              const seat = this.tokenToSeat.get(tokenCandidate)!;
-              const timer = this.disconnectTimers.get(seat);
-              if (timer) {
-                clearTimeout(timer);
-                this.disconnectTimers.delete(seat);
-              }
-              hubSendTo(clientId, {
-                ch: "g187",
-                packet: { type: "WELCOME", payload: { seat, code: this.code } },
-              });
-              if (this.lastState) {
-                hubSendTo(clientId, {
-                  ch: "g187",
-                  packet: {
-                    type: "STATE_UPDATE",
-                    state: maskGameState187(this.lastState, seat),
-                  },
-                });
-              }
+          } else {
+            if (j.roomCode === undefined || String(j.roomCode).trim().toUpperCase() !== this.code) {
+              reject("رمز الغرفة غير صحيح");
+              return;
             }
+          }
+
+          // 2. التحقق من وجود توكن صالح
+          if (!tokenCandidate || typeof tokenCandidate !== "string" || !tokenCandidate.trim()) {
+            reject("رمز اللاعب غير صالح");
             return;
           }
 
-          if (j.roomCode === undefined || String(j.roomCode).trim().toUpperCase() !== this.code) {
-            reject("رمز الغرفة غير صحيح");
-            return;
+          // 3. اكتمال التحقق بنجاح: الآن فقط نربط العميل ونبطل الاتصال القديم
+          const oldClient = this.tokenToClient.get(tokenCandidate);
+          if (oldClient && oldClient !== clientId) {
+            this.deadClients.add(oldClient);
+            this.clientToToken.delete(oldClient);
+            hubCloseClient(oldClient);
           }
+          this.clientToToken.set(clientId, tokenCandidate);
+          this.tokenToClient.set(tokenCandidate, clientId);
 
-          if (tokenCandidate && this.tokenToSeat.has(tokenCandidate)) {
+          // 4. استعادة المقعد وإلغاء مؤقت الانقطاع إن وُجد
+          if (this.tokenToSeat.has(tokenCandidate)) {
             const seat = this.tokenToSeat.get(tokenCandidate)!;
             const timer = this.disconnectTimers.get(seat);
             if (timer) {
@@ -307,10 +289,27 @@ export class Room187Channel {
               });
             }
           }
+
+          if (j.clientToken === undefined) {
+            return;
+          }
+        }
+
+        if (packet.type === "LEAVE") {
+          const t =
+            typeof j.clientToken === "string" ? j.clientToken : this.clientToToken.get(clientId);
+          if (t && this.tokenToClient.get(t) === clientId) {
+            this.tokenToClient.delete(t);
+            this.clientToToken.delete(clientId);
+            this.emit({ type: "LEAVE", clientToken: t });
+          }
+          return;
         }
 
         // المضيف هو المرجع الحصري للحالة
         if (packet.type === "STATE_UPDATE") return;
+
+        const clientToken = this.clientToToken.get(clientId);
 
         // التحقق من صلاحية الحركات وربط المقعد الموثوق ومنع الانتحال والتكرار
         if (

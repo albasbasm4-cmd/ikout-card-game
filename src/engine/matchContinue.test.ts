@@ -4,9 +4,23 @@ import type { GameState } from "../types/kout";
 
 const base = (scores: [number, number], extra: Partial<GameState> = {}): GameState =>
   ({
-    variant: "BO4", hands: [], dealer: 0, currentSeat: 0, bids: [], highBid: null, bidderSeat: null,
-    trump: null, currentTrick: [], trickHistory: [], tricksWon: [0, 0], scores, phase: "GAME_END",
-    roundNo: 5, targetScore: 51, version: 1, ...extra,
+    variant: "BO4",
+    hands: [],
+    dealer: 0,
+    currentSeat: 0,
+    bids: [],
+    highBid: null,
+    bidderSeat: null,
+    trump: null,
+    currentTrick: [],
+    trickHistory: [],
+    tricksWon: [0, 0],
+    scores,
+    phase: "GAME_END",
+    roundNo: 5,
+    targetScore: 51,
+    version: 1,
+    ...extra,
   }) as GameState;
 
 describe("Kout continue decision", () => {

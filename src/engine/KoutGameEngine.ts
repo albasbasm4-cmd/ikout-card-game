@@ -6,7 +6,11 @@
 import { GameState, Card, Bid, Suit, Phase, SeatBid, PlayerSlot } from "../types/kout";
 import { RULES } from "../rules/config";
 import { deal } from "../rules/deck";
-import { declareTrump as koutDeclareTrump, playCard as koutPlayCard, isSingleHumanVsBots } from "./KoutTricks";
+import {
+  declareTrump as koutDeclareTrump,
+  playCard as koutPlayCard,
+  isSingleHumanVsBots,
+} from "./KoutTricks";
 import { scoreRound } from "./KoutScoring";
 
 export interface EngineOptions {
@@ -69,8 +73,8 @@ export class KoutGameEngine {
         options.enableEarlyResolution !== undefined
           ? options.enableEarlyResolution
           : options.players !== undefined
-          ? isSingleHumanVsBots({ players: options.players ?? defaultPlayers })
-          : false,
+            ? isSingleHumanVsBots({ players: options.players ?? defaultPlayers })
+            : false,
     };
   }
 

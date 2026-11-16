@@ -74,7 +74,7 @@ export function startKoutHost(
     initialDealer: 0,
     seed: Math.floor(Math.random() * 1000000),
   });
-  const transport = new KoutWssTransport();
+  const transport = new KoutWssTransport({ roomCode });
   const session = new HostSession(transport, {
     engine,
     roomCode,

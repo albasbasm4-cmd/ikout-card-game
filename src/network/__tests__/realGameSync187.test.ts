@@ -220,4 +220,114 @@ describe("187 Real WebSocket Sync Integration", () => {
     client1.close();
     client2.close();
   });
+
+  it("rejects invalid JOIN with wrong roomCode without dropping or affecting an already connected player sharing that token", async () => {
+    const host = new Room187Channel(roomCode, "host");
+    const validClient = new Room187Channel(roomCode, "client", `127.0.0.1:${server.port}`);
+
+    const validClientMessages: Host187Packet[] = [];
+    const hostActions: Client187Packet[] = [];
+
+    validClient.onMessage((m) => validClientMessages.push(m as Host187Packet));
+    host.onMessage((m) => hostActions.push(m as Client187Packet));
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Valid client joins
+    validClient.send({
+      type: "JOIN",
+      playerName: "لاعب_أصيل",
+      clientToken: "legit_token_187",
+      roomCode,
+    });
+
+    await new Promise((r) => setTimeout(r, 80));
+
+    // Host establishes match and assigns seat 1 to legit_token_187
+    host.send({
+      type: "GAME_START",
+      state: {
+        roundNo: 1,
+        dealer: 0,
+        currentSeat: 1,
+        hands: [[], [{ id: "c-legit", suit: "H", rank: 14 }], [], [], []],
+        tableCards: [],
+        bids: [],
+        passedSeats: [false, false, false, false, false],
+        highBid: null,
+        bidderSeat: null,
+        trump: null,
+        currentTrick: [],
+        trickHistory: [],
+        tricksWon: [0, 0, 0, 0, 0],
+        capturedCards: [[], [], [], [], []],
+        hakemPoints: 0,
+        opponentsPoints: 0,
+        earlySettled: false,
+        earlySettledWinner: null,
+        continueAfterEarlySettle: false,
+        phase: "PLAY",
+        players: [
+          { seatIndex: 0, kind: "HUMAN_LOCAL", name: "المضيف" },
+          { seatIndex: 1, kind: "REMOTE", name: "لاعب_أصيل", clientToken: "legit_token_187" },
+          { seatIndex: 2, kind: "AI_BOT", name: "بوت2" },
+          { seatIndex: 3, kind: "AI_BOT", name: "بوت3" },
+          { seatIndex: 4, kind: "AI_BOT", name: "بوت4" },
+        ],
+        winner: null,
+        version: 1,
+      },
+    });
+
+    await new Promise<void>((resolve) => {
+      const timer = setInterval(() => {
+        if (validClientMessages.some((p) => p.type === "GAME_START")) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 25);
+    });
+
+    // Now an impostor client connects with the same token but WRONG room code
+    const impostorClient = new Room187Channel(
+      "WRONG_ROOM_CODE",
+      "client",
+      `127.0.0.1:${server.port}`,
+    );
+    const impostorMessages: Host187Packet[] = [];
+    impostorClient.onMessage((m) => impostorMessages.push(m as Host187Packet));
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    impostorClient.send({
+      type: "JOIN",
+      playerName: "منتحل",
+      clientToken: "legit_token_187",
+      roomCode: "WRONG_ROOM_CODE",
+    });
+
+    await new Promise((r) => setTimeout(r, 120));
+
+    // Impostor must receive ERROR
+    const errorMsg = impostorMessages.find((m) => m.type === "ERROR");
+    expect(errorMsg).toBeDefined();
+
+    // Crucial check: Valid client must NOT be disconnected and still be able to play their card!
+    validClient.send({
+      type: "PLAY_CARD",
+      seat: 1,
+      card: { id: "c-legit", suit: "H", rank: 14 },
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const cardPlayed = hostActions.find((a) => a.type === "PLAY_CARD") as any;
+    expect(cardPlayed).toBeDefined();
+    expect(cardPlayed.card.id).toBe("c-legit");
+    expect(cardPlayed.seat).toBe(1);
+
+    host.close();
+    validClient.close();
+    impostorClient.close();
+  });
 });

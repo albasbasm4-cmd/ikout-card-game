@@ -6,11 +6,7 @@
 import { describe, it, expect } from "vitest";
 import { KoutGameEngine } from "./KoutGameEngine";
 import { scoreRound } from "./KoutScoring";
-import {
-  koutWinnerTeam,
-  koutLoserTeam,
-  canDecideContinue,
-} from "./matchContinue";
+import { koutWinnerTeam, koutLoserTeam, canDecideContinue } from "./matchContinue";
 import type { GameState, PlayerSlot } from "../types/kout";
 import { LoopbackHub } from "../network/LoopbackTransport";
 import { HostSession } from "../network/HostSession";

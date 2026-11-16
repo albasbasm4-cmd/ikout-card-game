@@ -204,9 +204,8 @@ describe("نظام الحسم المبكر عند تحقيق طلب الحاكم
     const lead = engine.state.currentSeat;
     for (let step = 0; step < 6; step++) {
       const s = (lead + step) % 6;
-      const card: Card = s === 0
-        ? { id: "D-A", suit: "D", rank: 14 }
-        : { id: `C-${step}`, suit: "C", rank: 3 };
+      const card: Card =
+        s === 0 ? { id: "D-A", suit: "D", rank: 14 } : { id: `C-${step}`, suit: "C", rank: 3 };
       engine.state.hands[s][0] = card;
       engine.playCard(s, card, { allowAnyCard: true });
     }
@@ -243,9 +242,8 @@ describe("نظام الحسم المبكر عند تحقيق طلب الحاكم
     const lead = engine.state.currentSeat;
     for (let step = 0; step < 6; step++) {
       const s = (lead + step) % 6;
-      const card: Card = s === 0
-        ? { id: "H-A", suit: "H", rank: 14 }
-        : { id: `S-${step}`, suit: "S", rank: 2 };
+      const card: Card =
+        s === 0 ? { id: "H-A", suit: "H", rank: 14 } : { id: `S-${step}`, suit: "S", rank: 2 };
       engine.state.hands[s][0] = card;
       engine.playCard(s, card, { allowAnyCard: true });
     }
@@ -287,9 +285,8 @@ describe("نظام الحسم المبكر عند تحقيق طلب الحاكم
     const lead = engine.state.currentSeat;
     for (let step = 0; step < 6; step++) {
       const s = (lead + step) % 6;
-      const card: Card = s === 0
-        ? { id: "C-A", suit: "C", rank: 14 }
-        : { id: `H-${step}`, suit: "H", rank: 2 };
+      const card: Card =
+        s === 0 ? { id: "C-A", suit: "C", rank: 14 } : { id: `H-${step}`, suit: "H", rank: 2 };
       engine.state.hands[s][0] = card;
       engine.playCard(s, card, { allowAnyCard: true });
     }

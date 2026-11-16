@@ -130,7 +130,7 @@ export function useGame(options: UseGameOptions = {}) {
 
   // المقاعد البشرية: نعتمد حالة اللعبة الحية لتنعكس استجابة الروبوت المؤقتة فور انقطاع اللاعب
   const humanSeats = useMemo<number[]>(() => {
-    const slots = (state.players && state.players.length > 0) ? state.players : options.players;
+    const slots = state.players && state.players.length > 0 ? state.players : options.players;
     const humans = (slots || []).filter((p) => p.kind !== "AI_BOT").map((p) => p.seatIndex);
     return humans;
     // options.players يُقرأ مرة واحدة كإعداد أولي
@@ -401,7 +401,8 @@ export function useGame(options: UseGameOptions = {}) {
         return;
       }
       if (!engine) return;
-      if (engine.state.phase !== "BID" || seat === null || engine.state.currentSeat !== seat) return;
+      if (engine.state.phase !== "BID" || seat === null || engine.state.currentSeat !== seat)
+        return;
 
       try {
         const bubble = bid === 0 ? "pass" : `bid:${bid}`;
@@ -777,7 +778,10 @@ export function useGame(options: UseGameOptions = {}) {
         sendClientPacket("CONTINUE_DECISION", { continuePlay });
         return;
       }
-      applyContinueDecision(activeHumanSeatRef.current ?? localSeatsRef.current[0] ?? 0, continuePlay);
+      applyContinueDecision(
+        activeHumanSeatRef.current ?? localSeatsRef.current[0] ?? 0,
+        continuePlay,
+      );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [applyContinueDecision, sendClientPacket],
@@ -789,7 +793,9 @@ export function useGame(options: UseGameOptions = {}) {
     return host.session.onContinueDecision((seat, c) => applyContinueDecision(seat, c));
   }, [applyContinueDecision, options.netHost]);
 
-  const mySeatForDecision = options.netClient ? options.netClient.mySeat : (activeHumanSeat ?? localSeats[0] ?? 0);
+  const mySeatForDecision = options.netClient
+    ? options.netClient.mySeat
+    : (activeHumanSeat ?? localSeats[0] ?? 0);
   const canDecide = canDecideContinue(state, mySeatForDecision, humanSeats);
 
   return {

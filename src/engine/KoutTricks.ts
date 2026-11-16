@@ -155,7 +155,7 @@ export function playCard(
     bidderSeat !== null && bidderSeat !== undefined
       ? state.players && state.players[bidderSeat]
         ? state.players[bidderSeat].team
-        : (((bidderSeat % 2) as 0 | 1))
+        : ((bidderSeat % 2) as 0 | 1)
       : 0;
   const highBid = state.highBid ?? 0;
 
@@ -165,10 +165,7 @@ export function playCard(
       ? state.enableEarlyResolution && isSingleHumanVsBots(state)
       : isSingleHumanVsBots(state);
   const isEarlyResolved =
-    singleHuman &&
-    highBid > 0 &&
-    nextTricksWon[bidderTeam] >= highBid &&
-    !isRoundOver;
+    singleHuman && highBid > 0 && nextTricksWon[bidderTeam] >= highBid && !isRoundOver;
 
   let nextPhase: Phase = "PLAY";
   const nextSeat = winnerSeat; // الفائز بالأكلة يبدأ الأكلة التالية

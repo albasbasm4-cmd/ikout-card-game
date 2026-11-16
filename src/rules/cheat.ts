@@ -126,19 +126,15 @@ export function applyCheatVerdict(
   if (state.matchStopped) return null;
 
   const players = state.players ?? [];
-  const reporterPlayer =
-    players.find((p) => p.seatIndex === reporterSeat) ?? players[reporterSeat];
-  const accusedPlayer =
-    players.find((p) => p.seatIndex === accusedSeat) ?? players[accusedSeat];
+  const reporterPlayer = players.find((p) => p.seatIndex === reporterSeat) ?? players[reporterSeat];
+  const accusedPlayer = players.find((p) => p.seatIndex === accusedSeat) ?? players[accusedSeat];
 
   // كلا المقعدين يجب أن يكونا مسجلين وبشريين (ليسا AI_BOT)
   if (!reporterPlayer || reporterPlayer.kind === "AI_BOT") return null;
   if (!accusedPlayer || accusedPlayer.kind === "AI_BOT") return null;
 
-  const reporterTeam: 0 | 1 =
-    reporterPlayer.team ?? ((reporterSeat % 2) as 0 | 1);
-  const accusedTeam: 0 | 1 =
-    accusedPlayer.team ?? ((accusedSeat % 2) as 0 | 1);
+  const reporterTeam: 0 | 1 = reporterPlayer.team ?? ((reporterSeat % 2) as 0 | 1);
+  const accusedTeam: 0 | 1 = accusedPlayer.team ?? ((accusedSeat % 2) as 0 | 1);
 
   // رفض البلاغ بين أعضاء الفريق نفسه (أو على النفس): لا معنى لحكمه ويفتح باب إهداء النقاط.
   if (reporterTeam === accusedTeam) return null;
@@ -170,13 +166,11 @@ export function applyCheatVerdict(
   // الحفاظ على حالة GAME_END إذا كانت المباراة قد انتهت بالفعل (بسبب BO4 أو البوان أو غيرهما)
   const isAlreadyGameOver = state.phase === "GAME_END";
   const isGameOver =
-    isAlreadyGameOver ||
-    newScores[0] >= targetScore ||
-    newScores[1] >= targetScore;
+    isAlreadyGameOver || newScores[0] >= targetScore || newScores[1] >= targetScore;
   const nextDealer = (state.dealer + 1) % numSeats;
 
   // لا تسمح بإعادة فتح جولة أو مباراة انتهت بالفعل
-  const nextPhase: Phase = isAlreadyGameOver ? "GAME_END" : (isGameOver ? "GAME_END" : "ROUND_END");
+  const nextPhase: Phase = isAlreadyGameOver ? "GAME_END" : isGameOver ? "GAME_END" : "ROUND_END";
 
   const nextState: GameState = {
     ...state,

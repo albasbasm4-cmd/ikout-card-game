@@ -120,9 +120,7 @@ export function useRoom(initialConfig?: Partial<RoomConfig>) {
 
   // تعليم اتصال/انقطاع مقعد بعيد (من أحداث الشبكة)
   const setSeatConnected = useCallback((seatIndex: number, connected: boolean) => {
-    setPlayers((prev) =>
-      prev.map((p) => (p.seatIndex === seatIndex ? { ...p, connected } : p)),
-    );
+    setPlayers((prev) => prev.map((p) => (p.seatIndex === seatIndex ? { ...p, connected } : p)));
   }, []);
 
   // Set player name

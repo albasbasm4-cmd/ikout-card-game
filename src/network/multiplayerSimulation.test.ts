@@ -88,9 +88,7 @@ describe("Multiplayer Simulation Tests (دليل إصلاح اللعب الجم�
 
     // يجب ألا يحصل على ROOM_FULL، بل على SEAT_UPDATE بنفس المقعد 2
     expect(
-      reconnectPackets.some(
-        (p) => p.type === "ERROR" && (p.payload as any).code === "ROOM_FULL",
-      ),
+      reconnectPackets.some((p) => p.type === "ERROR" && (p.payload as any).code === "ROOM_FULL"),
     ).toBe(false);
 
     const seatUpdate = reconnectPackets.find((p) => p.type === "SEAT_UPDATE");
