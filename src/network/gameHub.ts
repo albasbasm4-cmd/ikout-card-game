@@ -12,6 +12,7 @@
  */
 
 import { tryCreateNativeWssBridge, type WssBridge, type WssClientEvent } from "./wssBridge";
+import { withoutAuthSecrets } from "./wirePrivacy";
 
 export type HubChannel = "kout" | "uno" | "g187" | "joker";
 
@@ -200,7 +201,7 @@ export function registerHubChannel(ch: HubChannel, handlers: HubChannelHandlers)
 export function hubSendTo(clientId: string, msg: HubMessage): void {
   if (serverState !== "RUNNING" || !activeBridge) return;
   try {
-    activeBridge.sendTo(clientId, JSON.stringify(msg));
+    activeBridge.sendTo(clientId, JSON.stringify(withoutAuthSecrets(msg)));
   } catch (err) {
     console.warn("[gameHub] hubSendTo failed:", err);
   }
@@ -209,7 +210,7 @@ export function hubSendTo(clientId: string, msg: HubMessage): void {
 export function hubBroadcast(msg: HubMessage): void {
   if (serverState !== "RUNNING" || !activeBridge) return;
   try {
-    activeBridge.broadcast(JSON.stringify(msg));
+    activeBridge.broadcast(JSON.stringify(withoutAuthSecrets(msg)));
   } catch (err) {
     console.warn("[gameHub] hubBroadcast failed:", err);
   }

@@ -190,6 +190,7 @@ export class HostSession {
     if (!packet || typeof packet !== "object" || !packet.type) return;
 
     // معالجة الرسائل المكررة والتسلسل الزمني لمنع تنفيذ الحركة مرتين
+    if (!Number.isSafeInteger(packet.seq) || packet.seq <= 0) return;
     if (typeof packet.seq === "number") {
       const lastSeq = this.lastProcessedSeq.get(playerToken) ?? 0;
       if (packet.type !== "JOIN" && packet.type !== "PING" && packet.seq <= lastSeq) {
@@ -199,7 +200,7 @@ export class HostSession {
         }
         return;
       }
-      if (packet.type !== "PING") {
+      if (packet.type !== "PING" && packet.type !== "JOIN") {
         this.lastProcessedSeq.set(playerToken, packet.seq);
       }
     }
@@ -395,6 +396,7 @@ export class HostSession {
     // Register mapping
     this.tokenToSeat.set(playerToken, assignedSeat);
     this.seatToToken.set(assignedSeat, playerToken);
+    this.lastProcessedSeq.set(playerToken, packet.seq);
 
     // Update player slot in state
     const existingSlot = this.engine.state.players?.[assignedSeat];
@@ -424,7 +426,6 @@ export class HostSession {
       payload: {
         roomCode: this.roomCode || "",
         seatIndex: assignedSeat,
-        playerToken,
         player: sanitizedSlot,
         players: sanitizedPlayers,
       },
@@ -758,7 +759,6 @@ export class HostSession {
     const packet: HostPacket = {
       v: PROTOCOL_VERSION,
       seq: ++this.hostSeq,
-      playerToken,
       type: packetData.type,
       payload: packetData.payload,
     } as HostPacket;

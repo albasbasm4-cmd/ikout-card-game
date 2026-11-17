@@ -14,6 +14,7 @@ import {
 import { getJoinCandidateIps } from "../../network/wssBridge";
 import { LocalClientSocket } from "../../network/LocalClientSocket";
 import { getPersistentPlayerToken } from "../../network/playerToken";
+import { withoutAuthSecrets } from "../../network/wirePrivacy";
 
 export type Client187Packet =
   | { type: "CHAT"; seat: number; message: string; seq?: number }
@@ -60,7 +61,7 @@ export function findMySeat187(players: Player187[] | undefined, clientToken: str
 
 /**
  * ينشئ نسخة شبكية آمنة: أوراق صاحب المقعد فقط تبقى مكشوفة، وتُحجب أوراق بقية المقاعد.
- * وتُحذف رموز التوكن الحساسة لجميع الخصوم لمنع تسريب بيانات المصادقة.
+ * وتُحذف رموز المصادقة من جميع اللاعبين، بما فيهم المستلم.
  */
 export function maskGameState187(state: GameState187, clientSeat: number): GameState187 {
   const hands = state.hands.map((hand, seat) =>
@@ -72,11 +73,7 @@ export function maskGameState187(state: GameState187, clientSeat: number): GameS
           rank: 2 as const,
         })),
   );
-  const players = state.players.map((p, idx) => ({
-    ...p,
-    clientToken: idx === clientSeat ? p.clientToken : undefined,
-  }));
-  return { ...state, hands, players };
+  return withoutAuthSecrets({ ...state, hands });
 }
 
 let activeRoom187Channel: Room187Channel | null = null;
@@ -268,8 +265,8 @@ export class Room187Channel {
           this.tokenToClient.set(tokenCandidate, clientId);
 
           // 4. استعادة المقعد وإلغاء مؤقت الانقطاع إن وُجد
-          if (this.tokenToSeat.has(tokenCandidate)) {
-            const seat = this.tokenToSeat.get(tokenCandidate)!;
+          const seat = this.tokenToSeat.get(tokenCandidate);
+          if (seat !== undefined) {
             const timer = this.disconnectTimers.get(seat);
             if (timer) {
               clearTimeout(timer);
@@ -307,7 +304,10 @@ export class Room187Channel {
         }
 
         // المضيف هو المرجع الحصري للحالة
-        if (packet.type === "STATE_UPDATE") return;
+        if (packet.type !== "JOIN" && packet.type !== "BID" &&
+            packet.type !== "DISCARD" && packet.type !== "TRUMP" &&
+            packet.type !== "PLAY_CARD" && packet.type !== "EARLY_SETTLE" &&
+            packet.type !== "CHEAT_REPORT" && packet.type !== "CHAT") return;
 
         const clientToken = this.clientToToken.get(clientId);
 
@@ -327,10 +327,11 @@ export class Room187Channel {
           if (assignedSeat === undefined) return;
 
           const seq = Number((packet as Record<string, unknown>)["seq"]);
+          if (!Number.isSafeInteger(seq) || seq <= 0) return;
           if (Number.isInteger(seq) && seq > 0) {
-            const lastSeq = this.lastSeqByToken.get(clientToken) ?? 0;
+            const lastSeq = this.lastSeqByToken.get(clientId) ?? 0;
             if (seq <= lastSeq) return;
-            this.lastSeqByToken.set(clientToken, seq);
+            this.lastSeqByToken.set(clientId, seq);
           }
 
           // فرض المقعد المعتمد الموثوق ومنع انتحال أي مقعد آخر
@@ -408,7 +409,7 @@ export class Room187Channel {
 
   public send(msg: Client187Packet | Host187Packet): void {
     if (this.role === "auto") {
-      this.bc?.postMessage(msg);
+      this.bc?.postMessage(withoutAuthSecrets(msg));
       return;
     }
 
@@ -435,7 +436,7 @@ export class Room187Channel {
           }
 
           // إرسال تحديث المقاعد الآمن خالياً من التوكنات للأجهزة الأخرى
-          const sanitized = msg.seats.map((s) => (s ? { ...s, clientToken: undefined } : null));
+          const sanitized = withoutAuthSecrets(msg.seats);
           hubBroadcast({ ch: "g187", packet: { type: "ROOM_SEATS_UPDATE", seats: sanitized } });
           return;
         }

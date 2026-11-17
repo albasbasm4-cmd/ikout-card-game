@@ -117,10 +117,15 @@ describe("187 Real WebSocket Sync Integration", () => {
     expect(masked.hands[0][0].id).toBe("masked-0-0");
     expect(masked.hands[2][0].id).toBe("masked-2-0");
 
-    // Tokens: recipient keeps their own token, opponent tokens are stripped
-    expect(masked.players[1].clientToken).toBe("tok_1");
+    // Authentication is absent even for the recipient; bindings stay host-side.
+    expect(masked.players[1].clientToken).toBeUndefined();
     expect(masked.players[0].clientToken).toBeUndefined();
     expect(masked.players[2].clientToken).toBeUndefined();
+    expect(masked.players.every((p) => !("clientToken" in p))).toBe(true);
+    const json = JSON.stringify({ type: "STATE_UPDATE", state: masked });
+    for (const token of ["tok_0", "tok_1", "tok_2", "clientToken", "playerToken"]) {
+      expect(json).not.toContain(token);
+    }
   });
 
   it("handles host and 2 independent clients over real TCP with authoritative seat validation and spoof prevention", async () => {

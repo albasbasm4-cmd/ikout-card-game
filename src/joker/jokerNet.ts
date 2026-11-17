@@ -1,4 +1,5 @@
 import { getPersistentPlayerToken } from "../network/playerToken";
+import { withoutAuthSecrets } from "../network/wirePrivacy";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -20,12 +21,12 @@ import { actJoker, type JokerGame } from "./engine";
 
 /** يخفي هوية حامل الجوكر وورق الآخرين أثناء اللعب، ويكشف كل شيء في النتائج. */
 export function maskJokerState(s: JokerGame, pid: string): JokerGame {
-  if (s.phase !== "play") return s;
-  return {
+  if (s.phase !== "play") return withoutAuthSecrets(s);
+  return withoutAuthSecrets({
     ...s,
     joker: s.joker === pid ? pid : "",
     cards: { [pid]: s.cards[pid] ?? "" },
-  };
+  });
 }
 
 // ---------------- جانب المضيف ----------------
@@ -206,6 +207,7 @@ export async function startJokerHost(code: string): Promise<void> {
       )
         return;
       const seq = Number((p as Record<string, unknown>)["seq"]);
+      if (!Number.isSafeInteger(seq) || seq <= 0) return;
       if (Number.isInteger(seq) && seq > 0) {
         const previous = host.lastSeqByClient.get(clientId) ?? 0;
         if (seq <= previous) return;

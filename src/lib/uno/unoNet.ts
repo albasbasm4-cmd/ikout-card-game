@@ -1,4 +1,5 @@
 import { getPersistentPlayerToken } from "../../network/playerToken";
+import { withoutAuthSecrets } from "../../network/wirePrivacy";
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -38,7 +39,7 @@ export function maskUnoState(s: GameState, seat: number): GameState {
   c.players = c.players.map((p, i) =>
     i === seat ? p : { ...p, hand: p.hand.map(() => MASKED_CARD) },
   );
-  return c;
+  return withoutAuthSecrets(c);
 }
 
 export type UnoIntent =
@@ -247,6 +248,7 @@ export async function startUnoHost(code: string): Promise<void> {
       )
         return;
       const seq = Number((p as Record<string, unknown>)["seq"]);
+      if (!Number.isSafeInteger(seq) || seq <= 0) return;
       if (Number.isInteger(seq) && seq > 0) {
         const previous = host.lastSeqByClient.get(clientId) ?? 0;
         if (seq <= previous) return;

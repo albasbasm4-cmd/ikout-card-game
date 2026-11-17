@@ -4,6 +4,7 @@
  */
 
 import { GameState, Card, Suit, Bid, PlayerSlot } from "../types/kout";
+import { withoutAuthSecrets } from "./wirePrivacy";
 
 export const PROTOCOL_VERSION = 1;
 
@@ -135,7 +136,6 @@ export interface CheatVerdictPayload {
 export interface JoinAcceptedPayload {
   roomCode: string;
   seatIndex: number;
-  playerToken: string;
   player?: PlayerSlot;
   players?: PlayerSlot[];
 }
@@ -166,7 +166,6 @@ export type HostPacketType =
 export interface BaseHostPacket<TType extends HostPacketType, TPayload> {
   v: number;
   seq: number;
-  playerToken: string;
   type: TType;
   payload: TPayload;
 }
@@ -208,15 +207,12 @@ export function filterStateForSeat(state: GameState, seat: number): ClientGameSt
   });
 
   // حماية أمنية: لا يتم إرسال توكنات اللاعبين الآخرين حتى لا يستطيع أحد انتحال مقعد لاعب آخر
-  const filteredPlayers = state.players?.map((p, idx) => ({
-    ...p,
-    playerToken: idx === seat ? p.playerToken : undefined,
-  }));
+  const filteredPlayers = withoutAuthSecrets(state.players);
 
-  return {
+  return withoutAuthSecrets({
     ...state,
     hands: filteredHands,
     players: filteredPlayers,
     mySeat: seat,
-  };
+  });
 }

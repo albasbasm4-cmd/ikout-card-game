@@ -12,6 +12,7 @@
 <!-- LOVABLE:END -->
 
 - The iKout game is a client-only SPA mounted from src/routes/index.tsx via ClientOnly + lazy import, because it relies on Web Workers, AudioContext and localStorage at module/render time.
+- All host-to-client hub packets and masked game snapshots must pass wirePrivacy; authentication remains in host connection maps, and clients identify their seat through explicit acceptance fields.
 - UNO uses isolated /uno routes, a pure src/lib/uno engine and scoped .uno-app tokens to preserve Kout/187 rules and presentation; its imported local save format and custom rules remain unchanged.
 - Joker mounts lazy client-only React screens with a pure src/joker engine and scoped CSS copied from the original presentation; the legacy HTML is reference-only and cross-device native rooms remain unavailable in the web UI.
 - UNO setup mounts lazy client-only React with scoped legacy lobby CSS; no game route uses an iframe, avoiding document reloads between games.
