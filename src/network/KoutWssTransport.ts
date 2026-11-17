@@ -90,9 +90,8 @@ export class KoutWssTransport implements IHostTransport {
           }
         }
 
-        const token = packet.type === "JOIN"
-          ? packet.playerToken
-          : this.clientToToken.get(clientId);
+        const token =
+          packet.type === "JOIN" ? packet.playerToken : this.clientToToken.get(clientId);
         if (typeof token !== "string" || !token.trim()) return;
         if (packet.type === "JOIN") this.bind(clientId, token);
         if (this.deadClients.has(clientId) || this.tokenToClient.get(token) !== clientId) return;

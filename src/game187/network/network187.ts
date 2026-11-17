@@ -44,7 +44,7 @@ export type Host187Packet =
   | { type: "CHAT_BUBBLE"; seat: number; message: string }
   | { type: "ROOM_SEATS_UPDATE"; seats: (Player187 | null)[] }
   | { type: "GAME_START"; state: GameState187; yourSeat?: number }
-  | { type: "STATE_UPDATE"; state: GameState187 }
+  | { type: "STATE_UPDATE"; state: GameState187; yourSeat?: number }
   | { type: "WELCOME"; payload: { seat: number; code: string } }
   | { type: "JOIN_ACCEPTED"; payload: { seatIndex: number; roomCode: string } }
   | { type: "ERROR"; message: string };
@@ -107,6 +107,7 @@ export class Room187Channel {
   private lastSeqByToken = new Map<string, number>();
   private disconnectTimers = new Map<number, ReturnType<typeof setTimeout>>();
   private lastState: GameState187 | null = null;
+  private myAssignedSeat: number | null = null;
 
   constructor(
     roomCode: string,
@@ -161,6 +162,15 @@ export class Room187Channel {
 
   public getBoundSeat(token: string): number | undefined {
     return this.tokenToSeat.get(token);
+  }
+
+  public getMySeat(): number | null {
+    if (this.myAssignedSeat !== null) return this.myAssignedSeat;
+    if (this.socket) {
+      const s = this.socket.getAssignedSeat();
+      if (typeof s === "number") return s;
+    }
+    return null;
   }
 
   private emit(msg: Client187Packet | Host187Packet): void {
@@ -282,6 +292,7 @@ export class Room187Channel {
                 packet: {
                   type: "STATE_UPDATE",
                   state: maskGameState187(this.lastState, seat),
+                  yourSeat: seat,
                 },
               });
             }
@@ -304,10 +315,17 @@ export class Room187Channel {
         }
 
         // المضيف هو المرجع الحصري للحالة
-        if (packet.type !== "JOIN" && packet.type !== "BID" &&
-            packet.type !== "DISCARD" && packet.type !== "TRUMP" &&
-            packet.type !== "PLAY_CARD" && packet.type !== "EARLY_SETTLE" &&
-            packet.type !== "CHEAT_REPORT" && packet.type !== "CHAT") return;
+        if (
+          packet.type !== "JOIN" &&
+          packet.type !== "BID" &&
+          packet.type !== "DISCARD" &&
+          packet.type !== "TRUMP" &&
+          packet.type !== "PLAY_CARD" &&
+          packet.type !== "EARLY_SETTLE" &&
+          packet.type !== "CHEAT_REPORT" &&
+          packet.type !== "CHAT"
+        )
+          return;
 
         const clientToken = this.clientToToken.get(clientId);
 
@@ -396,7 +414,21 @@ export class Room187Channel {
           this.socket = socket;
           socket.onMessage((packet) => {
             const p = packet as unknown as Client187Packet | Host187Packet;
-            if (p && typeof p === "object" && "type" in p) this.emit(p);
+            if (p && typeof p === "object" && "type" in p) {
+              if (p.type === "WELCOME" && typeof (p as any).payload?.seat === "number") {
+                this.myAssignedSeat = (p as any).payload.seat;
+              } else if (
+                p.type === "JOIN_ACCEPTED" &&
+                typeof (p as any).payload?.seatIndex === "number"
+              ) {
+                this.myAssignedSeat = (p as any).payload.seatIndex;
+              } else if (p.type === "GAME_START" && typeof p.yourSeat === "number") {
+                this.myAssignedSeat = p.yourSeat;
+              } else if (p.type === "STATE_UPDATE" && typeof p.yourSeat === "number") {
+                this.myAssignedSeat = p.yourSeat;
+              }
+              this.emit(p);
+            }
           });
           this.flushPending();
           resolve(true);
@@ -488,6 +520,7 @@ export class Room187Channel {
         packet: {
           type: "STATE_UPDATE",
           state: maskGameState187(state, player.seatIndex),
+          yourSeat: player.seatIndex,
         },
       });
     }

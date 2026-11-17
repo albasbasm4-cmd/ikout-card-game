@@ -158,13 +158,16 @@ export const Room187Screen: React.FC<Room187ScreenProps> = ({
         } else if (msg.type === "GAME_START") {
           isStartingMatchRef.current = true;
           setActiveRoom187Channel(channelRef.current);
+          const bound = channelRef.current?.getMySeat();
           const mySeat =
             typeof msg.yourSeat === "number"
               ? msg.yourSeat
-              : findMySeat187(msg.state.players, myTokenRef.current);
+              : typeof bound === "number"
+                ? bound
+                : findMySeat187(msg.state.players, myTokenRef.current);
           onStartMatchRef.current(msg.state.players, "room", roomCode, {
             isHost: false,
-            mySeat,
+            mySeat: typeof mySeat === "number" ? mySeat : 1,
           });
         } else if (msg.type === "ERROR") {
           showToast(msg.message);

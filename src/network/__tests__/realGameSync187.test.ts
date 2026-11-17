@@ -335,4 +335,185 @@ describe("187 Real WebSocket Sync Integration", () => {
     validClient.close();
     impostorClient.close();
   });
+
+  it("never leaks tokens across WELCOME, GAME_START, and STATE_UPDATE, and smoothly restores seat and play on reconnect", async () => {
+    const roomCode = "SEC187";
+    const host = new Room187Channel(roomCode, "host");
+    const client1 = new Room187Channel(roomCode, "client", `127.0.0.1:${server.port}`);
+
+    const c1Packets: Host187Packet[] = [];
+    const hostActions: Client187Packet[] = [];
+
+    client1.onMessage((m) => c1Packets.push(m as Host187Packet));
+    host.onMessage((m) => {
+      hostActions.push(m as Client187Packet);
+      if (m.type === "JOIN") {
+        host.send({
+          type: "ROOM_SEATS_UPDATE",
+          seats: [
+            { seatIndex: 0, kind: "HUMAN_LOCAL", name: "المضيف", isHost: true },
+            { seatIndex: 1, kind: "REMOTE", name: m.playerName, clientToken: m.clientToken },
+            null,
+            null,
+            null,
+          ],
+        });
+      }
+    });
+
+    await new Promise((r) => setTimeout(r, 120));
+
+    // 1. Client joins with a specific device/auth token
+    const token = "tok_auth_secret_999";
+    client1.send({
+      type: "JOIN",
+      playerName: "لاعب_مستقر",
+      clientToken: token,
+      roomCode,
+    });
+
+    await new Promise<void>((resolve) => {
+      const timer = setInterval(() => {
+        if (c1Packets.some((p) => p.type === "ROOM_SEATS_UPDATE")) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 25);
+    });
+
+    // 2. Host starts match with 5 players
+    const initialGameState: GameState187 = {
+      roundNo: 1,
+      dealer: 0,
+      currentSeat: 1,
+      hands: [[], [{ id: "c-rec", suit: "D", rank: 14 }], [], [], []],
+      tableCards: [],
+      bids: [],
+      passedSeats: [false, false, false, false, false],
+      highBid: 120,
+      bidderSeat: 1,
+      trump: "H",
+      currentTrick: [],
+      trickHistory: [],
+      tricksWon: [0, 0, 0, 0, 0],
+      capturedCards: [[], [], [], [], []],
+      hakemPoints: 0,
+      opponentsPoints: 0,
+      earlySettled: false,
+      earlySettledWinner: null,
+      continueAfterEarlySettle: false,
+      phase: "PLAY",
+      players: [
+        { seatIndex: 0, kind: "HUMAN_LOCAL", name: "المضيف", clientToken: "host_token" },
+        { seatIndex: 1, kind: "REMOTE", name: "لاعب_مستقر", clientToken: token },
+        { seatIndex: 2, kind: "AI_BOT", name: "بوت2" },
+        { seatIndex: 3, kind: "AI_BOT", name: "بوت3" },
+        { seatIndex: 4, kind: "AI_BOT", name: "بوت4" },
+      ],
+      winner: null,
+      version: 1,
+    };
+
+    host.send({
+      type: "GAME_START",
+      state: initialGameState,
+    });
+
+    await new Promise<void>((resolve) => {
+      const timer = setInterval(() => {
+        if (c1Packets.some((p) => p.type === "GAME_START")) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 25);
+    });
+
+    // 3. Host sends STATE_UPDATE
+    host.send({
+      type: "STATE_UPDATE",
+      state: initialGameState,
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Check GAME_START packet on Client 1
+    const gameStartPacket = c1Packets.find((p) => p.type === "GAME_START") as any;
+    expect(gameStartPacket).toBeDefined();
+    expect(gameStartPacket.yourSeat).toBe(1);
+    expect(JSON.stringify(gameStartPacket)).not.toContain(token);
+    expect(JSON.stringify(gameStartPacket)).not.toContain("host_token");
+
+    // Check STATE_UPDATE packet on Client 1
+    const stateUpdatePacket = c1Packets.find((p) => p.type === "STATE_UPDATE") as any;
+    expect(stateUpdatePacket).toBeDefined();
+    expect(JSON.stringify(stateUpdatePacket)).not.toContain(token);
+    expect(JSON.stringify(stateUpdatePacket)).not.toContain("host_token");
+
+    // 4. Simulate client disconnection
+    client1.close();
+    await new Promise((r) => setTimeout(r, 120));
+
+    // 5. Client reconnects with same token
+    const reconnectedClient = new Room187Channel(roomCode, "client", `127.0.0.1:${server.port}`);
+    const reconPackets: Host187Packet[] = [];
+    reconnectedClient.onMessage((m) => reconPackets.push(m as Host187Packet));
+
+    await new Promise((r) => setTimeout(r, 120));
+
+    reconnectedClient.send({
+      type: "JOIN",
+      playerName: "لاعب_مستقر",
+      clientToken: token,
+      roomCode,
+    });
+
+    await new Promise<void>((resolve) => {
+      const timer = setInterval(() => {
+        if (reconPackets.some((p) => p.type === "WELCOME")) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, 25);
+    });
+
+    // Check WELCOME packet: must have seat: 1, no tokens
+    const welcomePacket = reconPackets.find((p) => p.type === "WELCOME") as any;
+    expect(welcomePacket).toBeDefined();
+    expect(welcomePacket.payload.seat).toBe(1);
+    expect(JSON.stringify(welcomePacket)).not.toContain(token);
+
+    // Check STATE_UPDATE received on reconnect: no tokens
+    const reconStateUpdate = reconPackets.find((p) => p.type === "STATE_UPDATE") as any;
+    expect(reconStateUpdate).toBeDefined();
+    expect(JSON.stringify(reconStateUpdate)).not.toContain(token);
+
+    // Check that client channel has restored seat
+    expect(reconnectedClient.getMySeat()).toBe(1);
+
+    // 6. Old client connection cannot play cards after invalidation
+    client1.send({
+      type: "PLAY_CARD",
+      seat: 1,
+      card: { id: "c-rec", suit: "D", rank: 14 },
+    });
+
+    await new Promise((r) => setTimeout(r, 80));
+    expect(hostActions.some((a) => (a as any).card?.id === "c-rec")).toBe(false);
+
+    // 7. Reconnected client plays legal card and host processes it
+    reconnectedClient.send({
+      type: "PLAY_CARD",
+      seat: 1,
+      card: { id: "c-rec", suit: "D", rank: 14 },
+    });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    const played = hostActions.find((a) => (a as any).card?.id === "c-rec") as any;
+    expect(played).toBeDefined();
+    expect(played.seat).toBe(1);
+
+    host.close();
+    reconnectedClient.close();
+  });
 });
